@@ -374,7 +374,6 @@ def main():
 			bnds = np.stack((bnd_inf, bnd_sup),axis=-1)
 			print("Start LBFGS optim")
 			t3 =  time.time()
-			#optimizer_kwargs = {'maxiter': max_iterations,'disp': print_iterations,'bounds': bnds}
 			optimizer_kwargs = {'maxiter': max_iterations,'disp': print_iterations}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
 			# Bounds from [0,255] - [124,103]
