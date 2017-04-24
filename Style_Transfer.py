@@ -162,6 +162,7 @@ def style_layer_loss(A,x):
 	# TODO be able to use two different size for the image
 	_,height,width,N = x.shape
 	M = height*width
+	# TODO mettre en dur les dimensions des matrices de Gram pour eviter tout problemes !!! 
 	G = gram_matrix(x,N,M)
 	style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
 	style_loss = tf.divide(style_loss,tf.multiply(tf.constant(2.),tf.multiply(tf.pow(tf.to_float(N),2),tf.pow(tf.to_float(M),2))))
@@ -280,8 +281,8 @@ def main():
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 1000
-	print_iterations = 100 # Number of iterations between optimizer print statements
+	max_iterations = 10000
+	print_iterations = 500 # Number of iterations between optimizer print statements
 	#optimizer = 'adam'
 	optimizer = 'lbfgs'    
 	# TODO : be able to have two different size for the image
@@ -319,10 +320,13 @@ def main():
 
 	try:
 		sess = tf.Session()
-		# White noise that we use at the beginning of the optimization
-		print("Noise initiale image")
-		#noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
-		noise_img = scipy.misc.imread(output_image_path).astype('float32')
+		
+		try:
+			noise_img = scipy.misc.imread(output_image_path).astype('float32')
+		except(FileNotFoundError):
+			print("Former image not found, use of white noise as initialization image")
+			# White noise that we use at the beginning of the optimization
+			noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
 		#noise_img = scipy.misc.imread(image_style_path).astype('float32') 
 		#noise_img = scipy.misc.imread(image_content_path).astype('float32')
 		init_noise_ratio = 0.75
@@ -377,6 +381,7 @@ def main():
 			optimizer_kwargs = {'maxiter': max_iterations,'disp': print_iterations}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
 			# Bounds from [0,255] - [124,103]
+			# TODO Add checkpoint
 			sess.run(tf.global_variables_initializer())
 			sess.run(net['input'].assign(noise_img))
 			optimizer.minimize(sess)
