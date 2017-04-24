@@ -1,0 +1,12 @@
+# Ignore Image #
+################
+
+*.jpg
+*.jpeg
+*.png
+*.pkl
+
+# The VGG19 Model #
+###################
+
+*.mat
