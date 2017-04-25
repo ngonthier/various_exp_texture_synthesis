@@ -203,7 +203,7 @@ def get_Gram_matrix(vgg_layers,image_style):
 			a = net[layer]
 			_,height,width,N = a.shape
 			M = height*width
-			A = gram_matrix(a,N,M) #  TODO Need to divided by M ????
+			A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
 			dict_gram[layer] = sess.run(A) # Computation
 	sess.close()
 	return(dict_gram)        
@@ -285,6 +285,7 @@ def main():
 	data_dir_path = 'data/'
 	image_content_name = 'Louvre'
 	image_style_name  = 'StarryNight'
+	image_style_name  = 'wave_crop'
 	#image_content_name = 'Orsay'
 	#image_style_name  = 'Nymphea'
 	output_image_name = 'Pastiche'
@@ -306,8 +307,8 @@ def main():
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 5
-	print_iterations = 1 # Number of iterations between optimizer print statements
+	max_iterations = 3000
+	print_iterations = 10 # Number of iterations between optimizer print statements
 	optimizer = 'adam'
 	#optimizer = 'lbfgs'    
 	# TODO : be able to have two different size for the image
