@@ -19,7 +19,7 @@ import time
 from skimage import img_as_float, img_as_ubyte
 import pickle
 import math
-
+from tensorflow.python.client import timeline
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -153,7 +153,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	# Info for the vgg19
 	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 10**(9) # TODO change that
+	weight_help_convergence = 10**(0) # TODO change that
 	# Because the function is pretty flat 
 	total_style_loss = 0
 	for layer, weight in style_layers:
@@ -166,6 +166,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 		x = net[layer]
 		G = gram_matrix(x,N,M)
 		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
+		# TODO selon le type de style voulu soit reshape the style image sinon Mcontenu/Mstyle
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*(M**2)*length_style_layers)
 		total_style_loss += style_loss
 	return(total_style_loss)
@@ -285,9 +286,6 @@ def main():
 	data_dir_path = 'data/'
 	image_content_name = 'Louvre'
 	image_style_name  = 'StarryNight'
-	image_style_name  = 'wave_crop'
-	#image_content_name = 'Orsay'
-	#image_style_name  = 'Nymphea'
 	output_image_name = 'Pastiche'
 	output_image_path = image_dir_path + output_image_name +'.jpg'
 	image_content_path = image_dir_path + image_content_name +'.jpg'    
@@ -306,11 +304,13 @@ def main():
 	#plt.figure()
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
+	# TODO add something that reshape the image 
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 10
-	print_iterations = 1 # Number of iterations between optimizer print statements
-	optimizer = 'adam'
-	#optimizer = 'lbfgs'    
+	max_iterations = 3000
+	print_iterations = 50 # Number of iterations between optimizer print statements
+	#optimizer = 'adam'
+	optimizer = 'lbfgs'  
+	tf_profiler = False  
 	# TODO : be able to have two different size for the image
 	# TODO : remove mean in preprocessing and add mean in post process
 	t1 = time.time()
@@ -345,6 +345,9 @@ def main():
 	print("net loaded and gram computation after ",t2-t1," s")
 
 	try:
+		if (tf_profiler==True):
+			run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+			run_metadata = tf.RunMetadata()
 		sess = tf.Session()
 		
 		try:
@@ -383,54 +386,83 @@ def main():
 			t3 = time.time()
 			print("sess Adam initialized after ",t3-t2," s")
 			# turn on interactive mode
-			print("loss before optimization = ",sess.run(loss_total))
-			
+			print("loss before optimization = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
 			for i in range(max_iterations):
 				if(i%print_iterations==0):
-					t3 =  time.time()
-					sess.run(train)
-					t4 = time.time()
-					print("Iteration ",i, "after ",t4-t3," s")
-					print("loss = ",sess.run(loss_total))
-					result_img = sess.run(net['input'])
-					result_img = postprocess(result_img)
-					scipy.misc.toimage(result_img).save(output_image_path)
+					print(i)
+					if (tf_profiler==True):
+						sess.run(train,options=run_options, run_metadata=run_metadata)
+						# Create the Timeline object, and write it to a json
+						tl = timeline.Timeline(run_metadata.step_stats)
+						ctf = tl.generate_chrome_trace_format()
+						print("Time Line generated")
+						with open('timeline.json', 'w') as f:
+							print("Save Json tracking")
+							f.write(ctf)
+							# Read with chrome://tracing
+					else:
+						t3 =  time.time()
+						sess.run(train)
+						t4 = time.time()
+						print("Iteration ",i, "after ",t4-t3," s")
+						print("Total loss = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
+						result_img = sess.run(net['input'])
+						result_img = postprocess(result_img)
+						scipy.misc.toimage(result_img).save(output_image_path)
 				else:
-					sess.run(train)
+					sess.run(train,options=run_options, run_metadata=run_metadata)
 		elif(optimizer=='lbfgs'):
-			z,height,width,N = noise_img.shape
-			bnd_inf = -124*np.ones((z,height,width,N)).flatten() 
+			dim1,height,width,N = noise_img.shape
+			bnd_inf = -124*np.ones((dim1,height,width,N)).flatten() 
 			# We need to flatten the array in order to use it in the LBFGS algo
-			bnd_sup = 152*np.ones((z,height,width,N)).flatten()
+			bnd_sup = 152*np.ones((dim1,height,width,N)).flatten()
 			bnds = np.stack((bnd_inf, bnd_sup),axis=-1)
-			print("Start LBFGS optim")
-			t3 =  time.time()
-			optimizer_kwargs = {'maxiter': max_iterations,'disp': print_iterations}
-			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
 			# Bounds from [0,255] - [124,103]
-			# TODO Add checkpoint
+			print("Start LBFGS optim")
+			nb_iter = max_iterations // print_iterations
+			max_iterations_local = max_iterations // nb_iter
+			optimizer_kwargs = {'maxiter': max_iterations_local}
+			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
 			sess.run(tf.global_variables_initializer())
 			sess.run(net['input'].assign(noise_img))
+			print("loss before optimization = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
+			for i in range(nb_iter):
+				t3 =  time.time()
+				optimizer.minimize(sess)
+				t4 = time.time()
+				print("Iteration ",i, "after ",t4-t3," s")
+				print("Total loss = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
+				result_img = sess.run(net['input'])
+				result_img_postproc = postprocess(result_img)
+				scipy.misc.toimage(result_img_postproc).save(output_image_path)
+				sess.close()
+				sess = tf.Session()
+				sess.run(tf.global_variables_initializer())
+				sess.run(net['input'].assign(result_img))
+			
+			# Last iteration
+			max_iterations_local = max_iterations - max_iterations_local*nb_iter
+			optimizer_kwargs = {'maxiter': max_iterations_local}
+			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
 			optimizer.minimize(sess)
 			t4 = time.time()
 			print("LBFGS optim after ",t4-t3," s")
 		# TODO add a remove old image
-		result_img = sess.run(net['input'])
-		result_img = postprocess(result_img)
+		#result_img = sess.run(net['input'])
+		#result_img = postprocess(result_img)
 		#print(np.min(result_img),np.max(result_img))
 		#plt.imshow(result_img)
 		#plt.show()
-		scipy.misc.toimage(result_img).save(output_image_path)
+		#scipy.misc.toimage(result_img).save(output_image_path)
+			
 
 	except:
 		print("Error")
-		result_img = sess.run(net['input'])
-		print(np.min(result_img),np.max(result_img))
-		result_img = postprocess(result_img)
-		print(np.min(result_img),np.max(result_img))
+		#result_img = net['input']
+		#result_img_postproc = postprocess(result_img)
 		#plt.imshow(result_img)
 		#plt.show()
-		scipy.misc.toimage(result_img).save(output_image_path)
+		#scipy.misc.toimage(result_img_postproc).save(output_image_path)
 		raise 
 	finally:
 		print("Close Sess")
