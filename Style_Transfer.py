@@ -140,8 +140,8 @@ def sum_content_losses(sess, net, dict_features_repr):
 	return(content_loss)
 
 def sum_style_losses(sess, net, dict_gram):
-	style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
-	#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
+	#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
+	style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
 	#style_layers = [('conv1_1',1.)]
 	weight_help_convergence = 10**(9) # TODO change that
 	# Because the function is pretty flat 
@@ -281,8 +281,8 @@ def main():
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 1000
-	print_iterations = 100 # Number of iterations between optimizer print statements
+	max_iterations = 10
+	print_iterations = 1 # Number of iterations between optimizer print statements
 	optimizer = 'adam'
 	#optimizer = 'lbfgs'    
 	# TODO : be able to have two different size for the image
