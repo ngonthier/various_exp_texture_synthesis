@@ -20,11 +20,6 @@ from skimage import img_as_float, img_as_ubyte
 import pickle
 import math
 
-try:
-    reduce
-except NameError:
-	from functools import reduce
-
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -127,6 +122,13 @@ def _pool_layer(input,name):
 				padding='SAME',name=name) 
 
 def sum_content_losses(sess, net, dict_features_repr):
+	"""
+	Compute the content term of the loss function
+	Input : 
+	- the tensforflow session sess
+	- the vgg19 net
+	- the dictionnary of the content image representation thanks to the net
+	"""
 	content_layers = [('conv4_2',1.)]
 	length_content_layers = float(len(content_layers))
 	content_loss = 0
@@ -137,6 +139,14 @@ def sum_content_losses(sess, net, dict_features_repr):
 	return(content_loss)
 
 def sum_style_losses(sess, net, dict_gram,M_dict):
+	"""
+	Compute the style term of the loss function 
+	Input : 
+	- the tensforflow session sess
+	- the vgg19 net
+	- the dictionnary of Gram Matrices
+	- the dictionnary of the size of the image content through the net
+	"""
 	#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
 	style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
 	#style_layers = [('conv1_1',1.)]
@@ -199,6 +209,10 @@ def get_Gram_matrix(vgg_layers,image_style):
 	return(dict_gram)        
 		 
 def get_features_repr(vgg_layers,image_content):
+	"""
+	Compute the image content representation values according to the vgg
+	19 net
+	"""
 	net = net_preloaded(vgg_layers, image_content) # net for the content image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_content))
