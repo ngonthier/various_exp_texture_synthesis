@@ -18,7 +18,7 @@ import numpy as np
 import time
 from skimage import img_as_float, img_as_ubyte
 import pickle
-
+import math
 
 try:
     reduce
@@ -83,6 +83,7 @@ def net_preloaded(vgg_layers, input_image):
 			# matconvnet: weights are [width, height, in_channels, out_channels]
 			# tensorflow: weights are [height, width, in_channels, out_channels]
 			kernels = tf.constant(np.transpose(kernels, (1, 0, 2, 3)))
+			# TODO check if the convolution is in the right order
 			bias = tf.constant(bias.reshape(-1))
 			current = _conv_layer(current, kernels, bias,name) 
 			# Update the  variable named current to have the right size
@@ -125,50 +126,39 @@ def _pool_layer(input,name):
 	return tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
 				padding='SAME',name=name) 
 
-def content_layer_loss(p,x):
-	content_loss = tf.nn.l2_loss(tf.subtract(p,x)) # output = sum(t ** 2) / 2
-	return(content_loss)
-
 def sum_content_losses(sess, net, dict_features_repr):
 	content_layers = [('conv4_2',1.)]
-	content_losses = []
+	length_content_layers = float(len(content_layers))
+	content_loss = 0
 	for layer, weight in content_layers:
 		P = tf.constant(dict_features_repr[layer])
 		F = net[layer]
-		content_losses.append(tf.multiply(tf.nn.l2_loss(tf.subtract(P,F)),tf.constant(weight/float(len(content_layers)))))
-	content_loss = reduce(tf.add, content_losses)
+		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))* (weight/length_content_layers)
 	return(content_loss)
 
-def sum_style_losses(sess, net, dict_gram):
-	style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
-	#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
+def sum_style_losses(sess, net, dict_gram,M_dict):
+	#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
+	style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
 	#style_layers = [('conv1_1',1.)]
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	# Info for the vgg19
+	length_style_layers = float(len(style_layers))
 	weight_help_convergence = 10**(9) # TODO change that
 	# Because the function is pretty flat 
-	style_losses = []
+	total_style_loss = 0
 	for layer, weight in style_layers:
-		# Get the value of this layer with the generated image
-		x = net[layer]
+		# For one layer
+		N = style_layers_size[layer[:5]]
 		A = dict_gram[layer]
 		A = tf.constant(A)
-		style_losses.append(tf.multiply(style_layer_loss(A,x),tf.constant(weight * weight_help_convergence/ float(len(style_layers)))))
-	total_style_loss = reduce(tf.add, style_losses) 
+		# Get the value of this layer with the generated image
+		M = M_dict[layer[:5]]
+		x = net[layer]
+		G = gram_matrix(x,N,M)
+		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*(M**2)*length_style_layers)
+		total_style_loss += style_loss
 	return(total_style_loss)
-		
-def style_layer_loss(A,x):
-	"""
-	for one layer
-	"""
-	# TODO be able to use two different size for the image
-	_,height,width,N = x.shape
-	M = height*width
-	# TODO mettre en dur les dimensions des matrices de Gram pour eviter tout problemes !!! 
-	G = gram_matrix(x,N,M)
-	style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
-	style_loss = tf.divide(style_loss,tf.multiply(tf.constant(2.),tf.multiply(tf.pow(tf.to_float(N),2),tf.pow(tf.to_float(M),2))))
-	# TODO : try to simplify this expression
-	#style_loss /= (2. * tf.to_float(N)**2 * tf.to_float(M)**2) # N'accelere pas le code !
-	return(style_loss)
 
 def gram_matrix(x,N,M):
   """
@@ -183,12 +173,16 @@ def gram_matrix(x,N,M):
   #F = tf.reshape(x,[tf.to_int32(N),tf.to_int32(M)])
   #G = tf.matmul(F,tf.transpose(F))
   
-  F = tf.reshape(x,[tf.to_int32(M),tf.to_int32(N)])
+  F = tf.reshape(x,[M,N])
   G = tf.matmul(tf.transpose(F),F)
   
   return(G)
  
 def get_Gram_matrix(vgg_layers,image_style):
+	"""
+	Computation of all the Gram matrices from one image thanks to the 
+	vgg_layers
+	"""
 	net = net_preloaded(vgg_layers, image_style) # net for the style image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_style))
@@ -253,6 +247,22 @@ def postprocess(img):
 	img = np.clip(img,0,255).astype('uint8')
 	return(img)  
 
+def get_M_dict(image_h,image_w):
+	"""
+	This function compute the size of the different dimension in the con
+	volutionnal net
+	"""
+	M_dict =  {'conv1' : 0,'conv2' : 0,'conv3' : 0,'conv4': 0,'conv5' : 0}
+	M = image_h * image_w # Depend on the image size
+	image_h_tmp = image_h
+	image_w_tmp = image_w
+	for key in M_dict.keys():
+		M_dict[key] = M
+		image_h_tmp =  math.ceil(image_h_tmp / 2)
+		image_w_tmp = math.ceil(image_w_tmp / 2)
+		M = image_h_tmp*image_w_tmp
+	return(M_dict)	
+	
 def main():
 	# DEBUG, INFO, WARN, ERROR, or FATAL
 	tf.logging.set_verbosity(tf.logging.ERROR)
@@ -270,6 +280,7 @@ def main():
 	image_content = scipy.misc.imread(image_content_path).astype('float32') # Float between 0 and 255
 	image_style = scipy.misc.imread(image_style_path).astype('float32') 
 	image_h, image_w, number_of_channels = image_content.shape
+	M_dict = get_M_dict(image_h,image_w)
 	image_content = preprocess(image_content)
 	image_style = preprocess(image_style)
 	#print("Content")
@@ -281,8 +292,8 @@ def main():
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 1000
-	print_iterations = 100 # Number of iterations between optimizer print statements
+	max_iterations = 5
+	print_iterations = 1 # Number of iterations between optimizer print statements
 	optimizer = 'adam'
 	#optimizer = 'lbfgs'    
 	# TODO : be able to have two different size for the image
@@ -338,9 +349,10 @@ def main():
 		#plt.imshow(noise_imgS)
 		#plt.show()
 				
-		loss_total = tf.add(tf.multiply(tf.constant(Content_Strengh),sum_content_losses(sess, net, dict_features_repr)),sum_style_losses(sess,net,dict_gram))
+		#loss_total = tf.add(tf.multiply(tf.constant(Content_Strengh),sum_content_losses(sess, net, dict_features_repr)),sum_style_losses(sess,net,dict_gram,M_dict))
+		loss_total = Content_Strengh * sum_content_losses(sess, net, dict_features_repr) + sum_style_losses(sess,net,dict_gram,M_dict)
 		#loss_total = sum_content_losses(sess, net, dict_features_repr)
-		#loss_total = sum_style_losses(sess,net,dict_gram)
+		#loss_total = sum_style_losses(sess,net,dict_gram,M_dict)
 		
 		print("init loss total")
 				
@@ -411,6 +423,7 @@ def main():
 
 if __name__ == '__main__':
 	main()
+	# 1.16 s
 
 	
 	
