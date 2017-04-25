@@ -281,10 +281,10 @@ def main():
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 10000
-	print_iterations = 500 # Number of iterations between optimizer print statements
-	#optimizer = 'adam'
-	optimizer = 'lbfgs'    
+	max_iterations = 1000
+	print_iterations = 100 # Number of iterations between optimizer print statements
+	optimizer = 'adam'
+	#optimizer = 'lbfgs'    
 	# TODO : be able to have two different size for the image
 	# TODO : remove mean in preprocessing and add mean in post process
 	t1 = time.time()
@@ -387,8 +387,8 @@ def main():
 			optimizer.minimize(sess)
 			t4 = time.time()
 			print("LBFGS optim after ",t4-t3," s")
+		# TODO add a remove old image
 		result_img = sess.run(net['input'])
-		print(np.min(result_img),np.max(result_img))
 		result_img = postprocess(result_img)
 		#print(np.min(result_img),np.max(result_img))
 		#plt.imshow(result_img)
