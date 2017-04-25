@@ -307,8 +307,8 @@ def main():
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 3000
-	print_iterations = 10 # Number of iterations between optimizer print statements
+	max_iterations = 10
+	print_iterations = 1 # Number of iterations between optimizer print statements
 	optimizer = 'adam'
 	#optimizer = 'lbfgs'    
 	# TODO : be able to have two different size for the image
@@ -438,7 +438,6 @@ def main():
 
 if __name__ == '__main__':
 	main()
-	# 1.16 s
 
 	
 	
