@@ -102,6 +102,10 @@ def parse_args():
 	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
 		help='Start from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
 	
+	# VGG 19 info
+	parser.add_argument('--pooling_type', type=str,default='avg',
+    choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
+	
 	args = parser.parse_args()
 	return(args)
 	
@@ -174,7 +178,6 @@ def _conv_layer(input, weights, bias,name):
 			padding='SAME',name=name)
 	# We need to impose the weights as constant in order to avoid their modification
 	# when we will perform the optimization
-	# TODO : other way to add the bias ?
 	return(tf.nn.bias_add(conv, bias))
 
 
@@ -185,9 +188,13 @@ def _pool_layer(input,name):
 	Each pooling op uses rectangular windows of size ksize separated by offset 
 	strides in the avg_pool function 
 	"""
-	# TODO add max pool
-	return tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
+	if args.pooling_type == 'avg':
+		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
 				padding='SAME',name=name) 
+	elif args.pooling_type == 'max':
+		pool = tf.nn.max_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
+				padding='SAME',name=name) 
+	return(pool)
 
 def sum_content_losses(sess, net, dict_features_repr):
 	"""
@@ -374,15 +381,9 @@ def style_transfer():
 	if args.verbose:
 		print("verbosity turned on")
 	
-	#plt.ion()
-	image_dir_path = args.img_folder
-	data_dir_path = args.data_folder
-	image_content_name = args.content_img_name
-	image_style_name  = args.style_img_name
-	output_image_name = args.output_img_name
-	output_image_path = image_dir_path + output_image_name +args.img_ext
-	image_content_path = image_dir_path + image_content_name +args.img_ext
-	image_style_path = image_dir_path + image_style_name + args.img_ext
+	output_image_path = args.img_folder + args.output_img_name +args.img_ext
+	image_content_path = args.img_folder + args.content_img_name +args.img_ext
+	image_style_path = args.img_folder + args.style_img_name + args.img_ext
 	image_content = preprocess(scipy.misc.imread(image_content_path).astype('float32')) # Float between 0 and 255
 	image_style = preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
 	_,image_h, image_w, number_of_channels = image_content.shape 
@@ -408,7 +409,7 @@ def style_transfer():
 	# Precomputation Phase :
 	# TODO add dimension info
 	# TODO wrap all that 
-	data_style_path = data_dir_path + "gram_"+image_style_name+"_"+str(image_h_art)+"_"+str(image_w_art)+".pkl"
+	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+".pkl"
 	try:
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
 	except(FileNotFoundError):
@@ -418,7 +419,7 @@ def style_transfer():
 			pickle.dump(dict_gram,output_gram_pkl)
 		if(args.verbose): print("Pickle dumped")
 
-	data_content_path = data_dir_path +image_content_name+"_"+str(image_h)+"_"+str(image_w)+".pkl"
+	data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+".pkl"
 	try:
 		dict_features_repr = pickle.load(open(data_content_path, 'rb'))
 	except(FileNotFoundError):
@@ -552,8 +553,9 @@ def style_transfer():
 		result_img_postproc = postprocess(result_img)
 		#plt.imshow(result_img)
 		#plt.show()
-		output_image_path_error = image_dir_path + output_image_name+'_error' +args.img_ext
+		output_image_path_error = args.img_folder + args.output_img_name+'_error' +args.img_ext
 		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
+		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
 		raise 
 	finally:
 		if(args.verbose): print("Close Sess")
