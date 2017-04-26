@@ -100,7 +100,7 @@ def get_parser_args():
 		help='Propostion of the initialization image that is noise. (default %(default)s)')
 		
 	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
-		help='Start from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
+		help='Start compulsory from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
 	
 	# VGG 19 info
 	parser.add_argument('--pooling_type', type=str,default='avg',
@@ -242,13 +242,14 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 		G = gram_matrix(x,N,M)
 		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
 		# TODO selon le type de style voulu soit reshape the style image sinon Mcontenu/Mstyle
-		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*(M**2)*length_style_layers)
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	return(total_style_loss)
 
 def gram_matrix(x,N,M):
   """
-  Computation of the Gram Matrix for one layer
+  Computation of the Gram Matrix for one layer we normalize with the 
+  number of pixels M
   
   Warning the way to compute the Gram Matrix is different from the paper
   but it is equivalent, we use here the F matrix with the shape M*N
@@ -261,7 +262,8 @@ def gram_matrix(x,N,M):
   
   F = tf.reshape(x,[M,N])
   G = tf.matmul(tf.transpose(F),F)
-  
+  G /= tf.to_float(M)
+  # That come from Control paper
   return(G)
  
 def get_Gram_matrix(vgg_layers,image_style):
@@ -501,6 +503,7 @@ def style_transfer():
 				else:
 					sess.run(train,options=run_options, run_metadata=run_metadata)
 		elif(args.optimizer=='lbfgs'):
+			# LBFGS seem to require more memory than Adam optimizer
 			bnds = get_lbfgs_bnds(init_img)
 			if(args.verbose): print("Start LBFGS optim")
 			nb_iter = args.max_iter  // args.print_iter
@@ -520,7 +523,7 @@ def style_transfer():
 				result_img = sess.run(net['input'])
 				result_img_postproc = postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
-				sess.close() # To avoid ResourceExhaustedError
+				sess.close() # To avoid ResourceExhaustedError, we need to close the session and start it again
 				sess = tf.Session()
 				sess.run(tf.global_variables_initializer())
 				sess.run(net['input'].assign(result_img))
@@ -535,12 +538,12 @@ def style_transfer():
 			if(args.verbose): print("LBFGS optim after ",t4-t3," s")
 		
 		# The End
-		# TODO add a remove old image
-		result_img = sess.run(net['input'])
-		result_img_postproc = postprocess(result_img)
+		# TODO add a remove old image ?? 
+		#result_img = sess.run(net['input'])
+		#result_img_postproc = postprocess(result_img)
 		#plt.imshow(result_img)
 		#plt.show()
-		scipy.misc.toimage(result_img_postproc).save(output_image_path)
+		#scipy.misc.toimage(result_img_postproc).save(output_image_path)
 		
 	except:
 		print("Error")
@@ -565,15 +568,18 @@ def main():
 def main_with_option():
 	global args # Make the args global for all the code
 	parser = get_parser_args()
-	style_img_name = "Nymphea"
-	content_img_name = "Paris"
-	max_iter = 1
-	print_iter = 1
-	start_from_noise = 1 # True
+	style_img_name = "StarryNightBig"
+	content_img_name = "Louvre"
+	max_iter = 5000
+	print_iter = 500
+	start_from_noise = 0 # True
+	init_noise_ratio = 0.7
+	content_strengh = 0.001
 	# In order to set the parameter before run the script
 	parser.set_defaults(style_img_name=style_img_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,
-		content_img_name=content_img_name)
+		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
+		content_strengh=content_strengh)
 	args = parser.parse_args()
 	style_transfer()
 
