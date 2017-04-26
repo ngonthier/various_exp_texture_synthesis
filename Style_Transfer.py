@@ -37,7 +37,6 @@ VGG19_LAYERS = (
 	'relu5_3', 'conv5_4', 'relu5_4'
 )
 
-
 def plot_image(path_to_image):
 	"""
 	Function to plot an image
@@ -131,11 +130,12 @@ def sum_content_losses(sess, net, dict_features_repr):
 	"""
 	content_layers = [('conv4_2',1.)]
 	length_content_layers = float(len(content_layers))
+	weight_help_convergence = 10**(5) 
 	content_loss = 0
 	for layer, weight in content_layers:
 		P = tf.constant(dict_features_repr[layer])
 		F = net[layer]
-		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))* (weight/length_content_layers)
+		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))* (weight*weight_help_convergence/length_content_layers)
 	return(content_loss)
 
 def sum_style_losses(sess, net, dict_gram,M_dict):
@@ -153,7 +153,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	# Info for the vgg19
 	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 10**(3) # TODO change that
+	weight_help_convergence = 2*10**(9) # TODO change that
 	# Because the function is pretty flat 
 	total_style_loss = 0
 	for layer, weight in style_layers:
@@ -278,6 +278,12 @@ def get_M_dict(image_h,image_w):
 		M = image_h_tmp*image_w_tmp
 	return(M_dict)	
 	
+def print_loss(sess,loss_total,content_loss,style_loss):
+	loss_total_tmp = sess.run(loss_total)
+	content_loss_tmp = sess.run(content_loss)
+	style_loss_tmp = sess.run(style_loss)
+	print("Total loss = ",loss_total_tmp," Content loss = ",content_loss_tmp," Style loss = ",style_loss_tmp)
+	
 def main():
 	# DEBUG, INFO, WARN, ERROR, or FATAL
 	tf.logging.set_verbosity(tf.logging.ERROR)
@@ -286,13 +292,16 @@ def main():
 	data_dir_path = 'data/'
 	image_content_name = 'Louvre'
 	image_style_name  = 'StarryNight'
+	image_style_name  = 'Nymphea'
+	image_style_name  = 'Shipwreck'
 	output_image_name = 'Pastiche'
 	output_image_path = image_dir_path + output_image_name +'.jpg'
 	image_content_path = image_dir_path + image_content_name +'.jpg'    
 	image_style_path = image_dir_path + image_style_name +'.jpg'
 	image_content = scipy.misc.imread(image_content_path).astype('float32') # Float between 0 and 255
 	image_style = scipy.misc.imread(image_style_path).astype('float32') 
-	image_h, image_w, number_of_channels = image_content.shape
+	image_h, image_w, number_of_channels = image_content.shape 
+	image_h_art, image_w_art, _ = image_style.shape #TODO !!! 
 	M_dict = get_M_dict(image_h,image_w)
 	image_content = preprocess(image_content)
 	image_style = preprocess(image_style)
@@ -306,10 +315,10 @@ def main():
 	#plt.show()
 	# TODO add something that reshape the image 
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 10
-	print_iterations = 1 # Number of iterations between optimizer print statements
-	optimizer = 'adam'
-	#optimizer = 'lbfgs'  
+	max_iterations = 5000
+	print_iterations = 500 # Number of iterations between optimizer print statements
+	#optimizer = 'adam'
+	optimizer = 'lbfgs'  
 	tf_profiler = False  
 	# TODO : be able to have two different size for the image
 	# TODO : remove mean in preprocessing and add mean in post process
@@ -323,7 +332,7 @@ def main():
 	# Precomputation Phase :
 	# TODO add dimension info
 	# TODO wrap all that 
-	data_style_path = data_dir_path + "gram_"+image_style_name+".pkl"
+	data_style_path = data_dir_path + "gram_"+image_style_name+"_"+str(image_h_art)+"_"+str(image_w_art)+".pkl"
 	try:
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
 	except(FileNotFoundError):
@@ -333,7 +342,7 @@ def main():
 			pickle.dump(dict_gram,output_gram_pkl)
 		print("Pickle dumped")
 
-	data_content_path = data_dir_path +image_content_name+".pkl"
+	data_content_path = data_dir_path +image_content_name+"_"+str(image_h)+"_"+str(image_w)+".pkl"
 	try:
 		dict_features_repr = pickle.load(open(data_content_path, 'rb'))
 	except(FileNotFoundError):
@@ -356,15 +365,18 @@ def main():
 		
 		try:
 			noise_img = scipy.misc.imread(output_image_path).astype('float32')
+			noise_img = preprocess(noise_img)
 		except(FileNotFoundError):
-			print("Former image not found, use of white noise as initialization image")
+			print("Former image not found, use of white noise mixed with the content image as initialization image")
 			# White noise that we use at the beginning of the optimization
 			noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
+			init_noise_ratio = 0.1
+			noise_img = preprocess(noise_img)
+			noise_img = init_noise_ratio* noise_img + (1.-init_noise_ratio) * image_content
 		#noise_img = scipy.misc.imread(image_style_path).astype('float32') 
 		#noise_img = scipy.misc.imread(image_content_path).astype('float32')
-		init_noise_ratio = 0.75
-		noise_img = preprocess(noise_img)
-		#noise_img = init_noise_ratio* noise_img + (1.-init_noise_ratio) * image_content
+
+		#
 		# TODO add a plot mode ! 
 		#noise_imgS = postprocess(noise_img)
 		#plt.figure()
@@ -394,7 +406,8 @@ def main():
 			t3 = time.time()
 			print("sess Adam initialized after ",t3-t2," s")
 			# turn on interactive mode
-			print("loss before optimization = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
+			print("loss before optimization")
+			print_loss(sess,loss_total,content_loss,style_loss)
 			for i in range(max_iterations):
 				if(i%print_iterations==0):
 					if (tf_profiler==True):
@@ -412,10 +425,7 @@ def main():
 						sess.run(train)
 						t4 = time.time()
 						print("Iteration ",i, "after ",t4-t3," s")
-						loss_total_tmp = sess.run(loss_total)
-						content_loss_tmp = sess.run(content_loss)
-						style_loss_tmp = sess.run(style_loss)
-						print("Total loss = ",loss_total_tmp," Content loss = ",content_loss_tmp," Style loss = ",style_loss_tmp)
+						print_loss(sess,loss_total,content_loss,style_loss)
 						result_img = sess.run(net['input'])
 						result_img_postproc = postprocess(result_img)
 						scipy.misc.toimage(result_img_postproc).save(output_image_path)
@@ -435,13 +445,14 @@ def main():
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
 			sess.run(tf.global_variables_initializer())
 			sess.run(net['input'].assign(noise_img))
-			print("loss before optimization = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
+			print("loss before optimization")
+			print_loss(sess,loss_total,content_loss,style_loss)
 			for i in range(nb_iter):
 				t3 =  time.time()
 				optimizer.minimize(sess)
 				t4 = time.time()
 				print("Iteration ",i, "after ",t4-t3," s")
-				print("Total loss = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
+				print_loss(sess,loss_total,content_loss,style_loss)
 				result_img = sess.run(net['input'])
 				result_img_postproc = postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
