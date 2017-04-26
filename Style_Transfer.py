@@ -42,7 +42,7 @@ VGG19_LAYERS = (
 )
 
 
-def parse_args():
+def get_parser_args():
 	"""
 	Parser of the argument of the program
 	"""
@@ -89,8 +89,8 @@ def parse_args():
 		help='Learning rate only for adam method. (default %(default)s)')	
 		
 	# Profiling Tensorflow
-	parser.add_argument('--tf_profiler',  type=int,default=0,
-		choices=[0,1],help='Profiling Tensorflow operation available only for adam.')
+	parser.add_argument('--tf_profiler',action='store_false',
+		help='Profiling Tensorflow operation available only for adam.')
 		
 	# Info on the style transfer
 	parser.add_argument('--content_strengh',  type=float,default=0.001,
@@ -106,8 +106,7 @@ def parse_args():
 	parser.add_argument('--pooling_type', type=str,default='avg',
     choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
 	
-	args = parser.parse_args()
-	return(args)
+	return(parser)
 	
 
 def plot_image(path_to_image):
@@ -361,6 +360,7 @@ def print_loss(sess,loss_total,content_loss,style_loss):
 	print("Total loss = ",loss_total_tmp," Content loss = ",content_loss_tmp," Style loss = ",style_loss_tmp)
 
 def get_init_noise_img(image_content):
+	_,image_h, image_w, number_of_channels = image_content.shape 
 	noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
 	noise_img = preprocess(noise_img)
 	noise_img = args.init_noise_ratio* noise_img + (1.-args.init_noise_ratio) * image_content
@@ -449,8 +449,6 @@ def style_transfer():
 				init_img = get_init_noise_img(image_content)
 		else:
 			init_img = get_init_noise_img(image_content)
-		#noise_img = scipy.misc.imread(image_style_path).astype('float32') 
-		#noise_img = scipy.misc.imread(image_content_path).astype('float32')
 
 		#
 		# TODO add a plot mode ! 
@@ -462,15 +460,10 @@ def style_transfer():
 		# Propose different way to compute the lossses 
 		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
 		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr) # alpha/Beta ratio 
-		
-		#loss_total = tf.add(tf.multiply(tf.constant(Content_Strengh),sum_content_losses(sess, net, dict_features_repr)),sum_style_losses(sess,net,dict_gram,M_dict))
 		loss_total =  content_loss + style_loss
-		#loss_total = sum_content_losses(sess, net, dict_features_repr)
-		#loss_total = sum_style_losses(sess,net,dict_gram,M_dict)
 		
 		if(args.verbose): print("init loss total")
-				
-		# TODO image mixed content image with white noise
+
 		if(args.optimizer=='adam'):
 			optimizer = tf.train.AdamOptimizer(args.learning_rate) # Gradient Descent
 			# TODO function in order to use different optimization function
@@ -540,13 +533,15 @@ def style_transfer():
 			optimizer.minimize(sess)
 			t4 = time.time()
 			if(args.verbose): print("LBFGS optim after ",t4-t3," s")
+		
+		# The End
 		# TODO add a remove old image
-		#result_img = sess.run(net['input'])
-		#result_img = postprocess(result_img)
-		#print(np.min(result_img),np.max(result_img))
+		result_img = sess.run(net['input'])
+		result_img_postproc = postprocess(result_img)
 		#plt.imshow(result_img)
 		#plt.show()
-		#scipy.misc.toimage(result_img).save(output_image_path)
+		scipy.misc.toimage(result_img_postproc).save(output_image_path)
+		
 	except:
 		print("Error")
 		result_img = sess.run(net['input'])
@@ -563,11 +558,27 @@ def style_transfer():
 
 def main():
 	global args # Make the args global for all the code
-	args = parse_args()
+	parser = get_parser_args()
+	args = parser.parse_args()
+	style_transfer()
+
+def main_with_option():
+	global args # Make the args global for all the code
+	parser = get_parser_args()
+	style_img_name = "Nymphea"
+	content_img_name = "Paris"
+	max_iter = 1
+	print_iter = 1
+	start_from_noise = 1 # True
+	# In order to set the parameter before run the script
+	parser.set_defaults(style_img_name=style_img_name,max_iter=max_iter,
+		print_iter=print_iter,start_from_noise=start_from_noise,
+		content_img_name=content_img_name)
+	args = parser.parse_args()
 	style_transfer()
 
 if __name__ == '__main__':
-	main()
+	main_with_option()
 
 	
 	
