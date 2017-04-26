@@ -153,7 +153,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	# Info for the vgg19
 	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 10**(0) # TODO change that
+	weight_help_convergence = 10**(3) # TODO change that
 	# Because the function is pretty flat 
 	total_style_loss = 0
 	for layer, weight in style_layers:
@@ -306,10 +306,10 @@ def main():
 	#plt.show()
 	# TODO add something that reshape the image 
 	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 3000
-	print_iterations = 50 # Number of iterations between optimizer print statements
-	#optimizer = 'adam'
-	optimizer = 'lbfgs'  
+	max_iterations = 10
+	print_iterations = 1 # Number of iterations between optimizer print statements
+	optimizer = 'adam'
+	#optimizer = 'lbfgs'  
 	tf_profiler = False  
 	# TODO : be able to have two different size for the image
 	# TODO : remove mean in preprocessing and add mean in post process
@@ -318,7 +318,11 @@ def main():
 	
 	vgg_layers = get_vgg_layers()
 	
+	# TODO : add a way to choose the way to compute things
+	
 	# Precomputation Phase :
+	# TODO add dimension info
+	# TODO wrap all that 
 	data_style_path = data_dir_path + "gram_"+image_style_name+".pkl"
 	try:
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
@@ -366,9 +370,13 @@ def main():
 		#plt.figure()
 		#plt.imshow(noise_imgS)
 		#plt.show()
-				
+		
+		# Propose different way to compute the lossses 
+		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
+		content_loss = Content_Strengh * sum_content_losses(sess, net, dict_features_repr)
+		
 		#loss_total = tf.add(tf.multiply(tf.constant(Content_Strengh),sum_content_losses(sess, net, dict_features_repr)),sum_style_losses(sess,net,dict_gram,M_dict))
-		loss_total = Content_Strengh * sum_content_losses(sess, net, dict_features_repr) + sum_style_losses(sess,net,dict_gram,M_dict)
+		loss_total =  content_loss + style_loss
 		#loss_total = sum_content_losses(sess, net, dict_features_repr)
 		#loss_total = sum_style_losses(sess,net,dict_gram,M_dict)
 		
@@ -389,7 +397,6 @@ def main():
 			print("loss before optimization = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
 			for i in range(max_iterations):
 				if(i%print_iterations==0):
-					print(i)
 					if (tf_profiler==True):
 						sess.run(train,options=run_options, run_metadata=run_metadata)
 						# Create the Timeline object, and write it to a json
@@ -405,10 +412,13 @@ def main():
 						sess.run(train)
 						t4 = time.time()
 						print("Iteration ",i, "after ",t4-t3," s")
-						print("Total loss = ",sess.run(loss_total)," Content loss = ",sess.run( Content_Strengh *sum_content_losses(sess, net, dict_features_repr))," Style loss = ",sess.run(sum_style_losses(sess,net,dict_gram,M_dict)))
+						loss_total_tmp = sess.run(loss_total)
+						content_loss_tmp = sess.run(content_loss)
+						style_loss_tmp = sess.run(style_loss)
+						print("Total loss = ",loss_total_tmp," Content loss = ",content_loss_tmp," Style loss = ",style_loss_tmp)
 						result_img = sess.run(net['input'])
-						result_img = postprocess(result_img)
-						scipy.misc.toimage(result_img).save(output_image_path)
+						result_img_postproc = postprocess(result_img)
+						scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				else:
 					sess.run(train,options=run_options, run_metadata=run_metadata)
 		elif(optimizer=='lbfgs'):
@@ -435,7 +445,7 @@ def main():
 				result_img = sess.run(net['input'])
 				result_img_postproc = postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
-				sess.close()
+				sess.close() # To avoid ResourceExhaustedError
 				sess = tf.Session()
 				sess.run(tf.global_variables_initializer())
 				sess.run(net['input'].assign(result_img))
@@ -470,6 +480,7 @@ def main():
 
 if __name__ == '__main__':
 	main()
+	# 1.1644532680511475  s
 
 	
 	
