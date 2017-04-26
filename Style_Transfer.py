@@ -5,6 +5,9 @@ Created on Fri Apr 14 15:32:49 2017
 
 The goal of this script is to code the Style Transfer Algorithm 
 
+Inspired from https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
+and https://github.com/leongatys/PytorchNeuralStyleTransfer/blob/master/NeuralStyleTransfer.ipynb
+
 @author: nicolas
 """
 import os
@@ -20,6 +23,7 @@ from skimage import img_as_float, img_as_ubyte
 import pickle
 import math
 from tensorflow.python.client import timeline
+import argparse 
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -36,6 +40,71 @@ VGG19_LAYERS = (
 	'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
 	'relu5_3', 'conv5_4', 'relu5_4'
 )
+
+
+def parse_args():
+	"""
+	Parser of the argument of the program
+	"""
+	desc = "TensorFlow implementation of 'A Neural Algorithm for Artisitc Style'"  
+	parser = argparse.ArgumentParser(description=desc)
+
+	# Verbose argument
+	parser.add_argument('--verbose',action="store_true",
+		help='Boolean flag indicating if statements should be printed to the console.')
+		
+	# Name of the Images
+	parser.add_argument('--output_img_name', type=str, 
+		default='Pastiche',help='Filename of the output image.')
+
+	parser.add_argument('--style_img_name',  type=str,default='StarryNight',
+		help='Filename of the style image (example: StarryNight). It must be a .jpg image otherwise change the img_ext.')
+  
+	parser.add_argument('--content_img_name', type=str,default='Louvre',
+		help='Filename of the content image (example: Louvre). It must be a .jpg image otherwise change the img_ext.')
+		
+	# Name of the folders 
+	parser.add_argument('--img_folder',  type=str,default='images/',
+		help='Name of the images folder')
+  
+	parser.add_argument('--data_folder', type=str,default='data/',
+		help='Name of the data folder')
+	
+	# Extension of the image
+	parser.add_argument('--img_ext',  type=str,default='.jpg',
+		help='Extension of the image')
+		
+	# Infomartion about the optimization
+	parser.add_argument('--optimizer',  type=str,default='lbfgs',
+		choices=['lbfgs', 'adam'],
+		help='Loss minimization optimizer. (default|recommended: %(default)s)')
+	
+	parser.add_argument('--max_iter',  type=int,default=1000,
+		help='Number of Iteration Maximum. (default %(default)s)')
+	
+	parser.add_argument('--print_iter',  type=int,default=100,
+		help='Number of iteration between each checkpoint. (default %(default)s)')
+		
+	parser.add_argument('--learning_rate',  type=float,default=10.,
+		help='Learning rate only for adam method. (default %(default)s)')	
+		
+	# Profiling Tensorflow
+	parser.add_argument('--tf_profiler',  type=int,default=0,
+		choices=[0,1],help='Profiling Tensorflow operation available only for adam.')
+		
+	# Info on the style transfer
+	parser.add_argument('--content_strengh',  type=float,default=0.001,
+		help='Importance give to the content : alpha/beta ratio. (default %(default)s)')
+	
+	parser.add_argument('--init_noise_ratio',type=float,default=0.9,
+		help='Propostion of the initialization image that is noise. (default %(default)s)')
+		
+	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
+		help='Start from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
+	
+	args = parser.parse_args()
+	return(args)
+	
 
 def plot_image(path_to_image):
 	"""
@@ -153,7 +222,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	# Info for the vgg19
 	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 2*10**(9) # TODO change that
+	weight_help_convergence = 2*10**(9) # This wight come from a paper of Gatys
 	# Because the function is pretty flat 
 	total_style_loss = 0
 	for layer, weight in style_layers:
@@ -283,28 +352,42 @@ def print_loss(sess,loss_total,content_loss,style_loss):
 	content_loss_tmp = sess.run(content_loss)
 	style_loss_tmp = sess.run(style_loss)
 	print("Total loss = ",loss_total_tmp," Content loss = ",content_loss_tmp," Style loss = ",style_loss_tmp)
+
+def get_init_noise_img(image_content):
+	noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
+	noise_img = preprocess(noise_img)
+	noise_img = args.init_noise_ratio* noise_img + (1.-args.init_noise_ratio) * image_content
+	return(noise_img)
+
+def get_lbfgs_bnds(init_img):
+	dim1,height,width,N = init_img.shape
+	bnd_inf = -124*np.ones((dim1,height,width,N)).flatten() 
+	# We need to flatten the array in order to use it in the LBFGS algo
+	bnd_sup = 152*np.ones((dim1,height,width,N)).flatten()
+	bnds = np.stack((bnd_inf, bnd_sup),axis=-1)
+	assert len(bnd_sup) == len(init_img.flatten()) # Check if the dimension is right
+	assert len(bnd_inf) == len(init_img.flatten()) 
+	# Bounds from [0,255] - [124,103]
+	return(bnds)
+
+def style_transfer():
+	if args.verbose:
+		print("verbosity turned on")
 	
-def main():
-	# DEBUG, INFO, WARN, ERROR, or FATAL
-	tf.logging.set_verbosity(tf.logging.ERROR)
 	#plt.ion()
-	image_dir_path = 'images/'
-	data_dir_path = 'data/'
-	image_content_name = 'Louvre'
-	image_style_name  = 'StarryNight'
-	image_style_name  = 'Nymphea'
-	image_style_name  = 'Shipwreck'
-	output_image_name = 'Pastiche'
-	output_image_path = image_dir_path + output_image_name +'.jpg'
-	image_content_path = image_dir_path + image_content_name +'.jpg'    
-	image_style_path = image_dir_path + image_style_name +'.jpg'
-	image_content = scipy.misc.imread(image_content_path).astype('float32') # Float between 0 and 255
-	image_style = scipy.misc.imread(image_style_path).astype('float32') 
-	image_h, image_w, number_of_channels = image_content.shape 
-	image_h_art, image_w_art, _ = image_style.shape #TODO !!! 
+	image_dir_path = args.img_folder
+	data_dir_path = args.data_folder
+	image_content_name = args.content_img_name
+	image_style_name  = args.style_img_name
+	output_image_name = args.output_img_name
+	output_image_path = image_dir_path + output_image_name +args.img_ext
+	image_content_path = image_dir_path + image_content_name +args.img_ext
+	image_style_path = image_dir_path + image_style_name + args.img_ext
+	image_content = preprocess(scipy.misc.imread(image_content_path).astype('float32')) # Float between 0 and 255
+	image_style = preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
+	_,image_h, image_w, number_of_channels = image_content.shape 
+	_,image_h_art, image_w_art, _ = image_style.shape 
 	M_dict = get_M_dict(image_h,image_w)
-	image_content = preprocess(image_content)
-	image_style = preprocess(image_style)
 	#print("Content")
 	#plt.figure()
 	#plt.imshow(postprocess(image_content))
@@ -314,14 +397,7 @@ def main():
 	#plt.imshow(postprocess(image_style))
 	#plt.show()
 	# TODO add something that reshape the image 
-	Content_Strengh = 0.001 # alpha/Beta ratio  TODO : change it
-	max_iterations = 5000
-	print_iterations = 500 # Number of iterations between optimizer print statements
-	#optimizer = 'adam'
-	optimizer = 'lbfgs'  
-	tf_profiler = False  
 	# TODO : be able to have two different size for the image
-	# TODO : remove mean in preprocessing and add mean in post process
 	t1 = time.time()
 
 	
@@ -336,43 +412,42 @@ def main():
 	try:
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
 	except(FileNotFoundError):
-		print("The Gram Matrices doesn't exist, we will generate them.")
+		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
 		dict_gram = get_Gram_matrix(vgg_layers,image_style)
 		with open(data_style_path, 'wb') as output_gram_pkl:
 			pickle.dump(dict_gram,output_gram_pkl)
-		print("Pickle dumped")
+		if(args.verbose): print("Pickle dumped")
 
 	data_content_path = data_dir_path +image_content_name+"_"+str(image_h)+"_"+str(image_w)+".pkl"
 	try:
 		dict_features_repr = pickle.load(open(data_content_path, 'rb'))
 	except(FileNotFoundError):
-		print("The dictionnary of features representation of content image doesn't exist, we will generate it.")
+		if(args.verbose): print("The dictionnary of features representation of content image doesn't exist, we will generate it.")
 		dict_features_repr = get_features_repr(vgg_layers,image_content)
 		with open(data_content_path, 'wb') as output_content_pkl:
 			pickle.dump(dict_features_repr,output_content_pkl)
-		print("Pickle dumped")
+		if(args.verbose): print("Pickle dumped")
 
 
 	net = net_preloaded(vgg_layers, image_content) # The output image as the same size as the content one
 	t2 = time.time()
-	print("net loaded and gram computation after ",t2-t1," s")
+	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
 	try:
-		if (tf_profiler==True):
+		if (args.tf_profiler):
 			run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
 			run_metadata = tf.RunMetadata()
 		sess = tf.Session()
 		
-		try:
-			noise_img = scipy.misc.imread(output_image_path).astype('float32')
-			noise_img = preprocess(noise_img)
-		except(FileNotFoundError):
-			print("Former image not found, use of white noise mixed with the content image as initialization image")
-			# White noise that we use at the beginning of the optimization
-			noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
-			init_noise_ratio = 0.1
-			noise_img = preprocess(noise_img)
-			noise_img = init_noise_ratio* noise_img + (1.-init_noise_ratio) * image_content
+		if(not(args.start_from_noise)):
+			try:
+				init_img = preprocess(scipy.misc.imread(output_image_path).astype('float32'))
+			except(FileNotFoundError):
+				if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
+				# White noise that we use at the beginning of the optimization
+				init_img = get_init_noise_img(image_content)
+		else:
+			init_img = get_init_noise_img(image_content)
 		#noise_img = scipy.misc.imread(image_style_path).astype('float32') 
 		#noise_img = scipy.misc.imread(image_content_path).astype('float32')
 
@@ -385,74 +460,69 @@ def main():
 		
 		# Propose different way to compute the lossses 
 		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
-		content_loss = Content_Strengh * sum_content_losses(sess, net, dict_features_repr)
+		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr) # alpha/Beta ratio 
 		
 		#loss_total = tf.add(tf.multiply(tf.constant(Content_Strengh),sum_content_losses(sess, net, dict_features_repr)),sum_style_losses(sess,net,dict_gram,M_dict))
 		loss_total =  content_loss + style_loss
 		#loss_total = sum_content_losses(sess, net, dict_features_repr)
 		#loss_total = sum_style_losses(sess,net,dict_gram,M_dict)
 		
-		print("init loss total")
+		if(args.verbose): print("init loss total")
 				
 		# TODO image mixed content image with white noise
-		if(optimizer=='adam'):
-			learning_rate = 10.0
-			optimizer = tf.train.AdamOptimizer(learning_rate) # Gradient Descent
+		if(args.optimizer=='adam'):
+			optimizer = tf.train.AdamOptimizer(args.learning_rate) # Gradient Descent
 			# TODO function in order to use different optimization function
 			train = optimizer.minimize(loss_total)
 
 			sess.run(tf.global_variables_initializer())
-			sess.run(net['input'].assign(noise_img)) # This line must be after variables initialization ! 
+			sess.run(net['input'].assign(init_img)) # This line must be after variables initialization ! 
 			t3 = time.time()
-			print("sess Adam initialized after ",t3-t2," s")
+			if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
 			# turn on interactive mode
-			print("loss before optimization")
-			print_loss(sess,loss_total,content_loss,style_loss)
-			for i in range(max_iterations):
-				if(i%print_iterations==0):
-					if (tf_profiler==True):
+			if(args.verbose): print("loss before optimization")
+			if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
+			for i in range(args.max_iter):
+				if(i%args.print_iter==0):
+					if (args.tf_profiler):
 						sess.run(train,options=run_options, run_metadata=run_metadata)
 						# Create the Timeline object, and write it to a json
 						tl = timeline.Timeline(run_metadata.step_stats)
 						ctf = tl.generate_chrome_trace_format()
-						print("Time Line generated")
-						with open('timeline.json', 'w') as f:
-							print("Save Json tracking")
+						if(args.verbose): print("Time Line generated")
+						nameFile = 'timeline'+str(i)+'.json'
+						with open(nameFile, 'w') as f:
+							if(args.verbose): print("Save Json tracking")
 							f.write(ctf)
 							# Read with chrome://tracing
 					else:
 						t3 =  time.time()
 						sess.run(train)
 						t4 = time.time()
-						print("Iteration ",i, "after ",t4-t3," s")
-						print_loss(sess,loss_total,content_loss,style_loss)
+						if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
+						if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
 						result_img = sess.run(net['input'])
 						result_img_postproc = postprocess(result_img)
 						scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				else:
 					sess.run(train,options=run_options, run_metadata=run_metadata)
-		elif(optimizer=='lbfgs'):
-			dim1,height,width,N = noise_img.shape
-			bnd_inf = -124*np.ones((dim1,height,width,N)).flatten() 
-			# We need to flatten the array in order to use it in the LBFGS algo
-			bnd_sup = 152*np.ones((dim1,height,width,N)).flatten()
-			bnds = np.stack((bnd_inf, bnd_sup),axis=-1)
-			# Bounds from [0,255] - [124,103]
-			print("Start LBFGS optim")
-			nb_iter = max_iterations // print_iterations
-			max_iterations_local = max_iterations // nb_iter
+		elif(args.optimizer=='lbfgs'):
+			bnds = get_lbfgs_bnds(init_img)
+			if(args.verbose): print("Start LBFGS optim")
+			nb_iter = args.max_iter  // args.print_iter
+			max_iterations_local = args.max_iter // nb_iter
 			optimizer_kwargs = {'maxiter': max_iterations_local}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
 			sess.run(tf.global_variables_initializer())
-			sess.run(net['input'].assign(noise_img))
-			print("loss before optimization")
-			print_loss(sess,loss_total,content_loss,style_loss)
+			sess.run(net['input'].assign(init_img))
+			if(args.verbose): print("loss before optimization")
+			if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
 			for i in range(nb_iter):
 				t3 =  time.time()
 				optimizer.minimize(sess)
 				t4 = time.time()
-				print("Iteration ",i, "after ",t4-t3," s")
-				print_loss(sess,loss_total,content_loss,style_loss)
+				if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
+				if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
 				result_img = sess.run(net['input'])
 				result_img_postproc = postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
@@ -462,12 +532,13 @@ def main():
 				sess.run(net['input'].assign(result_img))
 			
 			# Last iteration
-			max_iterations_local = max_iterations - max_iterations_local*nb_iter
+			max_iterations_local = args.max_iter - max_iterations_local*nb_iter
 			optimizer_kwargs = {'maxiter': max_iterations_local}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
+			t3 = time.time()
 			optimizer.minimize(sess)
 			t4 = time.time()
-			print("LBFGS optim after ",t4-t3," s")
+			if(args.verbose): print("LBFGS optim after ",t4-t3," s")
 		# TODO add a remove old image
 		#result_img = sess.run(net['input'])
 		#result_img = postprocess(result_img)
@@ -475,23 +546,26 @@ def main():
 		#plt.imshow(result_img)
 		#plt.show()
 		#scipy.misc.toimage(result_img).save(output_image_path)
-			
-
 	except:
 		print("Error")
-		#result_img = net['input']
-		#result_img_postproc = postprocess(result_img)
+		result_img = sess.run(net['input'])
+		result_img_postproc = postprocess(result_img)
 		#plt.imshow(result_img)
 		#plt.show()
-		#scipy.misc.toimage(result_img_postproc).save(output_image_path)
+		output_image_path_error = image_dir_path + output_image_name+'_error' +args.img_ext
+		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 		raise 
 	finally:
-		print("Close Sess")
+		if(args.verbose): print("Close Sess")
 		sess.close()
+
+def main():
+	global args # Make the args global for all the code
+	args = parse_args()
+	style_transfer()
 
 if __name__ == '__main__':
 	main()
-	# 1.1644532680511475  s
 
 	
 	
