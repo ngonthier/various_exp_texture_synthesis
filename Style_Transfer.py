@@ -12,14 +12,12 @@ and https://github.com/leongatys/PytorchNeuralStyleTransfer/blob/master/NeuralSt
 """
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='0' # 1 to remove info, 2 to remove warning and 3 for all
-import tensorflow
 import tensorflow as tf
 import scipy.io
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from skimage import img_as_float, img_as_ubyte
 import pickle
 import math
 from tensorflow.python.client import timeline
@@ -107,7 +105,8 @@ def get_parser_args():
     choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
 	
 	return(parser)
-	
+
+# TODO segment the vgg loader, and the rest
 
 def plot_image(path_to_image):
 	"""
@@ -403,7 +402,6 @@ def style_transfer():
 	# TODO : be able to have two different size for the image
 	t1 = time.time()
 
-	
 	vgg_layers = get_vgg_layers()
 	
 	# TODO : add a way to choose the way to compute things
@@ -468,7 +466,6 @@ def style_transfer():
 
 		if(args.optimizer=='adam'):
 			optimizer = tf.train.AdamOptimizer(args.learning_rate) # Gradient Descent
-			# TODO function in order to use different optimization function
 			train = optimizer.minimize(loss_total)
 
 			sess.run(tf.global_variables_initializer())
@@ -501,7 +498,7 @@ def style_transfer():
 						result_img_postproc = postprocess(result_img)
 						scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				else:
-					sess.run(train,options=run_options, run_metadata=run_metadata)
+					sess.run(train)
 		elif(args.optimizer=='lbfgs'):
 			# LBFGS seem to require more memory than Adam optimizer
 			bnds = get_lbfgs_bnds(init_img)
