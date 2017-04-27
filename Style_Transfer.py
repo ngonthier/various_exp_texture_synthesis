@@ -568,11 +568,12 @@ def main():
 def main_with_option():
 	global args # Make the args global for all the code
 	parser = get_parser_args()
-	style_img_name = "StarryNightBig"
+	#style_img_name = "StarryNightBig"
+	style_img_name = "wave_crop"
 	content_img_name = "Louvre"
-	max_iter = 5000
-	print_iter = 500
-	start_from_noise = 0 # True
+	max_iter = 100
+	print_iter = 10
+	start_from_noise = 1 # True
 	init_noise_ratio = 0.7
 	content_strengh = 0.001
 	# In order to set the parameter before run the script
