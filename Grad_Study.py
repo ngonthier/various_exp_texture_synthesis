@@ -12,12 +12,10 @@ import time
 import numpy as np
 import tensorflow as tf
 import Style_Transfer as st
-#from Style_Transfer import *
 import pickle
+from Arg_Parser import get_parser_args 
 
-def grad_computation():
-    if args.verbose:
-        print("verbosity turned on")
+def grad_computation(args):
     
     output_image_path = args.img_folder + args.output_img_name +args.img_ext
     image_content_path = args.img_folder + args.content_img_name +args.img_ext
@@ -65,7 +63,7 @@ def grad_computation():
 
     net = st.net_preloaded(vgg_layers, image_content) # The output image as the same size as the content one
     t2 = time.time()
-    if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
+    print("net loaded and gram computation after ",t2-t1," s")
 
     try:
         sess = tf.Session()
@@ -76,9 +74,9 @@ def grad_computation():
             except(FileNotFoundError):
                 if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
                 # White noise that we use at the beginning of the optimization
-                init_img = st.get_init_noise_img(image_content)
+                init_img = st.get_init_noise_img(image_content,args.init_noise_ratio)
         else:
-            init_img = st.get_init_noise_img(image_content)
+            init_img = st.get_init_noise_img(image_content,args.init_noise_ratio)
 
         #
         # TODO add a plot mode ! 
@@ -101,16 +99,16 @@ def grad_computation():
         sess.run(tf.global_variables_initializer())
         sess.run(net['input'].assign(init_img)) # This line must be after variables initialization ! 
         t3 = time.time()
-        if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
+        print("sess Adam initialized after ",t3-t2," s")
         # turn on interactive mode
-        if(args.verbose): print("loss before optimization")
-        if(args.verbose): st.print_loss(sess,loss_total,content_loss,style_loss)
+        print("loss before optimization")
+        st.print_loss(sess,loss_total,content_loss,style_loss)
         for i in range(args.max_iter):
             t3 =  time.time()
             sess.run(train)
             t4 = time.time()
-            if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-            if(args.verbose): st.print_loss(sess,loss_total,content_loss,style_loss)
+            print("Iteration ",i, "after ",t4-t3," s")
+            st.print_loss(sess,loss_total,content_loss,style_loss)
             result_img = sess.run(net['input'])
             result_img_postproc = st.postprocess(result_img)
             scipy.misc.toimage(result_img_postproc).save(output_image_path)
@@ -126,12 +124,11 @@ def grad_computation():
         # In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
         raise 
     finally:
-        if(args.verbose): print("Close Sess")
+        print("Close Sess")
         sess.close()
         
 def main():
-    global args # Make the args global for all the code
-    parser = st.get_parser_args()
+    parser = get_parser_args()
     #style_img_name = "StarryNightBig"
     style_img_name = "wave_crop"
     content_img_name = "Louvre"
@@ -146,7 +143,7 @@ def main():
         content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
         content_strengh=content_strengh)
     args = parser.parse_args()
-    grad_computation()
+    grad_computation(args)
 
 if __name__ == '__main__':
     main()    

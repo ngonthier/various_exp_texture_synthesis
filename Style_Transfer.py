@@ -21,7 +21,7 @@ import time
 import pickle
 import math
 from tensorflow.python.client import timeline
-import argparse 
+from Arg_Parser import get_parser_args 
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -40,71 +40,6 @@ VGG19_LAYERS = (
 )
 
 
-def get_parser_args():
-	"""
-	Parser of the argument of the program
-	"""
-	desc = "TensorFlow implementation of 'A Neural Algorithm for Artisitc Style'"  
-	parser = argparse.ArgumentParser(description=desc)
-
-	# Verbose argument
-	parser.add_argument('--verbose',action="store_true",
-		help='Boolean flag indicating if statements should be printed to the console.')
-		
-	# Name of the Images
-	parser.add_argument('--output_img_name', type=str, 
-		default='Pastiche',help='Filename of the output image.')
-
-	parser.add_argument('--style_img_name',  type=str,default='StarryNight',
-		help='Filename of the style image (example: StarryNight). It must be a .jpg image otherwise change the img_ext.')
-  
-	parser.add_argument('--content_img_name', type=str,default='Louvre',
-		help='Filename of the content image (example: Louvre). It must be a .jpg image otherwise change the img_ext.')
-		
-	# Name of the folders 
-	parser.add_argument('--img_folder',  type=str,default='images/',
-		help='Name of the images folder')
-  
-	parser.add_argument('--data_folder', type=str,default='data/',
-		help='Name of the data folder')
-	
-	# Extension of the image
-	parser.add_argument('--img_ext',  type=str,default='.jpg',
-		help='Extension of the image')
-		
-	# Infomartion about the optimization
-	parser.add_argument('--optimizer',  type=str,default='lbfgs',
-		choices=['lbfgs', 'adam'],
-		help='Loss minimization optimizer. (default|recommended: %(default)s)')
-	
-	parser.add_argument('--max_iter',  type=int,default=1000,
-		help='Number of Iteration Maximum. (default %(default)s)')
-	
-	parser.add_argument('--print_iter',  type=int,default=100,
-		help='Number of iteration between each checkpoint. (default %(default)s)')
-		
-	parser.add_argument('--learning_rate',  type=float,default=10.,
-		help='Learning rate only for adam method. (default %(default)s)')	
-		
-	# Profiling Tensorflow
-	parser.add_argument('--tf_profiler',action='store_false',
-		help='Profiling Tensorflow operation available only for adam.')
-		
-	# Info on the style transfer
-	parser.add_argument('--content_strengh',  type=float,default=0.001,
-		help='Importance give to the content : alpha/beta ratio. (default %(default)s)')
-	
-	parser.add_argument('--init_noise_ratio',type=float,default=0.9,
-		help='Propostion of the initialization image that is noise. (default %(default)s)')
-		
-	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
-		help='Start compulsory from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
-	
-	# VGG 19 info
-	parser.add_argument('--pooling_type', type=str,default='avg',
-    choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
-	
-	return(parser)
 
 # TODO segment the vgg loader, and the rest
 
@@ -129,7 +64,7 @@ def get_vgg_layers():
 		raise
 	return(vgg_layers)
 
-def net_preloaded(vgg_layers, input_image):
+def net_preloaded(vgg_layers, input_image,pooling_type='avg'):
 	"""
 	This function read the vgg layers and create the net architecture
 	We need the input image to know the dimension of the input layer of the net
@@ -179,17 +114,17 @@ def _conv_layer(input, weights, bias,name):
 	return(tf.nn.bias_add(conv, bias))
 
 
-def _pool_layer(input,name):
+def _pool_layer(input,name,pooling_type='avg'):
 	"""
 	Average pooling on windows 2*2 with stride of 2
 	input is a 4D Tensor of shape [batch, height, width, channels]
 	Each pooling op uses rectangular windows of size ksize separated by offset 
 	strides in the avg_pool function 
 	"""
-	if args.pooling_type == 'avg':
+	if pooling_type == 'avg':
 		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
 				padding='SAME',name=name) 
-	elif args.pooling_type == 'max':
+	elif pooling_type == 'max':
 		pool = tf.nn.max_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
 				padding='SAME',name=name) 
 	return(pool)
@@ -360,11 +295,11 @@ def print_loss(sess,loss_total,content_loss,style_loss):
 	style_loss_tmp = sess.run(style_loss)
 	print("Total loss = ",loss_total_tmp," Content loss = ",content_loss_tmp," Style loss = ",style_loss_tmp)
 
-def get_init_noise_img(image_content):
+def get_init_noise_img(image_content,init_noise_ratio):
 	_,image_h, image_w, number_of_channels = image_content.shape 
 	noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
 	noise_img = preprocess(noise_img)
-	noise_img = args.init_noise_ratio* noise_img + (1.-args.init_noise_ratio) * image_content
+	noise_img = init_noise_ratio* noise_img + (1.-init_noise_ratio) * image_content
 	return(noise_img)
 
 def get_lbfgs_bnds(init_img):
@@ -378,7 +313,7 @@ def get_lbfgs_bnds(init_img):
 	# Bounds from [0,255] - [124,103]
 	return(bnds)
 
-def style_transfer():
+def style_transfer(args,pooling_type='avg'):
 	if args.verbose:
 		print("verbosity turned on")
 	
@@ -414,7 +349,7 @@ def style_transfer():
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
 	except(FileNotFoundError):
 		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
-		dict_gram = get_Gram_matrix(vgg_layers,image_style)
+		dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type)
 		with open(data_style_path, 'wb') as output_gram_pkl:
 			pickle.dump(dict_gram,output_gram_pkl)
 		if(args.verbose): print("Pickle dumped")
@@ -424,13 +359,13 @@ def style_transfer():
 		dict_features_repr = pickle.load(open(data_content_path, 'rb'))
 	except(FileNotFoundError):
 		if(args.verbose): print("The dictionnary of features representation of content image doesn't exist, we will generate it.")
-		dict_features_repr = get_features_repr(vgg_layers,image_content)
+		dict_features_repr = get_features_repr(vgg_layers,image_content,pooling_type)
 		with open(data_content_path, 'wb') as output_content_pkl:
 			pickle.dump(dict_features_repr,output_content_pkl)
 		if(args.verbose): print("Pickle dumped")
 
 
-	net = net_preloaded(vgg_layers, image_content) # The output image as the same size as the content one
+	net = net_preloaded(vgg_layers, image_content,pooling_type) # The output image as the same size as the content one
 	t2 = time.time()
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
@@ -446,9 +381,9 @@ def style_transfer():
 			except(FileNotFoundError):
 				if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
 				# White noise that we use at the beginning of the optimization
-				init_img = get_init_noise_img(image_content)
+				init_img = get_init_noise_img(image_content,args.init_noise_ratio)
 		else:
-			init_img = get_init_noise_img(image_content)
+			init_img = get_init_noise_img(image_content,args.init_noise_ratio)
 
 		#
 		# TODO add a plot mode ! 
@@ -557,13 +492,12 @@ def style_transfer():
 		sess.close()
 
 def main():
-	global args # Make the args global for all the code
+	#global args
 	parser = get_parser_args()
 	args = parser.parse_args()
-	style_transfer()
+	style_transfer(args)
 
 def main_with_option():
-	global args # Make the args global for all the code
 	parser = get_parser_args()
 	#style_img_name = "StarryNightBig"
 	style_img_name = "wave_crop"
@@ -579,7 +513,7 @@ def main_with_option():
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
 		content_strengh=content_strengh)
 	args = parser.parse_args()
-	style_transfer()
+	style_transfer(args)
 
 if __name__ == '__main__':
 	main_with_option()
