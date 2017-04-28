@@ -159,6 +159,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 	#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
 	style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
 	#style_layers = [('conv1_1',1.)]
+	# TODO : be able to choose more quickly the different parameters
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	# Info for the vgg19
 	length_style_layers = float(len(style_layers))
