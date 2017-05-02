@@ -22,7 +22,7 @@ content_layers = [('conv4_2',1.)]
 style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
 #style_layers = [('conv1_1',1.)]
 
-def sum_content_losses(sess, net, dict_features_repr):
+def sum_content_losses(sess, net, dict_features_repr,M_dict):
 	"""
 	Compute the content term of the loss function
 	Input : 
@@ -34,20 +34,23 @@ def sum_content_losses(sess, net, dict_features_repr):
 	weight_help_convergence = 10**(5) 
 	content_loss = 0
 	for layer, weight in content_layers:
+		M = M_dict[layer[:5]]
+		# If we add the M normalization we get a content loss smaller and so on a bigger emphasis on the style !
 		P = tf.constant(dict_features_repr[layer])
 		F = net[layer]
-		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))* (weight*weight_help_convergence/length_content_layers)
+		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))* (weight*weight_help_convergence/(length_content_layers*(M**2)))
 	return(content_loss)
 
-def grad_loss_content_norm(sess,net,dict_features_repr):
+def grad_loss_content_norm(sess,net,dict_features_repr,M_dict):
 	length_content_layers = float(len(content_layers))
 	grad_content_loss = 0
 	maxlist = []
 	minlist = []
 	for layer, weight in content_layers:
+		M = M_dict[layer[:5]]
 		P = tf.constant(dict_features_repr[layer])
 		F = net[layer]
-		grad = tf.subtract(P,F)* (2*weight/length_content_layers)
+		grad = tf.subtract(P,F)* (2*weight/(length_content_layers*M))
 		maxlist.append(tf.reduce_max(tf.abs(grad)))
 		minlist.append(tf.reduce_min(tf.abs(grad)))
 		grad_content_loss +=  tf.nn.l2_loss(grad)
@@ -76,7 +79,7 @@ def grad_loss_style_norm(sess, net, dict_gram,M_dict):
 		x = tf.transpose(x,(0,3,1,2))
 		F = tf.reshape(x,[tf.to_int32(N),tf.to_int32(M)])
 		M =  tf.to_float(M)
-		grad = tf.matmul(tf.transpose(F),tf.subtract(G,A))*weight   / ((N**4)*(M**2)*length_style_layers) 
+		grad = tf.matmul(tf.transpose(F),tf.subtract(G,A))*weight   / ((N**4)*length_style_layers) 
 		maxlist.append(tf.reduce_max(tf.abs(grad)))
 		minlist.append(tf.reduce_min(tf.abs(grad)))
 		grad_style_loss = tf.nn.l2_loss(grad)  # output = sum(t ** 2) / 2
@@ -185,11 +188,11 @@ def grad_computation(args):
 		#plt.show()
 		
 		# Propose different way to compute the lossses 
-		style_loss = st.sum_style_losses(sess,net,dict_gram,M_dict)
-		content_loss = args.content_strengh * st.sum_content_losses(sess, net, dict_features_repr) # alpha/Beta ratio 
+		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
+		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
 		loss_total =  content_loss + style_loss
 		grad_style_loss = grad_loss_style_norm(sess,net,dict_gram,M_dict)
-		grad_content_loss = grad_loss_content_norm(sess, net, dict_features_repr)
+		grad_content_loss = grad_loss_content_norm(sess, net, dict_features_repr,M_dict)
 		
 		style_loss_tab = np.zeros((args.max_iter,1))
 		content_loss_tab = np.zeros((args.max_iter,1))
