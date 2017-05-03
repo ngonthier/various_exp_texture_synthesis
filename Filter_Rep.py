@@ -189,12 +189,10 @@ def hist_style_loss(sess,net,style_img):
         a = sess.run(net[layer])
         x = net[layer]
     
-    value_range = [0.0, 5.0]
-new_values = [-1.0, 0.0, 1.5, 2.0, 5.0, 15]
+    #value_range = [0.0, 5.0]
 
-with tf.default_session() as sess:
-  hist = tf.histogram_fixed_width(new_values, value_range, nbins=5)
-
+    #hist = tf.histogram_fixed_width(new_values, value_range, nbins=5)
+    return(0)
 
 def main_plot():
     parser = get_parser_args()
