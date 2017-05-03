@@ -20,6 +20,7 @@ import os
 import pandas as pd
 import math
 from matplotlib.backends.backend_pdf import PdfPages
+import scipy.stats as stats
 
 
 # Name of the 19 first layers of the VGG19
@@ -37,6 +38,13 @@ VGG19_LAYERS = (
     'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
     'relu5_3', 'conv5_4', 'relu5_4'
 )
+
+
+VGG19_LAYERS_INTEREST = (
+    'conv1_1','conv2_1', 'conv3_1'
+)
+
+#VGG19_LAYERS_INTEREST = {'conv1_1'}
 
 def is_square(apositiveint):
     x = apositiveint // 2
@@ -125,14 +133,88 @@ def plot_Rep(args):
         print(layer,a.shape)
         plot_and_save_pdf(a,directory_path,layer)
 
+def estimate_gennorm(args):
+    
+    sns.set()
+    image_style_path = args.img_folder + args.style_img_name + args.img_ext
+    image_style = st.preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
+    
+    vgg_layers = st.get_vgg_layers()
+    net = st.net_preloaded(vgg_layers, image_style) # net for the style image
+    sess = tf.Session()
+    sess.run(net['input'].assign(image_style))
+    Distrib_Estimation = {}
+    dict_pvalue = {}
+    alpha = 0.1
+    for layer in VGG19_LAYERS_INTEREST:
+        print(layer)
+        a = net[layer].eval(session=sess)
+        a = a[0]
+        h,w,number_of_features = a.shape
+        a_reshaped = np.reshape(a,(h*w,number_of_features))
+        print(h*w)
+        Distrib_Estimation[layer] = np.array([])
+        dict_pvalue[layer] = []
+        for i in range(number_of_features):
+            print(i)
+            samples = a_reshaped[:,i]
+            # This fit is computed by maximizing a log-likelihood function, with
+            # penalty applied for samples outside of range of the distribution. The
+            # returned answer is not guaranteed to be the globally optimal MLE, it
+            # may only be locally optimal, or the optimization may fail altogether.
+            beta, loc, scale = stats.gennorm.fit(samples)
+            if(len(Distrib_Estimation[layer])==0):
+                print("Number of points",len(samples))
+                Distrib_Estimation[layer] = np.array([beta,loc,scale])
+            else:
+                Distrib_Estimation[layer] =  np.vstack((Distrib_Estimation[layer],np.array([beta,loc,scale])))
+            # The KS test is only valid for continuous distributions. and with a theoritical distribution
+            D,pvalue = stats.kstest(samples, 'gennorm',(beta, loc, scale ))
+            dict_pvalue[layer]  += [pvalue]
+            if(pvalue > alpha ): #p-value> α
+                print(layer,i,pvalue)
+                pass
+        #print(Distrib_Estimation[layer])
+        #print(dict_pvalue[layer])
+    return(Distrib_Estimation)
+                
+def generateArt(args):
+    Distrib_Estimation = estimate_gennorm(args)
+    return(0)
+    
+def hist_style_loss(sess,net,style_img):
+    style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
+    sess.run(net['input'].assign(style_img))
+    for layer, weight in style_layers:
+        a = sess.run(net[layer])
+        x = net[layer]
+    
+    value_range = [0.0, 5.0]
+new_values = [-1.0, 0.0, 1.5, 2.0, 5.0, 15]
 
-def main():
+with tf.default_session() as sess:
+  hist = tf.histogram_fixed_width(new_values, value_range, nbins=5)
+
+
+def main_plot():
     parser = get_parser_args()
     style_img_name = "StarryNight"
     #style_img_name = "Louvre_Big"
     parser.set_defaults(style_img_name=style_img_name)
     args = parser.parse_args()
     plot_Rep(args)
+    
+def main_distrib():
+    parser = get_parser_args()
+    style_img_name = "StarryNight"
+    parser.set_defaults(style_img_name=style_img_name)
+    args = parser.parse_args()
+    estimate_gennorm(args)
 
 if __name__ == '__main__':
-    main()   
+    parser = get_parser_args()
+    style_img_name = "StarryNight"
+    parser.set_defaults(style_img_name=style_img_name)
+    args = parser.parse_args()
+    estimate_gennorm(args)
+    
