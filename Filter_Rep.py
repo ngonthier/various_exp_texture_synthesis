@@ -19,14 +19,10 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 import time
+import pickle
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.stats as stats
 from tensorflow.python.framework import dtypes
-from tensorflow.python.framework import ops
-from tensorflow.python.ops import array_ops
-from tensorflow.python.ops import clip_ops
-from tensorflow.python.ops import math_ops
-
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
     'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
@@ -44,11 +40,11 @@ VGG19_LAYERS = (
 )
 
 
-VGG19_LAYERS_INTEREST = (
-    'conv1_1','conv2_1', 'conv3_1'
-)
+#VGG19_LAYERS_INTEREST = (
+#    'conv1_1','conv2_1', 'conv3_1'
+#)
 
-#VGG19_LAYERS_INTEREST = {'conv1_1'}
+VGG19_LAYERS_INTEREST = {'conv3_1'}
 
 def hist(values,value_range,nbins=100,dtype=dtypes.float32):
     nbins_float = float(nbins)
@@ -163,7 +159,7 @@ def plot_Rep(args):
 
 def estimate_gennorm(args):
     
-    	sns.set_style("white")
+    sns.set_style("white")
     image_style_path = args.img_folder + args.style_img_name + args.img_ext
     image_style = st.preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
     
@@ -206,66 +202,134 @@ def estimate_gennorm(args):
         #print(dict_pvalue[layer])
     return(Distrib_Estimation)
 
+def unpool(value, name='unpool'):
+    """N-dimensional version of the unpooling operation from
+    https://www.robots.ox.ac.uk/~vgg/rg/papers/Dosovitskiy_Learning_to_Generate_2015_CVPR_paper.pdf
+
+    :param value: A Tensor of shape [b, d0, d1, ..., dn, ch]
+    :return: A Tensor of shape [b, 2*d0, 2*d1, ..., 2*dn, ch]
+    """
+    with tf.name_scope(name) as scope:
+        sh = value.get_shape().as_list()
+        dim = len(sh[1:-1])
+        out = (tf.reshape(value, [-1] + sh[-dim:]))
+        for i in range(dim, 0, -1):
+            out = tf.concat(i, [out, tf.zeros_like(out)])
+        out_size = [-1] + [s * 2 for s in sh[1:-1]] + [sh[-1]]
+        out = tf.reshape(out, out_size, name=scope)
+    return(out)
+
+def calculate_output_shape(in_layer, n_kernel, kernel_size, border_mode='same'):
+	"""
+	Always assumes stride=1
+	"""
+	in_shape = in_layer.get_shape() # assumes in_shape[0] = None or batch_size
+	out_shape = [s for s in in_shape] # copy
+	out_shape[-1] = n_kernel # always true
+	if border_mode=='same':
+		out_shape[1] = in_shape[1]
+		out_shape[2] = in_shape[2]
+	elif border_mode == 'valid':
+		out_shape[1] = tf.to_int32(in_shape[1]+kernel_size - 1)
+		out_shape[2] = tf.to_int32(in_shape[2]+kernel_size - 1)
+	return(out_shape)
+
 def genTexture(args):
     
     image_style_path = args.img_folder + args.style_img_name + args.img_ext
     image_style = st.preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
-    
+    output_image_path = args.img_folder + args.output_img_name + args.img_ext 
     vgg_layers = st.get_vgg_layers()
     net = st.net_preloaded(vgg_layers, image_style) # net for the style image
     sess = tf.Session()
     sess.run(net['input'].assign(image_style))
     Distrib_Estimation = {}
     dict_pvalue = {}
-    alpha = 0.1
-    for layer in VGG19_LAYERS_INTEREST:
-        print(layer)
-        a = net[layer].eval(session=sess)
-        a = a[0]
-        h,w,number_of_features = a.shape
-        a_reshaped = np.reshape(a,(h*w,number_of_features))
-        print(h*w)
-        Distrib_Estimation[layer] = np.array([])
-        dict_pvalue[layer] = []
-        for i in range(number_of_features):
-            print(i)
-            samples = a_reshaped[:,i]
-            # This fit is computed by maximizing a log-likelihood function, with
-            # penalty applied for samples outside of range of the distribution. The
-            # returned answer is not guaranteed to be the globally optimal MLE, it
-            # may only be locally optimal, or the optimization may fail altogether.
-            beta, loc, scale = stats.gennorm.fit(samples)
-            if(len(Distrib_Estimation[layer])==0):
-                print("Number of points",len(samples))
-                Distrib_Estimation[layer] = np.array([beta,loc,scale])
-            else:
-                Distrib_Estimation[layer] =  np.vstack((Distrib_Estimation[layer],np.array([beta,loc,scale])))
-            # The KS test is only valid for continuous distributions. and with a theoritical distribution
-            D,pvalue = stats.kstest(samples, 'gennorm',(beta, loc, scale ))
-            dict_pvalue[layer]  += [pvalue]
+    data = 'data.pkl'
     
-#    VGG_Invert = ()
-#    for layer in VGG_Invert:
-#        if(layer in VGG19_LAYERS_INTEREST):
-#            tf.Variable(np.zeros((1, height, width, numberChannels), dtype=np.float32))
-        
-    vgg_layers = st.get_vgg_layers()
-    net['input'] = tf.Variable(np.zeros((1, IMAGE_H, IMAGE_W, 3)).astype('float32'))
-    net['conv1_1'] = build_net('conv',net['input'],get_weight_bias(vgg_layers,0))
-  net['conv1_2'] = build_net('conv',net['conv1_1'],get_weight_bias(vgg_layers,2))
-  net['pool1']   = build_net('pool',net['conv1_2'])
-  net['conv2_1'] = build_net('conv',net['pool1'],get_weight_bias(vgg_layers,5))
-  net['conv2_2'] = build_net('conv',net['conv2_1'],get_weight_bias(vgg_layers,7))
-  net['pool2']   = build_net('pool',net['conv2_2'])
-net[] = build_net('conv',net['pool2'],get_weight_bias(vgg_layers,10))
+    try:
+        Distrib_Estimation = pickle.load(open(data, 'rb'))
+    except(FileNotFoundError):
+        for layer in VGG19_LAYERS_INTEREST:
+            print(layer)
+            a = net[layer].eval(session=sess)
+            a = a[0]
+            h,w,number_of_features = a.shape
+            a_reshaped = np.reshape(a,(h*w,number_of_features))
+            Distrib_Estimation[layer] = np.array([])
+            dict_pvalue[layer] = []
+            for i in range(number_of_features):
+                samples = a_reshaped[:,i]
+                # This fit is computed by maximizing a log-likelihood function, with
+                # penalty applied for samples outside of range of the distribution. The
+                # returned answer is not guaranteed to be the globally optimal MLE, it
+                # may only be locally optimal, or the optimization may fail altogether.
+                beta, loc, scale = stats.gennorm.fit(samples)
+                if(len(Distrib_Estimation[layer])==0):
+                    print("Number of points",len(samples))
+                    Distrib_Estimation[layer] = np.array([beta,loc,scale])
+                else:
+                    Distrib_Estimation[layer] =  np.vstack((Distrib_Estimation[layer],np.array([beta,loc,scale]))) 
+                    # chaque ligne est un channel
+                # The KS test is only valid for continuous distributions. and with a theoritical distribution
+                D,pvalue = stats.kstest(samples, 'gennorm',(beta, loc, scale ))
+                dict_pvalue[layer]  += [pvalue]
+        with open(data, 'wb') as output:
+            pickle.dump(Distrib_Estimation,output)
 
+    print('End Computation of marginal distrib')
     generative_net = {}
     generative_net['conv3_1_input'] = tf.Variable(np.zeros(net['conv3_1'].shape, dtype=np.float32))
     weights = tf.constant(np.transpose(vgg_layers[10][0][0][2][0][0], (1, 0, 2, 3)))
     bias = -tf.constant(vgg_layers[10][0][0][2][0][1].reshape(-1))
-    generative_net['conv3_1'] = tf.conv2d_transpose(tf.nn.bias_add(generative_net['conv3_1_input'],bias), weights, strides=(1, 1, 1, 1),	padding='SAME')
-    generative_net['pool2'] = 
+    #print(weights.get_shape()[0],weights.get_shape()[1],weights.get_shape()[2],weights.get_shape()[3])
+    #print(calculate_output_shape(generative_net['conv3_1_input'],tf.to_int32(tf.shape(weights)[3]),tf.to_int32(tf.shape(weights)[1])))
+    generative_net['conv3_1'] = tf.nn.conv2d_transpose(value=tf.nn.bias_add(generative_net['conv3_1_input'],bias),filter=weights, 
+                  output_shape=calculate_output_shape(generative_net['conv3_1_input'],256,3), 
+                  strides=(1, 1, 1, 1),    padding='SAME')
+    generative_net['pool2'] = unpool(generative_net['conv3_1'])
+    # RELU ???????
+    weights = tf.constant(np.transpose(vgg_layers[7][0][0][2][0][0], (1, 0, 2, 3)))
+    bias = -tf.constant(vgg_layers[7][0][0][2][0][1].reshape(-1))
+    generative_net['conv2_2'] = tf.nn.conv2d_transpose(tf.nn.bias_add(generative_net['pool2'],bias),
+                  tf.shape(generative_net['pool2']), weights, strides=(1, 1, 1, 1),    padding='SAME')
+    weights = tf.constant(np.transpose(vgg_layers[5][0][0][2][0][0], (1, 0, 2, 3)))
+    bias = -tf.constant(vgg_layers[5][0][0][2][0][1].reshape(-1))
+    generative_net['conv2_1'] = tf.nn.conv2d_transpose(tf.nn.bias_add(generative_net['conv2_2'],bias),
+                  tf.shape(generative_net['conv2_2']),weights, strides=(1, 1, 1, 1),    padding='SAME')
+    generative_net['pool1'] = unpool(generative_net['conv2_1'])
+    weights = tf.constant(np.transpose(vgg_layers[2][0][0][2][0][0], (1, 0, 2, 3)))
+    bias = -tf.constant(vgg_layers[2][0][0][2][0][1].reshape(-1))
+    generative_net['conv1_2'] = tf.nn.conv2d_transpose(tf.nn.bias_add(generative_net['pool2'],bias), 
+                  tf.shape(generative_net['pool1']),weights, strides=(1, 1, 1, 1),    padding='SAME')
+    weights = tf.constant(np.transpose(vgg_layers[0][0][0][2][0][0], (1, 0, 2, 3)))
+    bias = -tf.constant(vgg_layers[0][0][0][2][0][1].reshape(-1))
+    generative_net['conv1_1'] = tf.nn.conv2d_transpose(tf.nn.bias_add(generative_net['conv2_2'],bias),
+                  tf.shape(generative_net['conv1_2']).shape,weights, strides=(1, 1, 1, 1),    padding='SAME')
+    generative_net['output'] = tf.Variable(np.zeros(image_style.shape).astype('float32'))
     
+    # Random draw marginal distribution 
+    for layer in VGG19_LAYERS_INTEREST: 
+        print(layer)
+        a = net[layer].eval(session=sess)
+        a = a[0]
+        h,w,number_of_features = a.shape
+        #number_samples = h*w
+        #a_reshaped = np.reshape(a,(h*w,number_of_features))
+        distribs = Distrib_Estimation[layer]
+        generative_filters_response = np.zeros(net[layer].shape, dtype=np.float32)
+        for i in range(number_of_features):
+            print(i)
+            beta, loc, scale = distribs[i,:]
+            r = stats.gennorm.rvs(beta,loc=loc,scale=scale, size=(h,w))
+            generative_filters_response[1,:,:,i] = r
+        sess.run(net['conv3_1_input'].assign(generative_filters_response))
+        
+        print('End generative initialisation')    
+    result_img = sess.run(net['input'])            
+    result_img_postproc = st.postprocess(result_img)            
+    scipy.misc.toimage(result_img_postproc).save(output_image_path)
+
              
 def generateArt(args):
     if args.verbose:
@@ -369,7 +433,6 @@ def hist_style_loss(sess,net,style_img):
         style_loss += style_loss_layer
     return(style_loss)
 
-def 
 
 def main_plot():
     parser = get_parser_args()
@@ -385,15 +448,17 @@ def main_distrib():
     parser.set_defaults(style_img_name=style_img_name)
     args = parser.parse_args()
     estimate_gennorm(args)
+    
+
 
 if __name__ == '__main__':
     parser = get_parser_args()
     style_img_name = "StarryNight"
-    output_img_name = "Texture"
+    output_img_name = "Gen"
     max_iter = 10
     print_iter = 1
     parser.set_defaults(style_img_name=style_img_name,output_img_name=output_img_name,
                         max_iter=max_iter,    print_iter=print_iter)
     args = parser.parse_args()
-    generateArt(args)
+    genTexture(args)
     
