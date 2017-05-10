@@ -16,6 +16,7 @@ import pickle
 from Arg_Parser import get_parser_args 
 import seaborn as sns
 import matplotlib.pyplot as plt
+from decimal import Decimal
 
 content_layers = [('conv4_2',1.)]
 #style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
@@ -172,7 +173,6 @@ def grad_computation(args):
 	M_dict = st.get_M_dict(image_h,image_w)
 	t1 = time.time()
 
-	
 	vgg_layers = st.get_vgg_layers()
 	
 	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+".pkl"
@@ -214,8 +214,8 @@ def grad_computation(args):
 			init_img = st.get_init_noise_img(image_content,args.init_noise_ratio)
 
 		# Propose different way to compute the lossses 
-		weight_help_convergence_content = 10**(5) 
-		weight_help_convergence_style = 2*10**9
+		weight_help_convergence_content = 1 
+		weight_help_convergence_style = 2*10**3
 		ratio_weight_style_over_content = weight_help_convergence_style / ( weight_help_convergence_content * args.content_strengh)
 		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
 		content_loss =  sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
@@ -225,13 +225,6 @@ def grad_computation(args):
 		
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
 		assign_op = net['input'].assign(placeholder)
-		
-		# Gradients
-		variable = tf.trainable_variables() 
-		grad_style_loss = tf.gradients(style_loss,variable)
-		grad_content_loss = tf.gradients(content_loss,variable)
-		grad_total_loss = tf.gradients(loss_total,variable)
-		
 		length_tab = args.max_iter +1
 		style_loss_tab = np.zeros((length_tab,1))
 		content_loss_tab = np.zeros((length_tab,1))
@@ -247,25 +240,30 @@ def grad_computation(args):
 		grad_total_loss_min =  np.zeros((length_tab,1))
 		grad_ortho =  np.zeros((length_tab,3))
 		
-		
+		# Gradients
+		variable = tf.trainable_variables() 
+		grad_style_loss = tf.gradients(style_loss,variable)
+		grad_content_loss = tf.gradients(content_loss,variable)
+		grad_total_loss = tf.gradients(loss_total,variable)
+
 		grad_stats_style = grad_stats_computation(sess,grad_style_loss)
 		grad_stats_content = grad_stats_computation(sess,grad_content_loss)
 		grad_stats_total = grad_stats_computation(sess,grad_total_loss)
-		#ortho = ortogo_computation(sess,grad_style_loss,grad_content_loss)
 		ortho_tb = []
 		for j in range(3):
 			ortho_tb +=  [orthogonalite(grad_content_loss[0][0,:,:,j],grad_style_loss[0][0,:,:,j])]
-		
-		
-		print("init loss total")
-		
-		learning_rate = 10**(-10)
-		optimizer = tf.train.GradientDescentOptimizer(learning_rate) # Gradient Descent
-		#optimizer = tf.train.AdamOptimizer(args.learning_rate)
-		train = optimizer.minimize(loss_total)
-		
 
 		
+		if(args.optimizer=='GD'): # Gradient Descente		
+			learning_rate = 10**(-10)
+			optimizer = tf.train.GradientDescentOptimizer(learning_rate) # Gradient Descent
+			train = optimizer.minimize(loss_total)
+		elif(args.optimizer=='adam'):
+			print('Adam')
+			optimizer = tf.train.AdamOptimizer(args.learning_rate)
+			grads_and_vars =  list(zip(grad_total_loss,variable))
+			train = optimizer.apply_gradients(grads_and_vars)
+	
 		sess.run(tf.global_variables_initializer())
 		sess.run(assign_op, {placeholder: init_img})
 		
@@ -278,7 +276,6 @@ def grad_computation(args):
 		print("loss before optimization")
 		st.print_loss(sess,loss_total,content_loss,style_loss)
 		for i in range(args.max_iter+1):
-			
 			style_loss_tab[i] = sess.run(style_loss)
 			content_loss_tab[i] = sess.run(content_loss)
 			loss_total_tab[i] = sess.run(loss_total)
@@ -303,6 +300,8 @@ def grad_computation(args):
 				
 			sess.run(train)
 		
+
+		
 	except:
 		print("Error")
 		raise 
@@ -318,14 +317,16 @@ def grad_computation(args):
 	
 	plt.ion()
 	f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
-	ax1.plot(Iterations, style_loss_tab)
+	ax1.semilogy(Iterations, style_loss_tab)
 	ax1.set_ylabel("Style Loss")
-	ax1.set_title('Comparison of the loss function during Gradient Descent Optimization')
-	ax2.plot(Iterations, content_loss_tab)
+	titre = 'Comparison of the loss function during {} Optimization, ratio = {:.2e}'.format(args.optimizer,Decimal(ratio_weight_style_over_content))
+	ttl = ax1.set_title(titre)
+	ttl.set_position([.5, 1.05])
+	ax2.semilogy(Iterations, content_loss_tab)
 	ax2.set_ylabel("Content Loss")
-	ax3.plot(Iterations, weight_help_convergence_style *style_loss_tab, 'g^')
-	ax3.plot(Iterations, args.content_strengh * weight_help_convergence_content * content_loss_tab, 'bs')
-	ax3.plot(Iterations, loss_total_tab, color='r')
+	ax3.semilogy(Iterations, weight_help_convergence_style *style_loss_tab, 'g^')
+	ax3.semilogy(Iterations, args.content_strengh * weight_help_convergence_content * content_loss_tab, 'bs')
+	ax3.semilogy(Iterations, loss_total_tab, color='r')
 	ax3.legend(['Style','Content','Total'])
 	ax3.set_ylabel("Total Loss")
 	# Fine-tune figure; make subplots close to each other and hide x ticks for
@@ -335,18 +336,22 @@ def grad_computation(args):
 	f.savefig("LossFunction.png")
 	#plt.figure
 	f, (ax1, ax2,ax3) = plt.subplots(3, sharex=True)
-	ax1.plot(Iterations, grad_style_loss_tab)
-	ax1.set_title('Comparison of the L2 norm of the gradients during GD Optimization')
+	ax1.semilogy(Iterations, grad_style_loss_tab)
+	titre = 'Comparison of the L2 norm of the gradients during {} Optimization, ratio = {:.2e}'.format(args.optimizer,Decimal(ratio_weight_style_over_content))
+	ttl = ax1.set_title(titre)
+	ttl.set_position([.5, 1.05])
 	ax1.set_ylabel('Grad Style Loss')
-	ax2.plot(Iterations, grad_content_loss_tab)
+	ax2.semilogy(Iterations, grad_content_loss_tab)
 	ax2.set_ylabel('Grad Content Loss')
-	ax3.plot(Iterations, grad_total_loss_tab, color='r')
+	ax3.semilogy(Iterations, grad_total_loss_tab, color='r')
 	ax3.set_ylabel('Grad Total Loss')
 	f.savefig("Gradient.png")
 	f, (ax1, ax2) = plt.subplots(2, sharex=True)
 	ax1.plot(Iterations, grad_style_loss_min)
 	ax1.plot(Iterations, grad_style_loss_max)
-	ax1.set_title('Comparison of the range of the gradients during Gradient Descent Optimization')
+	titre = 'Comparison of the range of the gradients during {} Optimization'.format(args.optimizer)
+	ttl = ax1.set_title(titre)
+	ttl.set_position([.5, 1.05])
 	ax1.set_ylabel('Grad Style')
 	ax2.plot(Iterations, grad_content_loss_min)
 	ax2.plot(Iterations, grad_content_loss_max)
@@ -359,7 +364,9 @@ def grad_computation(args):
 	f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
 	ax1.plot(Iterations, grad_ortho[:,0])
 	ax1.set_ylabel("B")
-	ax1.set_title('Cos of the Gradients during Gradient Descent Optimization')
+	titre = 'Cos of the Gradients during {} Optimization'.format(args.optimizer)
+	ttl = ax1.set_title(titre)
+	ttl.set_position([.5, 1.05])
 	ax2.plot(Iterations, grad_ortho[:,1])
 	ax2.set_ylabel("G")
 	ax3.plot(Iterations, grad_ortho[:,2])
@@ -376,16 +383,17 @@ def main():
 	parser = get_parser_args()
 	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 2000
-	print_iter = 200
+	max_iter = 1000
+	print_iter = 100
 	start_from_noise = 1 # True
-	init_noise_ratio = 1.0
+	init_noise_ratio = 0.1
 	content_strengh = 0.001
+	optimizer = 'adam'
 	# In order to set the parameter before run the script
 	parser.set_defaults(style_img_name=style_img_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
-		content_strengh=content_strengh)
+		content_strengh=content_strengh,optimizer=optimizer)
 	args = parser.parse_args()
 	grad_computation(args)
 
