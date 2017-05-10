@@ -500,11 +500,10 @@ def main():
 
 def main_with_option():
 	parser = get_parser_args()
-	#style_img_name = "StarryNightBig"
-	style_img_name = "wave_crop"
+	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 100
-	print_iter = 10
+	max_iter = 1000
+	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 0.7
 	content_strengh = 0.001
