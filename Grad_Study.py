@@ -214,8 +214,13 @@ def grad_computation(args):
 			init_img = st.get_init_noise_img(image_content,args.init_noise_ratio)
 
 		# Propose different way to compute the lossses 
+<<<<<<< HEAD
 		weight_help_convergence_content = 10**5
 		weight_help_convergence_style = 2*10**9
+=======
+		weight_help_convergence_content = 1 
+		weight_help_convergence_style = 2*10**3
+>>>>>>> 1de044d1343ca1328d31e24974c74e304edb363b
 		ratio_weight_style_over_content = weight_help_convergence_style / ( weight_help_convergence_content * args.content_strengh)
 		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
 		content_loss =  sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
