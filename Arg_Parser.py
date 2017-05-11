@@ -21,6 +21,10 @@ def get_parser_args():
 	parser.add_argument('--verbose',action="store_true",
 		help='Boolean flag indicating if statements should be printed to the console.')
 		
+	# Plot argument
+	parser.add_argument('--plot',action="store_true",
+		help='Boolean flag indicating if image should be plotted.')
+		
 	# Name of the Images
 	parser.add_argument('--output_img_name', type=str, 
 		default='Pastiche',help='Filename of the output image.')

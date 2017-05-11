@@ -43,6 +43,14 @@ VGG19_LAYERS = (
 clip_value_min=-124
 clip_value_max=152
 
+
+# TODO change that it is not a really good idea to have globla variable in Python
+content_layers = [('conv4_2',1.)]
+#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
+style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
+#style_layers = [('conv1_1',1.)]
+# TODO : be able to choose more quickly the different parameters
+
 # TODO segment the vgg loader, and the rest
 
 def plot_image(path_to_image):
@@ -131,7 +139,7 @@ def _pool_layer(input,name,pooling_type='avg'):
 				padding='SAME',name=name) 
 	return(pool)
 
-def sum_content_losses(sess, net, dict_features_repr):
+def sum_content_losses(sess, net, dict_features_repr,M_dict):
 	"""
 	Compute the content term of the loss function
 	Input : 
@@ -139,14 +147,15 @@ def sum_content_losses(sess, net, dict_features_repr):
 	- the vgg19 net
 	- the dictionnary of the content image representation thanks to the net
 	"""
-	content_layers = [('conv4_2',1.)]
 	length_content_layers = float(len(content_layers))
-	weight_help_convergence = 10**(5) 
+	weight_help_convergence = 10**9 # Need to multiply by 120000 ?
 	content_loss = 0
 	for layer, weight in content_layers:
+		M = M_dict[layer[:5]]
 		P = tf.constant(dict_features_repr[layer])
 		F = net[layer]
-		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))* (weight*weight_help_convergence/length_content_layers)
+		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))*(
+			weight*weight_help_convergence/(length_content_layers*(tf.to_float(M)**2)))
 	return(content_loss)
 
 def sum_style_losses(sess, net, dict_gram,M_dict):
@@ -158,14 +167,10 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 	- the dictionnary of Gram Matrices
 	- the dictionnary of the size of the image content through the net
 	"""
-	#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
-	style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
-	#style_layers = [('conv1_1',1.)]
-	# TODO : be able to choose more quickly the different parameters
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	# Info for the vgg19
 	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 2*10**(9) # This wight come from a paper of Gatys
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
 	# Because the function is pretty flat 
 	total_style_loss = 0
 	for layer, weight in style_layers:
@@ -355,9 +360,34 @@ def get_features_repr_wrap(args,vgg_layers,image_content):
 		
 	return(dict_features_repr)
 
+def plot_image_with_postprocess(args,image,name="",fig=None):
+	if(fig==None):
+		fig = plt.figure()
+	plt.imshow(postprocess(image))
+	plt.title(name)
+	fig.show()
+	if(args.verbose): print("Plot",name)
+	return(fig)
+
+def get_init_img_wrap(args,output_image_path,image_content):
+	if(not(args.start_from_noise)):
+		try:
+			init_img = preprocess(scipy.misc.imread(output_image_path).astype('float32'))
+		except(FileNotFoundError):
+			if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
+			# White noise that we use at the beginning of the optimization
+			init_img = get_init_noise_img(image_content,args.init_noise_ratio)
+	else:
+		init_img = get_init_noise_img(image_content,args.init_noise_ratio)
+
+	if(args.plot):
+		plot_image_with_postprocess(args,init_img,"Initial Image")
+		
+	return(init_img)
 
 def style_transfer(args,pooling_type='avg'):
 	if args.verbose:
+		tinit = time.time()
 		print("verbosity turned on")
 	
 	output_image_path = args.img_folder + args.output_img_name +args.img_ext
@@ -367,18 +397,15 @@ def style_transfer(args,pooling_type='avg'):
 	image_style = preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
 	_,image_h, image_w, number_of_channels = image_content.shape 
 	M_dict = get_M_dict(image_h,image_w)
-	#print("Content")
-	#plt.figure()
-	#plt.imshow(postprocess(image_content))
-	#plt.show()
-	#print("Style")
-	#plt.figure()
-	#plt.imshow(postprocess(image_style))
-	#plt.show()
+	
+	if(args.plot):
+		plt.ion()
+		plot_image_with_postprocess(args,image_content,"Content Image")
+		plot_image_with_postprocess(args,image_style,"Style Image")
+		fig = None # initialization for later
+		
 	# TODO add something that reshape the image 
-	# TODO : be able to have two different size for the image
 	t1 = time.time()
-
 	vgg_layers = get_vgg_layers()
 	
 	# Precomputation Phase :
@@ -392,27 +419,12 @@ def style_transfer(args,pooling_type='avg'):
 
 	try:
 		sess = tf.Session()
-		clip_var = True
-		if(not(args.start_from_noise)):
-			try:
-				init_img = preprocess(scipy.misc.imread(output_image_path).astype('float32'))
-			except(FileNotFoundError):
-				if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
-				# White noise that we use at the beginning of the optimization
-				init_img = get_init_noise_img(image_content,args.init_noise_ratio)
-		else:
-			init_img = get_init_noise_img(image_content,args.init_noise_ratio)
 
-		#
-		# TODO add a plot mode ! 
-		#noise_imgS = postprocess(noise_img)
-		#plt.figure()
-		#plt.imshow(noise_imgS)
-		#plt.show()
+		init_img = get_init_img_wrap(args,output_image_path,image_content)
 		
 		# Propose different way to compute the lossses 
 		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
-		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr) # alpha/Beta ratio 
+		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
 		loss_total =  content_loss + style_loss
 		
 		# Preparation of the assignation operation
@@ -468,7 +480,7 @@ def style_transfer(args,pooling_type='avg'):
 							sess.run(assign_op, {placeholder: cliptensor})
 						if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
 						if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
-						
+						if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
 						result_img_postproc = postprocess(result_img)
 						scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				else:
@@ -486,7 +498,8 @@ def style_transfer(args,pooling_type='avg'):
 			nb_iter = args.max_iter  // args.print_iter
 			max_iterations_local = args.max_iter // nb_iter
 			optimizer_kwargs = {'maxiter': max_iterations_local}
-			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)			
+			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
+				method='L-BFGS-B',options=optimizer_kwargs)			
 			
 			sess.run(tf.global_variables_initializer())
 			sess.run(assign_op, {placeholder: init_img})
@@ -503,6 +516,7 @@ def style_transfer(args,pooling_type='avg'):
 				if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
 				if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
 				result_img = sess.run(net['input'])
+				if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
 				result_img_postproc = postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
 			
@@ -511,12 +525,10 @@ def style_transfer(args,pooling_type='avg'):
 		result_img = sess.run(net['input'])
 		result_img_postproc = postprocess(result_img)
 		scipy.misc.toimage(result_img_postproc).save(output_image_path)
-		#plt.imshow(result_img)
-		#plt.show()
-		
+		if(args.plot): plot_image_with_postprocess(args,result_img,"Final Image",fig)
 		
 	except:
-		if(args.verbose): print("Error, in the lbfgs case the image can be stranger and incorrect")
+		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 		result_img = sess.run(net['input'])
 		result_img_postproc = postprocess(result_img)
 		output_image_path_error = args.img_folder + args.output_img_name+'_error' +args.img_ext
@@ -524,8 +536,11 @@ def style_transfer(args,pooling_type='avg'):
 		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
 		raise 
 	finally:
-		if(args.verbose): print("Close Sess")
 		sess.close()
+		if(args.verbose): 
+			print("Close Sess")
+			tend = time.time()
+			print("Computation total for ",tend-tinit," s")
 
 def main():
 	#global args
@@ -537,7 +552,7 @@ def main_with_option():
 	parser = get_parser_args()
 	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 2
+	max_iter = 3
 	print_iter = 1
 	start_from_noise = 1 # True
 	init_noise_ratio = 0.1
