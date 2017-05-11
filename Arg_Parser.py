@@ -44,7 +44,7 @@ def get_parser_args():
 		
 	# Infomartion about the optimization
 	parser.add_argument('--optimizer',  type=str,default='lbfgs',
-		choices=['lbfgs', 'adam'],
+		choices=['lbfgs', 'adam', 'GD'],
 		help='Loss minimization optimizer. (default|recommended: %(default)s)')
 	
 	parser.add_argument('--max_iter',  type=int,default=10,
@@ -54,10 +54,10 @@ def get_parser_args():
 		help='Number of iteration between each checkpoint. (default %(default)s)')
 		
 	parser.add_argument('--learning_rate',  type=float,default=10.,
-		help='Learning rate only for adam method. (default %(default)s)')	
+		help='Learning rate only for adam or GD method. (default %(default)s) We advised to use 10 for Adam and 10**(-10) for GD')	
 		
 	# Profiling Tensorflow
-	parser.add_argument('--tf_profiler',action='store_false',
+	parser.add_argument('--tf_profiler',action='store_true',
 		help='Profiling Tensorflow operation available only for adam.')
 		
 	# Info on the style transfer

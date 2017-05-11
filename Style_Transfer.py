@@ -383,9 +383,6 @@ def style_transfer(args,pooling_type='avg'):
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
 	try:
-		if (args.tf_profiler):
-			run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-			run_metadata = tf.RunMetadata()
 		sess = tf.Session()
 		
 		if(not(args.start_from_noise)):
@@ -410,14 +407,26 @@ def style_transfer(args,pooling_type='avg'):
 		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr) # alpha/Beta ratio 
 		loss_total =  content_loss + style_loss
 		
+		# Preparation of the assignation operation
+		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
+		assign_op = net['input'].assign(placeholder)
+		
 		if(args.verbose): print("init loss total")
 
-		if(args.optimizer=='adam'):
-			optimizer = tf.train.AdamOptimizer(args.learning_rate) # Gradient Descent
+		if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
+			optimizer = tf.train.AdamOptimizer(args.learning_rate)
+		elif(args.optimizer=='GD'): # Gradient Descente		
+			optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
+			
+		if((args.optimizer=='GD') or (args.optimizer=='adam')):
 			train = optimizer.minimize(loss_total)
 
 			sess.run(tf.global_variables_initializer())
-			sess.run(net['input'].assign(init_img)) # This line must be after variables initialization ! 
+			sess.run(assign_op, {placeholder: init_img})
+						
+			sess.graph.finalize() # To test if the graph is correct
+			if(args.verbose): print("sess.graph.finalize()") 
+
 			t3 = time.time()
 			if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
 			# turn on interactive mode
@@ -425,7 +434,9 @@ def style_transfer(args,pooling_type='avg'):
 			if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
 			for i in range(args.max_iter):
 				if(i%args.print_iter==0):
-					if (args.tf_profiler):
+					if(args.tf_profiler):
+						run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+						run_metadata = tf.RunMetadata()
 						sess.run(train,options=run_options, run_metadata=run_metadata)
 						# Create the Timeline object, and write it to a json
 						tl = timeline.Timeline(run_metadata.step_stats)
@@ -454,9 +465,14 @@ def style_transfer(args,pooling_type='avg'):
 			nb_iter = args.max_iter  // args.print_iter
 			max_iterations_local = args.max_iter // nb_iter
 			optimizer_kwargs = {'maxiter': max_iterations_local}
-			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
+			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)			
+			
 			sess.run(tf.global_variables_initializer())
-			sess.run(net['input'].assign(init_img))
+			sess.run(assign_op, {placeholder: init_img})
+						
+			sess.graph.finalize() # To test if the graph is correct
+			if(args.verbose): print("sess.graph.finalize()") 
+			
 			if(args.verbose): print("loss before optimization")
 			if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
 			for i in range(nb_iter):
@@ -468,34 +484,20 @@ def style_transfer(args,pooling_type='avg'):
 				result_img = sess.run(net['input'])
 				result_img_postproc = postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
-				sess.close() # To avoid ResourceExhaustedError, we need to close the session and start it again
-				sess = tf.Session()
-				sess.run(tf.global_variables_initializer())
-				sess.run(net['input'].assign(result_img))
 			
-			# Last iteration
-			max_iterations_local = args.max_iter - max_iterations_local*nb_iter
-			optimizer_kwargs = {'maxiter': max_iterations_local}
-			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds, method='L-BFGS-B',options=optimizer_kwargs)
-			t3 = time.time()
-			optimizer.minimize(sess)
-			t4 = time.time()
-			if(args.verbose): print("LBFGS optim after ",t4-t3," s")
-		
-		# The End
-		# TODO add a remove old image ?? 
-		#result_img = sess.run(net['input'])
-		#result_img_postproc = postprocess(result_img)
+		# The last iterations are not made
+		# The End : save the resulting image
+		result_img = sess.run(net['input'])
+		result_img_postproc = postprocess(result_img)
+		scipy.misc.toimage(result_img_postproc).save(output_image_path)
 		#plt.imshow(result_img)
 		#plt.show()
-		#scipy.misc.toimage(result_img_postproc).save(output_image_path)
+		
 		
 	except:
 		print("Error")
 		result_img = sess.run(net['input'])
 		result_img_postproc = postprocess(result_img)
-		#plt.imshow(result_img)
-		#plt.show()
 		output_image_path_error = args.img_folder + args.output_img_name+'_error' +args.img_ext
 		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
@@ -512,18 +514,21 @@ def main():
 
 def main_with_option():
 	parser = get_parser_args()
-	style_img_name = "EstampeSmall"
+	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 2
-	print_iter = 1
+	max_iter = 1000
+	print_iter = 100
 	start_from_noise = 1 # True
-	init_noise_ratio = 0.7
+	init_noise_ratio = 0.1
 	content_strengh = 0.001
+	optimizer = 'GD'
+	learning_rate = 10**(-10) # 
 	# In order to set the parameter before run the script
 	parser.set_defaults(style_img_name=style_img_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
-		content_strengh=content_strengh)
+		content_strengh=content_strengh,optimizer=optimizer,
+		learning_rate=learning_rate)
 	args = parser.parse_args()
 	style_transfer(args)
 
