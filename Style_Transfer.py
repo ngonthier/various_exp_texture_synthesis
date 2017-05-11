@@ -39,7 +39,9 @@ VGG19_LAYERS = (
 	'relu5_3', 'conv5_4', 'relu5_4'
 )
 
-
+# Max et min value from the ImageNet databse mean
+clip_value_min=-124
+clip_value_max=152
 
 # TODO segment the vgg loader, and the rest
 
@@ -311,9 +313,9 @@ def get_lbfgs_bnds(init_img):
 	image centered according to the ImageNet mean
 	"""
 	dim1,height,width,N = init_img.shape
-	bnd_inf = -124*np.ones((dim1,height,width,N)).flatten() 
+	bnd_inf = clip_value_min*np.ones((dim1,height,width,N)).flatten() 
 	# We need to flatten the array in order to use it in the LBFGS algo
-	bnd_sup = 152*np.ones((dim1,height,width,N)).flatten()
+	bnd_sup = clip_value_max*np.ones((dim1,height,width,N)).flatten()
 	bnds = np.stack((bnd_inf, bnd_sup),axis=-1)
 	assert len(bnd_sup) == len(init_img.flatten()) # Check if the dimension is right
 	assert len(bnd_inf) == len(init_img.flatten()) 
@@ -326,6 +328,34 @@ def get_lbfgs_bnds(init_img):
 		print("Erreur a venir")
 	return(bnds)
 
+def get_Gram_matrix_wrap(args,vgg_layers,image_style):
+	_,image_h_art, image_w_art, _ = image_style.shape
+	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+".pkl"
+	try:
+		dict_gram = pickle.load(open(data_style_path, 'rb'))
+	except(FileNotFoundError):
+		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
+		dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type)
+		with open(data_style_path, 'wb') as output_gram_pkl:
+			pickle.dump(dict_gram,output_gram_pkl)
+		if(args.verbose): print("Pickle dumped")
+	return(dict_gram)
+
+def get_features_repr_wrap(args,vgg_layers,image_content):
+	_,image_h, image_w, number_of_channels = image_content.shape 
+	data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+".pkl"
+	try:
+		dict_features_repr = pickle.load(open(data_content_path, 'rb'))
+	except(FileNotFoundError):
+		if(args.verbose): print("The dictionnary of features representation of content image doesn't exist, we will generate it.")
+		dict_features_repr = get_features_repr(vgg_layers,image_content,pooling_type)
+		with open(data_content_path, 'wb') as output_content_pkl:
+			pickle.dump(dict_features_repr,output_content_pkl)
+		if(args.verbose): print("Pickle dumped")
+		
+	return(dict_features_repr)
+
+
 def style_transfer(args,pooling_type='avg'):
 	if args.verbose:
 		print("verbosity turned on")
@@ -336,7 +366,6 @@ def style_transfer(args,pooling_type='avg'):
 	image_content = preprocess(scipy.misc.imread(image_content_path).astype('float32')) # Float between 0 and 255
 	image_style = preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
 	_,image_h, image_w, number_of_channels = image_content.shape 
-	_,image_h_art, image_w_art, _ = image_style.shape 
 	M_dict = get_M_dict(image_h,image_w)
 	#print("Content")
 	#plt.figure()
@@ -352,39 +381,18 @@ def style_transfer(args,pooling_type='avg'):
 
 	vgg_layers = get_vgg_layers()
 	
-	# TODO : add a way to choose the way to compute things
-	
 	# Precomputation Phase :
-	# TODO add dimension info
-	# TODO wrap all that 
-	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+".pkl"
-	try:
-		dict_gram = pickle.load(open(data_style_path, 'rb'))
-	except(FileNotFoundError):
-		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
-		dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type)
-		with open(data_style_path, 'wb') as output_gram_pkl:
-			pickle.dump(dict_gram,output_gram_pkl)
-		if(args.verbose): print("Pickle dumped")
-
-	data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+".pkl"
-	try:
-		dict_features_repr = pickle.load(open(data_content_path, 'rb'))
-	except(FileNotFoundError):
-		if(args.verbose): print("The dictionnary of features representation of content image doesn't exist, we will generate it.")
-		dict_features_repr = get_features_repr(vgg_layers,image_content,pooling_type)
-		with open(data_content_path, 'wb') as output_content_pkl:
-			pickle.dump(dict_features_repr,output_content_pkl)
-		if(args.verbose): print("Pickle dumped")
-
+	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style)
+	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content)
 
 	net = net_preloaded(vgg_layers, image_content,pooling_type) # The output image as the same size as the content one
+	
 	t2 = time.time()
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
 	try:
 		sess = tf.Session()
-		
+		clip_var = True
 		if(not(args.start_from_noise)):
 			try:
 				init_img = preprocess(scipy.misc.imread(output_image_path).astype('float32'))
@@ -409,13 +417,16 @@ def style_transfer(args,pooling_type='avg'):
 		
 		# Preparation of the assignation operation
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
+		placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
 		assign_op = net['input'].assign(placeholder)
+		clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=clip_value_min,clip_value_max=clip_value_max,name="Clip")
 		
 		if(args.verbose): print("init loss total")
 
 		if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
 			optimizer = tf.train.AdamOptimizer(args.learning_rate)
-		elif(args.optimizer=='GD'): # Gradient Descente		
+		elif(args.optimizer=='GD'): # Gradient Descente	
+			if((args.learning_rate > 1) and (args.verbose)): print("We recommande you to use a smaller value of learning rate when using the GD algo")
 			optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
 			
 		if((args.optimizer=='GD') or (args.optimizer=='adam')):
@@ -451,15 +462,25 @@ def style_transfer(args,pooling_type='avg'):
 						t3 =  time.time()
 						sess.run(train)
 						t4 = time.time()
+						result_img = sess.run(net['input'])
+						if(args.clip_var==1): # Clipping the variable
+							cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
+							sess.run(assign_op, {placeholder: cliptensor})
 						if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
 						if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
-						result_img = sess.run(net['input'])
+						
 						result_img_postproc = postprocess(result_img)
 						scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				else:
+					# Just training
 					sess.run(train)
+					if(args.clip_var==1): # Clipping the variable
+						result_img = sess.run(net['input'])
+						cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
+						sess.run(assign_op, {placeholder: cliptensor}) 
 		elif(args.optimizer=='lbfgs'):
 			# LBFGS seem to require more memory than Adam optimizer
+			
 			bnds = get_lbfgs_bnds(init_img)
 			if(args.verbose): print("Start LBFGS optim")
 			nb_iter = args.max_iter  // args.print_iter
@@ -495,7 +516,7 @@ def style_transfer(args,pooling_type='avg'):
 		
 		
 	except:
-		print("Error")
+		if(args.verbose): print("Error, in the lbfgs case the image can be stranger and incorrect")
 		result_img = sess.run(net['input'])
 		result_img_postproc = postprocess(result_img)
 		output_image_path_error = args.img_folder + args.output_img_name+'_error' +args.img_ext
@@ -516,13 +537,13 @@ def main_with_option():
 	parser = get_parser_args()
 	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 1000
-	print_iter = 100
+	max_iter = 2
+	print_iter = 1
 	start_from_noise = 1 # True
 	init_noise_ratio = 0.1
 	content_strengh = 0.001
-	optimizer = 'GD'
-	learning_rate = 10**(-10) # 
+	optimizer = 'lbfgs'
+	learning_rate = 10 # 10 for adam and 10**(-10) for GD
 	# In order to set the parameter before run the script
 	parser.set_defaults(style_img_name=style_img_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,

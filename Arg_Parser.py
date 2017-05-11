@@ -47,14 +47,19 @@ def get_parser_args():
 		choices=['lbfgs', 'adam', 'GD'],
 		help='Loss minimization optimizer. (default|recommended: %(default)s)')
 	
-	parser.add_argument('--max_iter',  type=int,default=10,
+	parser.add_argument('--max_iter',  type=int,default=1000,
 		help='Number of Iteration Maximum. (default %(default)s)')
 	
-	parser.add_argument('--print_iter',  type=int,default=1,
+	parser.add_argument('--print_iter',  type=int,default=100,
 		help='Number of iteration between each checkpoint. (default %(default)s)')
 		
 	parser.add_argument('--learning_rate',  type=float,default=10.,
 		help='Learning rate only for adam or GD method. (default %(default)s) We advised to use 10 for Adam and 10**(-10) for GD')	
+		
+	# Argument for clipping the value in the Adam or GD case
+	parser.add_argument('--clip_var',  type=int,default=1,
+		help='Clip the values of the variable after each iteration only for adam or GD method. Equal to 1 for true and 0 otherwise (default %(default)s)')	
+	
 		
 	# Profiling Tensorflow
 	parser.add_argument('--tf_profiler',action='store_true',
