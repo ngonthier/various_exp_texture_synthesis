@@ -201,12 +201,12 @@ def gram_matrix(x,N,M):
   # That come from Control paper
   return(G)
  
-def get_Gram_matrix(vgg_layers,image_style):
+def get_Gram_matrix(vgg_layers,image_style,pooling_type):
 	"""
 	Computation of all the Gram matrices from one image thanks to the 
 	vgg_layers
 	"""
-	net = net_preloaded(vgg_layers, image_style) # net for the style image
+	net = net_preloaded(vgg_layers, image_style,pooling_type) # net for the style image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_style))
 	dict_gram = {}
@@ -219,14 +219,15 @@ def get_Gram_matrix(vgg_layers,image_style):
 			A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
 			dict_gram[layer] = sess.run(A) # Computation
 	sess.close()
+	tf.reset_default_graph() # To clear all operation and variable
 	return(dict_gram)        
 		 
-def get_features_repr(vgg_layers,image_content):
+def get_features_repr(vgg_layers,image_content,pooling_type):
 	"""
 	Compute the image content representation values according to the vgg
 	19 net
 	"""
-	net = net_preloaded(vgg_layers, image_content) # net for the content image
+	net = net_preloaded(vgg_layers, image_content,pooling_type) # net for the content image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_content))
 	dict_features_repr = {}
@@ -236,6 +237,7 @@ def get_features_repr(vgg_layers,image_content):
 			P = sess.run(net[layer])
 			dict_features_repr[layer] = P # Computation
 	sess.close()
+	tf.reset_default_graph() # To clear all operation and variable
 	return(dict_features_repr)  
 	
 	
@@ -304,6 +306,10 @@ def get_init_noise_img(image_content,init_noise_ratio):
 	return(noise_img)
 
 def get_lbfgs_bnds(init_img):
+	"""
+	This function create the bounds for the LBFGS scipy wrappper, for a 
+	image centered according to the ImageNet mean
+	"""
 	dim1,height,width,N = init_img.shape
 	bnd_inf = -124*np.ones((dim1,height,width,N)).flatten() 
 	# We need to flatten the array in order to use it in the LBFGS algo
@@ -312,6 +318,12 @@ def get_lbfgs_bnds(init_img):
 	assert len(bnd_sup) == len(init_img.flatten()) # Check if the dimension is right
 	assert len(bnd_inf) == len(init_img.flatten()) 
 	# Bounds from [0,255] - [124,103]
+	# Test
+	x0 = np.asarray(init_img).ravel()
+	n, = x0.shape
+	if len(bnds) != n:
+		print("n",n,"len(bnds)",len(bnds))
+		print("Erreur a venir")
 	return(bnds)
 
 def style_transfer(args,pooling_type='avg'):
@@ -500,10 +512,10 @@ def main():
 
 def main_with_option():
 	parser = get_parser_args()
-	style_img_name = "StarryNight"
+	style_img_name = "EstampeSmall"
 	content_img_name = "Louvre"
-	max_iter = 1000
-	print_iter = 100
+	max_iter = 2
+	print_iter = 1
 	start_from_noise = 1 # True
 	init_noise_ratio = 0.7
 	content_strengh = 0.001
