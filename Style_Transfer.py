@@ -365,8 +365,9 @@ def plot_image_with_postprocess(args,image,name="",fig=None):
 		fig = plt.figure()
 	plt.imshow(postprocess(image))
 	plt.title(name)
-	fig.show()
 	if(args.verbose): print("Plot",name)
+	fig.canvas.flush_events()
+	time.sleep(10**(-6))
 	return(fig)
 
 def get_init_img_wrap(args,output_image_path,image_content):
@@ -381,7 +382,7 @@ def get_init_img_wrap(args,output_image_path,image_content):
 		init_img = get_init_noise_img(image_content,args.init_noise_ratio)
 
 	if(args.plot):
-		plot_image_with_postprocess(args,init_img,"Initial Image")
+		plot_image_with_postprocess(args,init_img.copy(),"Initial Image")
 		
 	return(init_img)
 
@@ -400,10 +401,11 @@ def style_transfer(args,pooling_type='avg'):
 	
 	if(args.plot):
 		plt.ion()
-		plot_image_with_postprocess(args,image_content,"Content Image")
-		plot_image_with_postprocess(args,image_style,"Style Image")
+		plot_image_with_postprocess(args,image_content.copy(),"Content Image")
+		plot_image_with_postprocess(args,image_style.copy(),"Style Image")
 		fig = None # initialization for later
 		
+	#input("Bouh")
 	# TODO add something that reshape the image 
 	t1 = time.time()
 	vgg_layers = get_vgg_layers()
@@ -516,16 +518,16 @@ def style_transfer(args,pooling_type='avg'):
 				if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
 				if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
 				result_img = sess.run(net['input'])
-				if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
+				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
 				result_img_postproc = postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
 			
 		# The last iterations are not made
 		# The End : save the resulting image
 		result_img = sess.run(net['input'])
+		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
 		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path)
-		if(args.plot): plot_image_with_postprocess(args,result_img,"Final Image",fig)
+		scipy.misc.toimage(result_img_postproc).save(output_image_path)		
 		
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
@@ -541,6 +543,7 @@ def style_transfer(args,pooling_type='avg'):
 			print("Close Sess")
 			tend = time.time()
 			print("Computation total for ",tend-tinit," s")
+	if(args.plot): input("Press enter to end and close all")
 
 def main():
 	#global args
@@ -555,7 +558,7 @@ def main_with_option():
 	max_iter = 3
 	print_iter = 1
 	start_from_noise = 1 # True
-	init_noise_ratio = 0.1
+	init_noise_ratio = 0.9
 	content_strengh = 0.001
 	optimizer = 'lbfgs'
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
