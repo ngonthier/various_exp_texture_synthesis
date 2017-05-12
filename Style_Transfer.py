@@ -148,7 +148,7 @@ def sum_content_losses(sess, net, dict_features_repr,M_dict):
 	- the dictionnary of the content image representation thanks to the net
 	"""
 	length_content_layers = float(len(content_layers))
-	weight_help_convergence = 10**9 # Need to multiply by 120000 ?
+	weight_help_convergence = 10**10 # Need to multiply by 120000 ?
 	content_loss = 0
 	for layer, weight in content_layers:
 		M = M_dict[layer[:5]]
@@ -303,7 +303,8 @@ def print_loss(sess,loss_total,content_loss,style_loss):
 	loss_total_tmp = sess.run(loss_total)
 	content_loss_tmp = sess.run(content_loss)
 	style_loss_tmp = sess.run(style_loss)
-	print("Total loss = ",loss_total_tmp," Content loss = ",content_loss_tmp," Style loss = ",style_loss_tmp)
+	strToPrint ='Total loss = {:.2e}, Content loss  = {:.2e}, Style loss  = {:.2e}'.format(loss_total_tmp,content_loss_tmp,style_loss_tmp)
+	print(strToPrint)
 
 def get_init_noise_img(image_content,init_noise_ratio):
 	_,image_h, image_w, number_of_channels = image_content.shape 
@@ -499,7 +500,7 @@ def style_transfer(args,pooling_type='avg'):
 			if(args.verbose): print("Start LBFGS optim")
 			nb_iter = args.max_iter  // args.print_iter
 			max_iterations_local = args.max_iter // nb_iter
-			optimizer_kwargs = {'maxiter': max_iterations_local}
+			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
 				method='L-BFGS-B',options=optimizer_kwargs)			
 			
@@ -555,18 +556,19 @@ def main_with_option():
 	parser = get_parser_args()
 	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 3
-	print_iter = 1
+	max_iter = 1000
+	print_iter = 100
 	start_from_noise = 1 # True
-	init_noise_ratio = 0.9
+	init_noise_ratio = 0.7
 	content_strengh = 0.001
 	optimizer = 'lbfgs'
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
+	maxcor = 10
 	# In order to set the parameter before run the script
 	parser.set_defaults(style_img_name=style_img_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
-		content_strengh=content_strengh,optimizer=optimizer,
+		content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
 		learning_rate=learning_rate)
 	args = parser.parse_args()
 	style_transfer(args)
