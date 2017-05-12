@@ -406,7 +406,6 @@ def style_transfer(args,pooling_type='avg'):
 		plot_image_with_postprocess(args,image_style.copy(),"Style Image")
 		fig = None # initialization for later
 		
-	#input("Bouh")
 	# TODO add something that reshape the image 
 	t1 = time.time()
 	vgg_layers = get_vgg_layers()
