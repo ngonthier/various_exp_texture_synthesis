@@ -224,6 +224,58 @@ def sum_style_stats_loss(sess,net,style_img,M_dict):
 		total_style_loss += style_loss
 	return(total_style_loss)
 
+def loss_crosscor_inter_scale(sess,net,style_img,M_dict,sampling='down'):
+	"""
+	Compute a loss that is the l2 norm of the cross correlation of the previous band
+	The sampling argument is down for downsampling and up for up sampling
+	"""
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9 # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0.
+	sess.run(net['input'].assign(style_img))
+	
+	if(length_style_layers_int > 1):
+		for i in range(length_style_layers_int-1):
+			layer_i, weight_i = style_layers[i]
+			layer_i_1, weight_i_1 = style_layers[i+1]
+			N_i = style_layers_size[layer_i[:5]]
+			N_i_1 = style_layers_size[layer_i_1[:5]]
+			M_i_1 = M_dict[layer_i_1[:5]]
+			#print("M_i,M_i_1,N_i",M_i,M_i_1,N_i)
+			x_i = net[layer_i]
+			x_i_1 = net[layer_i_1]
+			a_i = sess.run(net[layer_i])
+			a_i_1 = sess.run(net[layer_i_1]) # TODO change this is suboptimal because youcompute twice a_i !! 
+			if(sampling=='down'):
+				pool_x = tf.nn.avg_pool(x_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME')
+				pool_a = tf.nn.avg_pool(a_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME')
+				_,height,width,_ = pool_x.shape
+				M_i = tf.to_int32(height*width)
+				print(layer_i,M_i,M_i_1)
+				#assert M_i==M_i_1
+				F_x_i = tf.reshape(pool_x,[M_i,N_i])
+				F_x_i_1 = tf.reshape(x_i_1,[M_i_1,N_i_1])
+				G_x = tf.matmul(tf.transpose(F_x_i),F_x_i_1)
+				G_x /= tf.to_float(M_i)
+				F_a_i = tf.reshape(pool_a,[M_i,N_i])
+				F_a_i_1 = tf.reshape(a_i_1,[M_i_1,N_i_1])
+				G_a = tf.matmul(tf.transpose(F_a_i),F_a_i_1)
+				G_a /= tf.to_float(M_i)
+				#print(tf
+			elif(sampling=='up'):
+				#TODO upsampling
+				print("Not implement yet")
+			style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))  # output = sum(t ** 2) / 2
+			# TODO selon le type de style voulu soit reshape the style image sinon Mcontenu/Mstyle
+			weight= (weight_i + weight_i_1) /2.
+			style_loss *=  weight * weight_help_convergence  / (2.*(N_i*N_i_1)*length_style_layers)
+			total_style_loss += style_loss
+	return(total_style_loss)
+
+
 def gram_matrix(x,N,M):
   """
   Computation of the Gram Matrix for one layer we normalize with the 
@@ -468,9 +520,9 @@ def style_transfer(args,pooling_type='avg'):
 		init_img = get_init_img_wrap(args,output_image_path,image_content)
 		
 		# Propose different way to compute the lossses 
-		loss_total = 0.
-		list_loss =  [loss_total,content_loss,style_loss]
-		list_loss_name =  ['loss_total','content_loss','style_loss']
+		loss_total = tf.constant(0.)
+		list_loss =  []
+		list_loss_name =  []
 		if(args.loss=='Gatys') or (args.loss=='content') or (args.loss=='full'):
 			content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
 			loss_total += content_loss
@@ -486,6 +538,13 @@ def style_transfer(args,pooling_type='avg'):
 			loss_total += style_stats_loss
 			list_loss +=  [style_stats_loss]
 			list_loss_name +=  ['style_stats_loss']
+		if(args.loss=='InterScale') or (args.loss=='full'):
+			 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down')
+			 loss_total += inter_scale_loss
+			 list_loss +=  [inter_scale_loss]
+			 list_loss_name +=  ['inter_scale_loss']
+		list_loss +=  [loss_total]
+		list_loss_name +=  ['loss_total']
 		
 			
 		# Preparation of the assignation operation
@@ -515,7 +574,7 @@ def style_transfer(args,pooling_type='avg'):
 			if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
 			# turn on interactive mode
 			if(args.verbose): print("loss before optimization")
-			if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
+			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 			for i in range(args.max_iter):
 				if(i%args.print_iter==0):
 					if(args.tf_profiler):
@@ -540,7 +599,7 @@ def style_transfer(args,pooling_type='avg'):
 							cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
 							sess.run(assign_op, {placeholder: cliptensor})
 						if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-						if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
+						if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 						if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
 						result_img_postproc = postprocess(result_img)
 						scipy.misc.toimage(result_img_postproc).save(output_image_path)
@@ -558,6 +617,7 @@ def style_transfer(args,pooling_type='avg'):
 			if(args.verbose): print("Start LBFGS optim")
 			nb_iter = args.max_iter  // args.print_iter
 			max_iterations_local = args.max_iter // nb_iter
+			print(max_iterations_local)
 			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
 				method='L-BFGS-B',options=optimizer_kwargs)			
@@ -615,7 +675,7 @@ def main_with_option():
 	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
 	max_iter = 1000
-	print_iter = 100
+	print_iter = 200
 	start_from_noise = 1 # True
 	init_noise_ratio = 0.0
 	content_strengh = 0.001

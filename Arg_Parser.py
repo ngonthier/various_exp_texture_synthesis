@@ -87,7 +87,7 @@ def get_parser_args():
 	
 	# Info on the loss function 
 	parser.add_argument('--loss',  type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments'],
+		choices=['full','Gatys','texture','content','4moments','InterScale'],
 		help='Choice the term of the loss function. (default %(default)s)')
 	
 	return(parser)

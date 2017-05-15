@@ -53,10 +53,10 @@ VGG19_LAYERS_INDICES = {'conv1_1' : 0,'conv1_2' : 2,'conv2_1' : 5,'conv2_2' : 7,
     #'conv1_1','conv2_1', 'conv3_1'
 #)
 
-#VGG19_LAYERS_INTEREST = ('conv1_1' ,'conv1_2','conv2_1' ,'conv2_2' ,
-	#'conv3_1','conv3_2','conv3_3' ,'conv3_4','conv4_1' ,'conv4_2')
+VGG19_LAYERS_INTEREST = ('conv1_1' ,'conv1_2','conv2_1' ,'conv2_2' ,
+	'conv3_1','conv3_2','conv3_3' ,'conv3_4','conv4_1' ,'conv4_2')
 
-VGG19_LAYERS_INTEREST = {'conv1_1'}
+#VGG19_LAYERS_INTEREST = {'conv1_1'}
 
 def hist(values,value_range,nbins=100,dtype=dtypes.float32):
 	nbins_float = float(nbins)
@@ -492,7 +492,7 @@ def plot_compare_pdf(vgg_layers,Matrix,path,name):
 	alpha=0.75
 	#cmkernel = 'gray'
 	cmImg =  'jet'
-	cmkernel = plt.get_cmap('jet')
+	cmkernel = plt.get_cmap('hot')
 	for i in range(len_columns):
 		#print("Features",i)
 		# For each feature
