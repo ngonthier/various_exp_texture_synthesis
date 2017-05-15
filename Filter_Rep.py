@@ -53,10 +53,10 @@ VGG19_LAYERS_INDICES = {'conv1_1' : 0,'conv1_2' : 2,'conv2_1' : 5,'conv2_2' : 7,
     #'conv1_1','conv2_1', 'conv3_1'
 #)
 
-VGG19_LAYERS_INTEREST = ('conv1_1' ,'conv1_2','conv2_1' ,'conv2_2' ,
-	'conv3_1','conv3_2','conv3_3' ,'conv3_4','conv4_1' ,'conv4_2')
+#VGG19_LAYERS_INTEREST = ('conv1_1' ,'conv1_2','conv2_1' ,'conv2_2' ,
+	#'conv3_1','conv3_2','conv3_3' ,'conv3_4','conv4_1' ,'conv4_2')
 
-#VGG19_LAYERS_INTEREST = {'conv1_1'}
+VGG19_LAYERS_INTEREST = {'conv1_1'}
 
 def hist(values,value_range,nbins=100,dtype=dtypes.float32):
 	nbins_float = float(nbins)
@@ -470,7 +470,10 @@ def do_pdf_comparison(args):
 		plot_compare_pdf(vgg_layers,a,directory_path,layer)
 	
 def plot_compare_pdf(vgg_layers,Matrix,path,name):
-	number_img_large_tab =  {'conv1' : 4,'conv2' : 4,'conv3' : 8,'conv4': 16,'conv5' : 16}
+	number_img_large_tab = {'conv1_1' : 1,'conv1_2' : 4,'conv2_1' : 4,'conv2_2' : 8,
+	'conv3_1' : 8,'conv3_2' : 8,'conv3_3' : 16,'conv3_4' : 16,'conv4_1' : 16,
+	'conv4_2' : 16,'conv4_3' : 16,'conv4_4' : 16,'conv5_1' : 16,'conv5_2' : 16,
+	'conv5_3' : 16,'conv5_4' : 16}
 	pltname = path+name+'_comp.pdf'
 	pp = PdfPages(pltname)
 	Matrix = Matrix[0] # Remove first dim
@@ -488,14 +491,15 @@ def plot_compare_pdf(vgg_layers,Matrix,path,name):
 	input_kernel = kernels.shape[2]
 	alpha=0.75
 	#cmkernel = 'gray'
-	cmkernel = plt.get_cmap('hot')
+	cmImg =  'jet'
+	cmkernel = plt.get_cmap('jet')
 	for i in range(len_columns):
-		print("Features",i)
+		#print("Features",i)
 		# For each feature
 		f = plt.figure()
 		gs0 = gridspec.GridSpec(1,3, width_ratios=[0.05,4,4]) # 2 columns
 		axcm = plt.subplot(gs0[0])
-		number_img_large = number_img_large_tab[name[:5]]
+		number_img_large = number_img_large_tab[name]
 		if(not(name=='conv1_1')):
 			gs00 = gridspec.GridSpecFromSubplotSpec(input_kernel//number_img_large, number_img_large, subplot_spec=gs0[1])
 			axes = []
@@ -553,7 +557,7 @@ def plot_compare_pdf(vgg_layers,Matrix,path,name):
 		D,pvalue = stats.kstest(samples, 'gennorm',(beta, loc, scale )) # 1-alph = 0.9 
 		#D,pvalue = stats.stats.ks_2samp(samples,stats.gennorm.rvs(beta,loc=loc,scale=scale,size=len(samples) ))
 		Dcritial = 1.224/math.sqrt(len(samples))
-		print("pvalue",pvalue)
+		#print("pvalue",pvalue)
 		df_Matrix.hist(column = i, bins = 128,ax=ax1,normed=True, histtype='stepfilled', alpha=1) 
 		x = np.linspace(stats.gennorm.ppf(0.005, beta, loc, scale),
                 stats.gennorm.ppf(0.995, beta, loc, scale), 128)
@@ -564,9 +568,7 @@ def plot_compare_pdf(vgg_layers,Matrix,path,name):
 		props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 		ax1.text(0.05, 0.95, textstr, transform=ax1.transAxes, fontsize=6,
 			verticalalignment='top', bbox=props)
-		ax2.imshow(Matrix[:,:,i], cmap='gray')
-		#ax2.set_xticklabels([])
-		#ax2.set_yticklabels([])
+		ax2.matshow(Matrix[:,:,i], cmap=cmImg)
 		ax2.axis('off')
 		titre = 'Kernel {} with mean = {:.2e} in range [{:.2e},{:.2e}] and bias = {:.2e}'.format(i,mean_kernel,vmin,vmax,bias_i)
 		plt.suptitle(titre)
