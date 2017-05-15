@@ -85,4 +85,9 @@ def get_parser_args():
 	parser.add_argument('--pooling_type', type=str,default='avg',
     choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
 	
+	# Info on the loss function 
+	parser.add_argument('--loss',  type=str,default='full',
+		choices=['full','Gatys','texture','content','4moments'],
+		help='Choice the term of the loss function. (default %(default)s)')
+	
 	return(parser)

@@ -188,6 +188,42 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 		total_style_loss += style_loss
 	return(total_style_loss)
 
+def compute_4_moments(x):
+	"""
+	Compute the 4 first moment of the features (response of the kernel) 
+	of a 4D Tensor
+	"""
+	mean_x = tf.reduce_mean(x, axis=[0,1,2])
+	variance_x = tf.subtract(tf.reduce_mean(tf.pow(x,2), axis=[0,1,2]),mean_x)
+	sig_x = tf.sqrt(variance_x)
+	skewness_x = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),3), axis=[0,1,2])
+	kurtosis_x = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),4), axis=[0,1,2])
+	return(mean_x,variance_x,skewness_x,kurtosis_x)
+		
+		
+def sum_style_stats_loss(sess,net,style_img,M_dict):
+	"""
+	Compute a loss that is the l2 norm of the 4th moment of the optimization
+	"""
+	length_style_layers = float(len(style_layers))
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9 # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	sess.run(net['input'].assign(style_img))
+	for layer, weight in style_layers:
+		# For one layer
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		x = net[layer] # response to the layer 
+		mean_x,variance_x,skewness_x,kurtosis_x = compute_4_moments(x)
+		mean_a,variance_a,skewness_a,kurtosis_a = compute_4_moments(a)
+		style_loss = tf.nn.l2_loss(tf.subtract(mean_x,mean_a)) + tf.nn.l2_loss(tf.subtract(variance_x,variance_a)) + tf.nn.l2_loss(tf.subtract(skewness_x,skewness_a)) + tf.nn.l2_loss(tf.subtract(kurtosis_x,kurtosis_a))
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	return(total_style_loss)
+
 def gram_matrix(x,N,M):
   """
   Computation of the Gram Matrix for one layer we normalize with the 
@@ -298,6 +334,13 @@ def get_M_dict(image_h,image_w):
 		image_w_tmp = math.ceil(image_w_tmp / 2)
 		M = image_h_tmp*image_w_tmp
 	return(M_dict)	
+	
+def print_loss_tab(sess,list_loss,list_loss_name):
+	strToPrint = ''
+	for loss,loss_name in zip(list_loss,list_loss_name):
+		loss_tmp = sess.run(loss)
+		strToPrint +=  loss_name + ' = {:.2e}, '.format(loss_tmp)
+	print(strToPrint)
 	
 def print_loss(sess,loss_total,content_loss,style_loss):
 	loss_total_tmp = sess.run(loss_total)
@@ -425,10 +468,26 @@ def style_transfer(args,pooling_type='avg'):
 		init_img = get_init_img_wrap(args,output_image_path,image_content)
 		
 		# Propose different way to compute the lossses 
-		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
-		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
-		loss_total =  content_loss + style_loss
+		loss_total = 0.
+		list_loss =  [loss_total,content_loss,style_loss]
+		list_loss_name =  ['loss_total','content_loss','style_loss']
+		if(args.loss=='Gatys') or (args.loss=='content') or (args.loss=='full'):
+			content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
+			loss_total += content_loss
+			list_loss +=  [content_loss]
+			list_loss_name +=  ['content_loss']
+		if(args.loss=='Gatys') or (args.loss=='texture') or (args.loss=='full'):
+			style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
+			loss_total += style_loss
+			list_loss +=  [style_loss]
+			list_loss_name +=  ['style_loss']
+		if(args.loss=='4moments') or (args.loss=='full'):
+			style_stats_loss = sum_style_stats_loss(sess,net,image_style,M_dict)
+			loss_total += style_stats_loss
+			list_loss +=  [style_stats_loss]
+			list_loss_name +=  ['style_stats_loss']
 		
+			
 		# Preparation of the assignation operation
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
 		placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
@@ -510,13 +569,13 @@ def style_transfer(args,pooling_type='avg'):
 			if(args.verbose): print("sess.graph.finalize()") 
 			
 			if(args.verbose): print("loss before optimization")
-			if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
+			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 			for i in range(nb_iter):
 				t3 =  time.time()
 				optimizer.minimize(sess)
 				t4 = time.time()
 				if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-				if(args.verbose): print_loss(sess,loss_total,content_loss,style_loss)
+				if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 				result_img = sess.run(net['input'])
 				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
 				result_img_postproc = postprocess(result_img)
@@ -558,7 +617,7 @@ def main_with_option():
 	max_iter = 1000
 	print_iter = 100
 	start_from_noise = 1 # True
-	init_noise_ratio = 0.7
+	init_noise_ratio = 0.0
 	content_strengh = 0.001
 	optimizer = 'lbfgs'
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
