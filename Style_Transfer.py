@@ -193,6 +193,7 @@ def compute_4_moments(x):
 	Compute the 4 first moment of the features (response of the kernel) 
 	of a 4D Tensor
 	"""
+	# TODO : this is biased moment !! 
 	mean_x = tf.reduce_mean(x, axis=[0,1,2])
 	variance_x = tf.subtract(tf.reduce_mean(tf.pow(x,2), axis=[0,1,2]),mean_x)
 	sig_x = tf.sqrt(variance_x)
