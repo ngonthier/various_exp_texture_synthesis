@@ -89,5 +89,9 @@ def get_parser_args():
 	parser.add_argument('--loss',  type=str,default='full',
 		choices=['full','Gatys','texture','content','4moments','InterScale'],
 		help='Choice the term of the loss function. (default %(default)s)')
+		
+	parser.add_argument('--sampling',  type=str,default='down',
+		choices=['down','up'],
+		help='Sampling parameter in the inter scale loss function. (default %(default)s)')
 	
 	return(parser)

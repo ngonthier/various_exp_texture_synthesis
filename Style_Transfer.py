@@ -22,6 +22,7 @@ import pickle
 import math
 from tensorflow.python.client import timeline
 from Arg_Parser import get_parser_args 
+import utils
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -74,7 +75,7 @@ def get_vgg_layers():
 		raise
 	return(vgg_layers)
 
-def net_preloaded(vgg_layers, input_image,pooling_type='avg'):
+def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 	"""
 	This function read the vgg layers and create the net architecture
 	We need the input image to know the dimension of the input layer of the net
@@ -95,18 +96,19 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg'):
 			kernels = tf.constant(np.transpose(kernels, (1, 0, 2, 3)))
 			# TODO check if the convolution is in the right order
 			bias = tf.constant(bias.reshape(-1))
-			current = _conv_layer(current, kernels, bias,name) 
+			current = _conv_layer(current, kernels, bias,name,padding) 
 			# Update the  variable named current to have the right size
 		elif(kind == 'relu'):
 			current = tf.nn.relu(current,name=name)
 		elif(kind == 'pool'):
-			current = _pool_layer(current,name)
+			current = _pool_layer(current,name,pooling_type,padding)
 		net[name] = current
+		#print(name,current.shape)
 
 	assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right 
 	return(net)
 
-def _conv_layer(input, weights, bias,name):
+def _conv_layer(input, weights, bias,name,padding='SAME'):
 	"""
 	This function create a conv2d with the already known weight and bias
 	
@@ -117,26 +119,41 @@ def _conv_layer(input, weights, bias,name):
 	a filter / kernel tensor of shape 
 	[filter_height, filter_width, in_channels, out_channels]
 	"""
-	conv = tf.nn.conv2d(input, weights, strides=(1, 1, 1, 1),
-			padding='SAME',name=name)
+	if(padding=='SAME'):
+		conv = tf.nn.conv2d(input, weights, strides=(1, 1, 1, 1),
+			padding=padding,name=name)
+	elif(padding=='VALID'):
+		input = get_img_2pixels_more(input)
+		conv = tf.nn.conv2d(input, weights, strides=(1, 1, 1, 1),
+			padding='VALID',name=name)
 	# We need to impose the weights as constant in order to avoid their modification
 	# when we will perform the optimization
 	return(tf.nn.bias_add(conv, bias))
 
+def get_img_2pixels_more(input):
+	new_input = tf.concat([input,input[:,0:2,:,:]],axis=1)
+	new_input = tf.concat([new_input,new_input[:,:,0:2,:]],axis=2)
+	return(new_input)
 
-def _pool_layer(input,name,pooling_type='avg'):
+def _pool_layer(input,name,pooling_type='avg',padding='SAME'):
 	"""
 	Average pooling on windows 2*2 with stride of 2
 	input is a 4D Tensor of shape [batch, height, width, channels]
 	Each pooling op uses rectangular windows of size ksize separated by offset 
 	strides in the avg_pool function 
 	"""
+	if(padding== 'VALID'): # Test if paire ou impaire !!! 
+		_,h,w,_ = input.shape
+		if not(h%2==0):
+			input = tf.concat([input,input[:,0:2,:,:]],axis=1)
+		if not(w%2==0):
+			input = tf.concat([input,input[:,:,0:2,:]],axis=2)
 	if pooling_type == 'avg':
 		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
-				padding='SAME',name=name) 
+				padding=padding,name=name) 
 	elif pooling_type == 'max':
 		pool = tf.nn.max_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
-				padding='SAME',name=name) 
+				padding=padding,name=name) 
 	return(pool)
 
 def sum_content_losses(sess, net, dict_features_repr,M_dict):
@@ -225,7 +242,7 @@ def sum_style_stats_loss(sess,net,style_img,M_dict):
 		total_style_loss += style_loss
 	return(total_style_loss)
 
-def loss_crosscor_inter_scale(sess,net,style_img,M_dict,sampling='down'):
+def loss_crosscor_inter_scale(sess,net,style_img,M_dict,sampling='down',pooling_type='avg'):
 	"""
 	Compute a loss that is the l2 norm of the cross correlation of the previous band
 	The sampling argument is down for downsampling and up for up sampling
@@ -237,7 +254,6 @@ def loss_crosscor_inter_scale(sess,net,style_img,M_dict,sampling='down'):
 	# Because the function is pretty flat 
 	total_style_loss = 0.
 	sess.run(net['input'].assign(style_img))
-	
 	if(length_style_layers_int > 1):
 		for i in range(length_style_layers_int-1):
 			layer_i, weight_i = style_layers[i]
@@ -251,24 +267,40 @@ def loss_crosscor_inter_scale(sess,net,style_img,M_dict,sampling='down'):
 			a_i = sess.run(net[layer_i])
 			a_i_1 = sess.run(net[layer_i_1]) # TODO change this is suboptimal because youcompute twice a_i !! 
 			if(sampling=='down'):
-				pool_x = tf.nn.avg_pool(x_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME')
-				pool_a = tf.nn.avg_pool(a_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME')
-				_,height,width,_ = pool_x.shape
+				if(pooling_type=='avg'):
+					x_i = tf.nn.avg_pool(x_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME')
+					a_i = tf.nn.avg_pool(a_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME')
+				elif(pooling_type == 'max'):
+					x_i = tf.nn.max_pool(x_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME') 
+					a_i = tf.nn.max_pool(a_i, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),padding='SAME') 
+				_,height,width,_ = x_i.shape
 				M_i = tf.to_int32(height*width)
-				print(layer_i,M_i,M_i_1)
-				#assert M_i==M_i_1
-				F_x_i = tf.reshape(pool_x,[M_i,N_i])
-				F_x_i_1 = tf.reshape(x_i_1,[M_i_1,N_i_1])
-				G_x = tf.matmul(tf.transpose(F_x_i),F_x_i_1)
-				G_x /= tf.to_float(M_i)
-				F_a_i = tf.reshape(pool_a,[M_i,N_i])
-				F_a_i_1 = tf.reshape(a_i_1,[M_i_1,N_i_1])
-				G_a = tf.matmul(tf.transpose(F_a_i),F_a_i_1)
-				G_a /= tf.to_float(M_i)
-				#print(tf
 			elif(sampling=='up'):
-				#TODO upsampling
-				print("Not implement yet")
+				_,new_height,new_width,_ = x_i.shape
+				_,height,_,_ = x_i_1.shape
+				if(layer_i[:5]==layer_i_1[:5]):
+					factor = 1 # Not upsample
+				else:
+					factor = 2
+				upsample_filter_np = utils.bilinear_upsample_weights(factor,N_i_1)
+				x_i_1 = tf.nn.conv2d_transpose(x_i_1, upsample_filter_np,
+						output_shape=[1, tf.to_int32(new_height), tf.to_int32(new_width), N_i_1],
+						strides=[1, factor, factor, 1])
+				a_i_1 = tf.nn.conv2d_transpose(a_i_1, upsample_filter_np,
+						output_shape=[1, tf.to_int32(new_height), tf.to_int32(new_width), N_i_1],
+						strides=[1, factor, factor, 1])
+				M_i = tf.to_int32(new_height*new_width)
+				M_i_1 = M_i
+			
+			print("layer_i",layer_i,"x_i.shape",x_i.shape,"x_i_1.shape",x_i_1.shape)
+			F_x_i = tf.reshape(x_i,[M_i,N_i])
+			F_x_i_1 = tf.reshape(x_i_1,[M_i_1,N_i_1])
+			G_x = tf.matmul(tf.transpose(F_x_i),F_x_i_1)
+			G_x /= tf.to_float(M_i)
+			F_a_i = tf.reshape(a_i,[M_i,N_i])
+			F_a_i_1 = tf.reshape(a_i_1,[M_i_1,N_i_1])
+			G_a = tf.matmul(tf.transpose(F_a_i),F_a_i_1)
+			G_a /= tf.to_float(M_i)
 			style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))  # output = sum(t ** 2) / 2
 			# TODO selon le type de style voulu soit reshape the style image sinon Mcontenu/Mstyle
 			weight= (weight_i + weight_i_1) /2.
@@ -297,12 +329,12 @@ def gram_matrix(x,N,M):
   # That come from Control paper
   return(G)
  
-def get_Gram_matrix(vgg_layers,image_style,pooling_type):
+def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
 	"""
 	Computation of all the Gram matrices from one image thanks to the 
 	vgg_layers
 	"""
-	net = net_preloaded(vgg_layers, image_style,pooling_type) # net for the style image
+	net = net_preloaded(vgg_layers, image_style,pooling_type,padding) # net for the style image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_style))
 	dict_gram = {}
@@ -318,12 +350,12 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type):
 	tf.reset_default_graph() # To clear all operation and variable
 	return(dict_gram)        
 		 
-def get_features_repr(vgg_layers,image_content,pooling_type):
+def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'):
 	"""
 	Compute the image content representation values according to the vgg
 	19 net
 	"""
-	net = net_preloaded(vgg_layers, image_content,pooling_type) # net for the content image
+	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # net for the content image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_content))
 	dict_features_repr = {}
@@ -386,7 +418,7 @@ def get_M_dict(image_h,image_w):
 		image_h_tmp =  math.ceil(image_h_tmp / 2)
 		image_w_tmp = math.ceil(image_w_tmp / 2)
 		M = image_h_tmp*image_w_tmp
-	return(M_dict)	
+	return(M_dict)  
 	
 def print_loss_tab(sess,list_loss,list_loss_name):
 	strToPrint = ''
@@ -430,27 +462,27 @@ def get_lbfgs_bnds(init_img):
 		print("Erreur a venir")
 	return(bnds)
 
-def get_Gram_matrix_wrap(args,vgg_layers,image_style):
+def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding='SAME'):
 	_,image_h_art, image_w_art, _ = image_style.shape
-	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+".pkl"
+	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
 	try:
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
 	except(FileNotFoundError):
 		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
-		dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type)
+		dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding)
 		with open(data_style_path, 'wb') as output_gram_pkl:
 			pickle.dump(dict_gram,output_gram_pkl)
 		if(args.verbose): print("Pickle dumped")
 	return(dict_gram)
 
-def get_features_repr_wrap(args,vgg_layers,image_content):
+def get_features_repr_wrap(args,vgg_layers,image_content,pooling_type='avg',padding='SAME'):
 	_,image_h, image_w, number_of_channels = image_content.shape 
-	data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+".pkl"
+	data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
 	try:
 		dict_features_repr = pickle.load(open(data_content_path, 'rb'))
 	except(FileNotFoundError):
 		if(args.verbose): print("The dictionnary of features representation of content image doesn't exist, we will generate it.")
-		dict_features_repr = get_features_repr(vgg_layers,image_content,pooling_type)
+		dict_features_repr = get_features_repr(vgg_layers,image_content,pooling_type,padding)
 		with open(data_content_path, 'wb') as output_content_pkl:
 			pickle.dump(dict_features_repr,output_content_pkl)
 		if(args.verbose): print("Pickle dumped")
@@ -483,7 +515,7 @@ def get_init_img_wrap(args,output_image_path,image_content):
 		
 	return(init_img)
 
-def style_transfer(args,pooling_type='avg'):
+def style_transfer(args,pooling_type='avg',padding='VALID'):
 	if args.verbose:
 		tinit = time.time()
 		print("verbosity turned on")
@@ -507,10 +539,10 @@ def style_transfer(args,pooling_type='avg'):
 	vgg_layers = get_vgg_layers()
 	
 	# Precomputation Phase :
-	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style)
-	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content)
+	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
+	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
-	net = net_preloaded(vgg_layers, image_content,pooling_type) # The output image as the same size as the content one
+	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
 	
 	t2 = time.time()
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
@@ -540,7 +572,7 @@ def style_transfer(args,pooling_type='avg'):
 			list_loss +=  [style_stats_loss]
 			list_loss_name +=  ['style_stats_loss']
 		if(args.loss=='InterScale') or (args.loss=='full'):
-			 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down')
+			 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='up',pooling_type=pooling_type)
 			 loss_total += inter_scale_loss
 			 list_loss +=  [inter_scale_loss]
 			 list_loss_name +=  ['inter_scale_loss']
@@ -558,7 +590,7 @@ def style_transfer(args,pooling_type='avg'):
 
 		if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
 			optimizer = tf.train.AdamOptimizer(args.learning_rate)
-		elif(args.optimizer=='GD'): # Gradient Descente	
+		elif(args.optimizer=='GD'): # Gradient Descente 
 			if((args.learning_rate > 1) and (args.verbose)): print("We recommande you to use a smaller value of learning rate when using the GD algo")
 			optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
 			
@@ -615,14 +647,13 @@ def style_transfer(args,pooling_type='avg'):
 			# LBFGS seem to require more memory than Adam optimizer
 			
 			bnds = get_lbfgs_bnds(init_img)
-			if(args.verbose): print("Start LBFGS optim")
+			
 			nb_iter = args.max_iter  // args.print_iter
 			max_iterations_local = args.max_iter // nb_iter
-			print(max_iterations_local)
+			if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
 			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
-				method='L-BFGS-B',options=optimizer_kwargs)			
-			
+				method='L-BFGS-B',options=optimizer_kwargs)         
 			sess.run(tf.global_variables_initializer())
 			sess.run(assign_op, {placeholder: init_img})
 						
@@ -647,7 +678,7 @@ def style_transfer(args,pooling_type='avg'):
 		result_img = sess.run(net['input'])
 		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
 		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path)		
+		scipy.misc.toimage(result_img_postproc).save(output_image_path)     
 		
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
@@ -675,25 +706,40 @@ def main_with_option():
 	parser = get_parser_args()
 	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 1000
+	max_iter = 10000
 	print_iter = 200
 	start_from_noise = 1 # True
-	init_noise_ratio = 0.0
+	init_noise_ratio = 1.0
 	content_strengh = 0.001
 	optimizer = 'lbfgs'
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
 	maxcor = 10
+	sampling = 'up'
 	# In order to set the parameter before run the script
 	parser.set_defaults(style_img_name=style_img_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
 		content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
-		learning_rate=learning_rate)
+		learning_rate=learning_rate,sampling=sampling)
 	args = parser.parse_args()
-	style_transfer(args)
+	pooling_type='avg'
+	padding='SAME'
+	style_transfer(args,pooling_type,padding)
 
 if __name__ == '__main__':
 	main_with_option()
+	#plt.ion()
+	#parser = get_parser_args()
+	#args = parser.parse_args()
+	#image_style_path = args.img_folder + args.style_img_name + args.img_ext
+	#image_style = preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
+	#plot_image_with_postprocess(args,image_style.copy(),"Input Image")
+	#sess = tf.Session()
+	#augmented = sess.run(get_img_2pixels_more(image_style))
+	#print(image_style.shape,augmented.shape)
+	#plot_image_with_postprocess(args,augmented.copy(),"augmented Image")
+	#sess.close()
+	#input("Press Enter to continue...")
 
 	
 	
