@@ -49,12 +49,12 @@ VGG19_LAYERS_INDICES = {'conv1_1' : 0,'conv1_2' : 2,'conv2_1' : 5,'conv2_2' : 7,
 	'conv4_2' : 21,'conv4_3' : 23,'conv4_4' : 25,'conv5_1' : 28,'conv5_2' : 30,
 	'conv5_3' : 32,'conv5_4' : 34}
 
-#VGG19_LAYERS_INTEREST = (
-    #'conv1_1','conv2_1', 'conv3_1'
-#)
+VGG19_LAYERS_INTEREST = (
+    'conv1_1','conv2_1', 'conv3_1'
+)
 
-VGG19_LAYERS_INTEREST = ('conv1_1' ,'conv1_2','conv2_1' ,'conv2_2' ,
-	'conv3_1','conv3_2','conv3_3' ,'conv3_4','conv4_1' ,'conv4_2')
+#VGG19_LAYERS_INTEREST = ('conv1_1' ,'conv1_2','conv2_1' ,'conv2_2' ,
+	#'conv3_1','conv3_2','conv3_3' ,'conv3_4','conv4_1' ,'conv4_2')
 
 #VGG19_LAYERS_INTEREST = {'conv1_1'}
 
@@ -600,7 +600,7 @@ def main_distrib():
 
 if __name__ == '__main__':
 	parser = get_parser_args()
-	style_img_name = "StarryNight"
+	style_img_name = "Nymphea_Big"
 	output_img_name = "Gen"
 	max_iter = 10
 	print_iter = 1

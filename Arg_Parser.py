@@ -87,11 +87,14 @@ def get_parser_args():
 	
 	# Info on the loss function 
 	parser.add_argument('--loss',  type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments','InterScale'],
+		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','auto'],
 		help='Choice the term of the loss function. (default %(default)s)')
 		
 	parser.add_argument('--sampling',  type=str,default='down',
 		choices=['down','up'],
 		help='Sampling parameter in the inter scale loss function. (default %(default)s)')
+		
+	parser.add_argument('--n',  type=int,default=4,
+		help='Number of moments used in nmoments loss function. (default %(default)s)')
 	
 	return(parser)

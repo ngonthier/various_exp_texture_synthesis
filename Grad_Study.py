@@ -300,8 +300,6 @@ def grad_computation(args):
 				
 			sess.run(train)
 		
-
-		
 	except:
 		print("Error")
 		raise 

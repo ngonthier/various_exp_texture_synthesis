@@ -23,6 +23,8 @@ import math
 from tensorflow.python.client import timeline
 from Arg_Parser import get_parser_args 
 import utils
+from numpy.fft import fft2, ifft2
+#import operator
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -207,7 +209,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 
 def compute_4_moments(x):
 	"""
-	Compute the 4 first moment of the features (response of the kernel) 
+	Compute the 4 first moments of the features (response of the kernel) 
 	of a 4D Tensor
 	"""
 	# TODO : this is biased moment !! 
@@ -218,6 +220,24 @@ def compute_4_moments(x):
 	kurtosis_x = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),4), axis=[0,1,2])
 	return(mean_x,variance_x,skewness_x,kurtosis_x)
 		
+		
+def compute_n_moments(x,n):
+	"""
+	Compute the n first moments of the features (response of the kernel)
+	"""
+	assert(n > 0)
+	mean_x = tf.reduce_mean(x, axis=[0,1,2])
+	list_of_moments = [mean_x]
+	if(n>1):
+		variance_x = tf.subtract(tf.reduce_mean(tf.pow(x,2), axis=[0,1,2]),mean_x)
+		list_of_moments += [variance_x]
+		sig_x = tf.sqrt(variance_x)
+	if(n>2):
+		for r in range(3,n+1,1):
+			moment_r = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),r), axis=[0,1,2])
+			# TODO : change that to some thing more optimal : pb computation of the power several times
+			list_of_moments += [moment_r]
+	return(list_of_moments)
 		
 def sum_style_stats_loss(sess,net,style_img,M_dict):
 	"""
@@ -242,11 +262,35 @@ def sum_style_stats_loss(sess,net,style_img,M_dict):
 		total_style_loss += style_loss
 	return(total_style_loss)
 
+def loss_n_moments(sess,net,style_img,M_dict,n):
+	"""
+	Compute a loss that is the l2 norm of the 4th moment of the optimization
+	"""
+	length_style_layers = float(len(style_layers))
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9 # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	sess.run(net['input'].assign(style_img))
+	for layer, weight in style_layers:
+		# For one layer
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		x = net[layer] # response to the layer 
+		moments_x = compute_n_moments(x,n)
+		moments_a = compute_n_moments(a,n)
+		style_loss = sum(map(tf.nn.l2_loss,map(tf.subtract, moments_x,moments_a)))
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	return(total_style_loss)
+
 def loss_crosscor_inter_scale(sess,net,style_img,M_dict,sampling='down',pooling_type='avg'):
 	"""
 	Compute a loss that is the l2 norm of the cross correlation of the previous band
 	The sampling argument is down for downsampling and up for up sampling
 	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
 	length_style_layers_int = len(style_layers)
 	length_style_layers = float(length_style_layers_int)
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
@@ -308,7 +352,48 @@ def loss_crosscor_inter_scale(sess,net,style_img,M_dict,sampling='down',pooling_
 			total_style_loss += style_loss
 	return(total_style_loss)
 
+def loss_autocorr(sess,net,style_img,M_dict):
+	"""
+	Computation of the autocorrelation of the filter 
+	!!! Don't work need to be change !!!
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9 # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0.
 
+	x_temp = {}
+	for layer, weight in style_layers:
+		# For one layer
+		M = M_dict[layer[:5]]
+		x = net[layer].eval(session=sess)
+		R_x = (ifft2(fft2(x) * fft2(x).conj()).real)/M
+		x_temp[layer]  = R_x
+	sess.run(net['input'].assign(style_img))	
+	for layer, weight in style_layers:
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		R_a = (ifft2(fft2(a) * fft2(a).conj()).real)/M
+		R_x = x_temp[layer]
+		#F_x = tf.fft2d(tf.complex(x,0.))
+		#print(F_x.shape)
+		#R_x = tf.real(tf.multiply(F_x,tf.conj(F_x)))
+		#R_x /= tf.to_float(M)
+		#print(R_x.shape)
+		#F_a = tf.fft2d(tf.complex(a,0.))
+		#R_a = tf.real(tf.multiply(F_a,tf.conj(F_a)))
+		#R_a /= tf.to_float(M)
+		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	#print(total_style_loss)
+	return(total_style_loss)
+		
 def gram_matrix(x,N,M):
   """
   Computation of the Gram Matrix for one layer we normalize with the 
@@ -566,16 +651,28 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 			loss_total += style_loss
 			list_loss +=  [style_loss]
 			list_loss_name +=  ['style_loss']
-		if(args.loss=='4moments') or (args.loss=='full'):
+		if(args.loss=='4moments'):
 			style_stats_loss = sum_style_stats_loss(sess,net,image_style,M_dict)
 			loss_total += style_stats_loss
 			list_loss +=  [style_stats_loss]
 			list_loss_name +=  ['style_stats_loss']
 		if(args.loss=='InterScale') or (args.loss=='full'):
-			 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='up',pooling_type=pooling_type)
+			 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down',pooling_type=pooling_type)
 			 loss_total += inter_scale_loss
 			 list_loss +=  [inter_scale_loss]
 			 list_loss_name +=  ['inter_scale_loss']
+		if(args.loss=='nmoments') or (args.loss=='full'):
+			loss_n_moments_val = loss_n_moments(sess,net,image_style,M_dict,args.n)
+			loss_total += loss_n_moments_val
+			list_loss +=  [loss_n_moments_val]
+			list_loss_name +=  ['loss_n_moments_val with n = '+str(args.n)]	 
+		if(args.loss=='auto'):
+			 print("The FFT2D function doesn't work in tensorflow ! Bug")
+			 return(0)
+			 #autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
+			 #loss_total += autocorr_loss
+			 #list_loss +=  [autocorr_loss]
+			 #list_loss_name +=  ['autocorr_loss']	 
 		list_loss +=  [loss_total]
 		list_loss_name +=  ['loss_total']
 		
@@ -706,8 +803,8 @@ def main_with_option():
 	parser = get_parser_args()
 	style_img_name = "StarryNight"
 	content_img_name = "Louvre"
-	max_iter = 10000
-	print_iter = 200
+	max_iter = 1000
+	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0
 	content_strengh = 0.001
