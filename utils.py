@@ -14,8 +14,10 @@ http://warmspringwinds.github.io/tensorflow/tf-slim/2016/11/22/upsampling-and-im
 from __future__ import division
 import numpy as np
 import tensorflow as tf
-
-
+import os
+import time
+from pathlib import Path
+	
 def get_kernel_size(factor):
 	"""
 	Find the kernel size given the desired factor of upsampling.
@@ -87,6 +89,22 @@ def upsample_tf(factor, input_img):
 	
 	return(final_result.squeeze())
 	
+def create_param_id_file_and_dir(param_dir):
+	ts = time.time()
+	#find if id already exists
+	param_name = str(ts)
+	# extra_id = 0
+	# while Path(param_dir+param_name+".pickle").is_file():
+	#     param_name=str(ts)+"."+str(extra_id)
+	#     extra_id=extra_id+1
+	path =param_dir+param_name
+	os.mkdir(path)
+	return(path)
+	
+def save_args(args,path):
+	# TODO : a faire
+	return(0)
+
 if __name__ == '__main__':
 	from numpy import ogrid, repeat, newaxis
 

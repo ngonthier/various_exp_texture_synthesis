@@ -281,7 +281,7 @@ def loss_n_moments(sess,net,style_img,M_dict,n):
 		moments_x = compute_n_moments(x,n)
 		moments_a = compute_n_moments(a,n)
 		style_loss = sum(map(tf.nn.l2_loss,map(tf.subtract, moments_x,moments_a)))
-		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*(M**2)*length_style_layers) # Normalized by the number of pixels M and the number of features N
 		total_style_loss += style_loss
 	return(total_style_loss)
 
@@ -600,16 +600,39 @@ def get_init_img_wrap(args,output_image_path,image_content):
 		
 	return(init_img)
 
+def load_img(args,img_name):
+	"""
+	This function load the image and convert it to a numpy array and do 
+	the preprocessing
+	"""
+	image_path = args.img_folder + img_name +args.img_ext
+	new_img_ext = args.img_ext
+	try:
+		img = scipy.misc.imread(image_path)  # Float between 0 and 255
+	except IOError:
+		if(args.verbose): print("Exception when we try to open the image, try with a different extension format")
+		if(args.img_ext==".jpg"):
+			new_img_ext = ".png"
+		elif(args.img_ext==".png"):
+			new_img_ext = ".jpg"
+		try:
+			image_path = args.img_folder + img_name +new_img_ext # Try the new path
+			img = scipy.misc.imread(image_path)
+			if(args.verbose): print("The image have been sucessfully loaded with a different extension")
+		except IOError:
+			if(args.verbose): print("Exception when we try to open the image, we already test the 2 differents extension.")
+			raise
+	img = preprocess(img.astype('float32'))
+	return(img)
+
 def style_transfer(args,pooling_type='avg',padding='VALID'):
 	if args.verbose:
 		tinit = time.time()
 		print("verbosity turned on")
 	
 	output_image_path = args.img_folder + args.output_img_name +args.img_ext
-	image_content_path = args.img_folder + args.content_img_name +args.img_ext
-	image_style_path = args.img_folder + args.style_img_name + args.img_ext
-	image_content = preprocess(scipy.misc.imread(image_content_path).astype('float32')) # Float between 0 and 255
-	image_style = preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
+	image_content = load_img(args,args.content_img_name)
+	image_style = load_img(args,args.style_img_name)
 	_,image_h, image_w, number_of_channels = image_content.shape 
 	M_dict = get_M_dict(image_h,image_w)
 	
@@ -657,7 +680,7 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 			list_loss +=  [style_stats_loss]
 			list_loss_name +=  ['style_stats_loss']
 		if(args.loss=='InterScale') or (args.loss=='full'):
-			 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down',pooling_type=pooling_type)
+			 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling=args.sampling,pooling_type=pooling_type)
 			 loss_total += inter_scale_loss
 			 list_loss +=  [inter_scale_loss]
 			 list_loss_name +=  ['inter_scale_loss']
@@ -665,9 +688,9 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 			loss_n_moments_val = loss_n_moments(sess,net,image_style,M_dict,args.n)
 			loss_total += loss_n_moments_val
 			list_loss +=  [loss_n_moments_val]
-			list_loss_name +=  ['loss_n_moments_val with n = '+str(args.n)]	 
-		if(args.loss=='auto'):
-			 print("The FFT2D function doesn't work in tensorflow ! Bug")
+			list_loss_name +=  ['loss_n_moments_val with (n = '+str(args.n)+')']	 
+		if(args.loss=='autocorr'):
+			 print("The FFT2D function doesn't work in tensorflow ! Bug, solution alternation pas encore implementer")
 			 return(0)
 			 #autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
 			 #loss_total += autocorr_loss
@@ -801,10 +824,11 @@ def main():
 
 def main_with_option():
 	parser = get_parser_args()
-	style_img_name = "StarryNight"
+	#style_img_name = "StarryNight"
+	style_img_name = "GrungeMarbled0021_S"
 	content_img_name = "Louvre"
 	max_iter = 1000
-	print_iter = 100
+	print_iter = 200
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0
 	content_strengh = 0.001

@@ -3,7 +3,7 @@
 """
 Created on Fri Apr 28 
 
-Argument parser for the function
+Arguments parser for the function
 
 @author: nicolas
 """
@@ -43,8 +43,8 @@ def get_parser_args():
 		help='Name of the data folder')
 	
 	# Extension of the image
-	parser.add_argument('--img_ext',  type=str,default='.jpg',
-		help='Extension of the image')
+	parser.add_argument('--img_ext',  type=str,default='.png',
+		choices=['.jpg','.png'],help='Extension of the image')
 		
 	# Infomartion about the optimization
 	parser.add_argument('--optimizer',  type=str,default='lbfgs',
@@ -87,7 +87,7 @@ def get_parser_args():
 	
 	# Info on the loss function 
 	parser.add_argument('--loss',  type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','auto'],
+		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr'],
 		help='Choice the term of the loss function. (default %(default)s)')
 		
 	parser.add_argument('--sampling',  type=str,default='down',
