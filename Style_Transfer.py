@@ -24,7 +24,7 @@ from tensorflow.python.client import timeline
 from Arg_Parser import get_parser_args 
 import utils
 from numpy.fft import fft2, ifft2
-#import operator
+from skimage.color import gray2rgb
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -234,7 +234,7 @@ def compute_n_moments(x,n):
 		sig_x = tf.sqrt(variance_x)
 	if(n>2):
 		for r in range(3,n+1,1):
-			moment_r = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),r), axis=[0,1,2])
+			moment_r = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),r), axis=[0,1,2]) # Centré/réduit
 			# TODO : change that to some thing more optimal : pb computation of the power several times
 			list_of_moments += [moment_r]
 	return(list_of_moments)
@@ -281,7 +281,7 @@ def loss_n_moments(sess,net,style_img,M_dict,n):
 		moments_x = compute_n_moments(x,n)
 		moments_a = compute_n_moments(a,n)
 		style_loss = sum(map(tf.nn.l2_loss,map(tf.subtract, moments_x,moments_a)))
-		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*(M**2)*length_style_layers) # Normalized by the number of pixels M and the number of features N
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers) # Normalized by the number of features N
 		total_style_loss += style_loss
 	return(total_style_loss)
 
@@ -467,8 +467,10 @@ def preprocess(img):
 	# The input images should be zero-centered by mean pixel (rather than mean image) 
 	# subtraction. Namely, the following BGR values should be subtracted: [103.939, 116.779, 123.68].
 	# From https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md
-	
-	img = img[...,::-1] # rgb to bgr
+	try:
+		img = img[...,::-1] # rgb to bgr
+	except IndexError:
+		raise
 	# Both VGG-16 and VGG-19 were trained using Caffe, and Caffe uses OpenCV to 
 	# load images which uses BGR by default, so both VGG models are expecting BGR images.
 	# It is the case for the .mat save we are using here.
@@ -610,18 +612,20 @@ def load_img(args,img_name):
 	try:
 		img = scipy.misc.imread(image_path)  # Float between 0 and 255
 	except IOError:
-		if(args.verbose): print("Exception when we try to open the image, try with a different extension format")
+		if(args.verbose): print("Exception when we try to open the image, try with a different extension format",str(args.img_ext))
 		if(args.img_ext==".jpg"):
 			new_img_ext = ".png"
 		elif(args.img_ext==".png"):
 			new_img_ext = ".jpg"
 		try:
 			image_path = args.img_folder + img_name +new_img_ext # Try the new path
-			img = scipy.misc.imread(image_path)
+			img = scipy.misc.imread(image_path,mode='RGB')
 			if(args.verbose): print("The image have been sucessfully loaded with a different extension")
 		except IOError:
 			if(args.verbose): print("Exception when we try to open the image, we already test the 2 differents extension.")
 			raise
+	if(len(img.shape)==2):
+		img = gray2rgb(img) # Convertion greyscale to RGB
 	img = preprocess(img.astype('float32'))
 	return(img)
 
@@ -696,9 +700,12 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 			 #loss_total += autocorr_loss
 			 #list_loss +=  [autocorr_loss]
 			 #list_loss_name +=  ['autocorr_loss']	 
+		#loss_total = tf.constant(1.*10**9)
+		#for loss in list_loss:
+			#loss_total *= (loss*10**(-9) + 1.) 
 		list_loss +=  [loss_total]
 		list_loss_name +=  ['loss_total']
-		
+
 			
 		# Preparation of the assignation operation
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
@@ -824,13 +831,13 @@ def main():
 
 def main_with_option():
 	parser = get_parser_args()
-	#style_img_name = "StarryNight"
-	style_img_name = "GrungeMarbled0021_S"
-	content_img_name = "Louvre"
+	style_img_name= "StarryNight"
+	#style_img_name = "GrungeMarbled0021_S"
+	content_img_name  = "Louvre"
 	max_iter = 1000
 	print_iter = 200
 	start_from_noise = 1 # True
-	init_noise_ratio = 1.0
+	init_noise_ratio = 0.0
 	content_strengh = 0.001
 	optimizer = 'lbfgs'
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
