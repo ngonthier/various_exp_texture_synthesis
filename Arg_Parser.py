@@ -87,7 +87,7 @@ def get_parser_args():
 	
 	# Info on the loss function 
 	parser.add_argument('--loss',  type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr'],
+		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp'],
 		help='Choice the term of the loss function. (default %(default)s)')
 		
 	parser.add_argument('--sampling',  type=str,default='down',
@@ -96,5 +96,12 @@ def get_parser_args():
 		
 	parser.add_argument('--n',  type=int,default=4,
 		help='Number of moments used in nmoments loss function. (default %(default)s)')
+	
+	parser.add_argument('--p',  type=int,default=4,
+		help='Number of Lp norm compute for the loss function. (default %(default)s)')
+	
+	parser.add_argument('--type_of_loss',  type=str,default='add',choices=['add','mul','max','Keeney'],
+		help='Type of map on the sub loss. (default %(default)s)')
+	
 	
 	return(parser)

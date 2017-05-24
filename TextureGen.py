@@ -66,9 +66,10 @@ def get_list_of_images():
 	dirs = sorted(dirs, key=str.lower)
 	return(dirs)
 	
-def compute_moments_of_filter():
+def compute_moments_of_filter(TypeOfComputation='moments',n = 9):
 	"""
 	Plot the 9th first moments of each of the filter
+	n = number of moments
 	"""
 	img_folder = path_origin
 	parser = get_parser_args()
@@ -77,7 +78,6 @@ def compute_moments_of_filter():
 	dirs = get_list_of_images()
 	Data =  {}
 	print("Computation")
-	n = 9 # Number of moments
 	h_old = 0
 	w_old = 0
 	vgg_layers = st.get_vgg_layers() 
@@ -98,7 +98,10 @@ def compute_moments_of_filter():
 		sess.run(net['input'].assign(image_style))
 		for layer in VGG19_LAYERS_INTEREST:
 			a = net[layer]
-			listOfMoments = sess.run(st.compute_n_moments(a,n))
+			if(TypeOfComputation=='moments'):
+				listOfMoments = sess.run(st.compute_n_moments(a,n))
+			elif(TypeOfComputation=='Lp'):
+				listOfMoments = sess.run(st.compute_Lp_norm(a,n))
 			Data[name_img][layer] = listOfMoments
 		h_old,w_old = h,w
 	sess.close()
@@ -107,14 +110,14 @@ def compute_moments_of_filter():
 		pickle.dump(Data,output_pkl)
 	print("End")
 	
-def plot_stats_etc_on_moment():
+def plot_stats_etc_on_moment(TypeOfComputation='moments'):
 	fontsize = 6
 	data_folder = 'data/'
 	data_path = data_folder + "moments_all_textures.pkl"
 	with open(data_path, 'rb') as output_pkl:
 		Data = pickle.load(output_pkl)	
 	path = 'Results/Filter_Rep/'
-	pltname = path +'Moments_textures.pdf'
+	pltname = path +TypeOfComputation+'_textures.pdf'
 	pp = PdfPages(pltname)
 	keys = Data.keys()
 	#keys = ['WoodChips0040_2_S.png','Leather0069_1_S.png']
@@ -146,7 +149,7 @@ def plot_stats_etc_on_moment():
 		plt.close()
 	pp.close()
 	print("End per image")
-	pltname = path +'Moments_textures_layers.pdf'
+	pltname = path +TypeOfComputation+'_textures_layers.pdf'
 	pp = PdfPages(pltname)	
 	f = plt.figure()
 	layers = Data2.keys()
@@ -161,7 +164,8 @@ def plot_stats_etc_on_moment():
 		ax.set_title(layer)
 		ax.set_xlabel("ordre")
 		ax.set_yscale("symlog")
-	plt.suptitle("Valeur par moment sur toutes les images")
+	titre = "Valeur par "+TypeOfComputation+" sur toutes les images"
+	plt.suptitle( titre )
 	plt.savefig(pp, format='pdf')
 	for i,layer in enumerate(layers):
 		listOfMoments = list()
@@ -324,5 +328,7 @@ def generation_Texture(pooling_type='avg',padding='VALID'):
 
 if __name__ == '__main__':
 	#generation_Texture()
-	#compute_moments_of_filter()
-	plot_stats_etc_on_moment()
+	TypeOfComputation='moments'
+	TypeOfComputation='Lp'
+	compute_moments_of_filter(TypeOfComputation)
+	plot_stats_etc_on_moment(TypeOfComputation)
