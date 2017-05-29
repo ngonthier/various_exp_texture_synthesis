@@ -188,35 +188,18 @@ def plot_stats_etc_on_moment(TypeOfComputation='moments'):
 	plt.close()
 	plt.clf()
 			
-            
-			
-		
-	# Compute the value of the moments for each layer for 
-			
-	
-def generation_Texture(pooling_type='avg',padding='VALID'):
-	
-	parser = get_parser_args()
-	max_iter = 1
-	print_iter = 1
-	start_from_noise = 1
-	init_noise_ratio = 1.0
-	optimizer = 'lbfgs'
-	img_folder = path_origin
-	parser.set_defaults(max_iter=max_iter,print_iter=print_iter,img_folder=img_folder,
-		init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,
-		optimizer=optimizer)
-	args = parser.parse_args()
-	
+def generate_all_texture(args,path_output_mod,pooling_type='avg',padding='VALID'):
 	dirs = get_list_of_images()
+	
 	for name_img in dirs:
+		tf.reset_default_graph()
 		name_img_wt_ext,_ = name_img.split('.')
 		
 		if args.verbose:
 			tinit = time.time()
 			print("Name :",name_img_wt_ext)
 		
-		output_image_path = path_output + name_img_wt_ext +"_syn" +args.img_ext
+		output_image_path = path_output_mod + name_img_wt_ext +"_syn" +args.img_ext
 		image_style = st.load_img(args,name_img_wt_ext) # Sans reshape
 		_,image_h, image_w, number_of_channels = image_style.shape 
 		M_dict = st.get_M_dict(image_h,image_w)
@@ -234,39 +217,17 @@ def generation_Texture(pooling_type='avg',padding='VALID'):
 		if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
 		try:
-			sess = tf.Session()
+			config = tf.ConfigProto()
+			if(args.gpu_frac <= 0.):
+				config.gpu_options.allow_growth = True
+				if args.verbose: print("Memory Growth")
+			elif(args.gpu_frac <= 1.):
+				config.gpu_options.per_process_gpu_memory_fraction = args.gpu_frac
+				if args.verbose: print("Becareful args.gpu_frac = ",args.gpu_frac,"It may cause problem if the value is superior to the available memory place.")
+			sess = tf.Session(config=config)
 			init_img = st.get_init_img_wrap(args,output_image_path,image_style) # Pour avoir la meme taille que l'image de style
-			
-			# Propose different way to compute the lossses 
-			loss_total = tf.constant(0.)
-			list_loss =  []
-			list_loss_name =  []
-			if(args.loss=='Gatys') or (args.loss=='texture') or (args.loss=='full'):
-				style_loss = st.sum_style_losses(sess,net,dict_gram,M_dict)
-				loss_total += style_loss
-				list_loss +=  [style_loss]
-				list_loss_name +=  ['style_loss']
-			if(args.loss=='4moments'):
-				style_stats_loss = st.sum_style_stats_loss(sess,net,image_style,M_dict)
-				loss_total += style_stats_loss
-				list_loss +=  [style_stats_loss]
-				list_loss_name +=  ['style_stats_loss']
-			if(args.loss=='InterScale') or (args.loss=='full'):
-				 inter_scale_loss = st.loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling=args.sampling,pooling_type=pooling_type)
-				 loss_total += inter_scale_loss
-				 list_loss +=  [inter_scale_loss]
-				 list_loss_name +=  ['inter_scale_loss']
-			if(args.loss=='nmoments') or (args.loss=='full'):
-				loss_n_moments_val = st.loss_n_moments(sess,net,image_style,M_dict,args.n)
-				loss_total += loss_n_moments_val
-				list_loss +=  [loss_n_moments_val]
-				list_loss_name +=  ['loss_n_moments_val with (n = '+str(args.n)+')']	 
-			if(args.loss=='autocorr'):
-				 print("The FFT2D function doesn't work in tensorflow ! Bug, solution alternation pas encore implementer")
-				 return(0) 
-			list_loss +=  [loss_total]
-			list_loss_name +=  ['loss_total']
-			
+			dict_features_repr = None
+			loss_total,list_loss,list_loss_name = st.get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)				
 				
 			# Preparation of the assignation operation
 			placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
@@ -300,22 +261,24 @@ def generation_Texture(pooling_type='avg',padding='VALID'):
 				if(args.plot): fig = st.plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
 				result_img_postproc = st.postprocess(result_img)
 				scipy.misc.toimage(result_img_postproc).save(output_image_path)
-				
-			# The last iterations are not made
-			# The End : save the resulting image
 			result_img = sess.run(net['input'])
 			if(args.plot): st.plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
 			result_img_postproc = st.postprocess(result_img)
 			scipy.misc.toimage(result_img_postproc).save(output_image_path)     
-			
-		except:
+		except KeyboardInterrupt:
 			if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 			result_img = sess.run(net['input'])
 			result_img_postproc = st.postprocess(result_img)
 			output_image_path_error = args.img_folder + args.output_img_name+'_error' +args.img_ext
 			scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 			# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
-			raise 
+			raise
+		except:
+			if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
+			result_img = sess.run(net['input'])
+			result_img_postproc = st.postprocess(result_img)
+			output_image_path_error = args.img_folder + args.output_img_name+'_error' +args.img_ext
+			scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 		finally:
 			sess.close()
 			tf.reset_default_graph() # It is sub optimal 
@@ -323,12 +286,50 @@ def generation_Texture(pooling_type='avg',padding='VALID'):
 				print("Close Sess")
 				tend = time.time()
 				print("Computation total for ",tend-tinit," s")
-	sess.close()
-		
+		# TODO change that and get back to a version without the dictionnary and precomputation
+		data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h)+"_"+str(image_w)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
+		os.remove(data_style_path) 
+		sess.close()
+	
+def generation_Texture():	
+	parser = get_parser_args()
+	max_iter = 2000
+	print_iter = 500
+	start_from_noise = 1
+	init_noise_ratio = 1.0
+	optimizer = 'lbfgs'
+	style_img_name = "temp"
+	
+	losses_to_test = [['nmoments'],['texture'],['InterScale'],['Lp'],['texture','nmoments'],['texture','Lp']]
+	
+	for list_of_loss in losses_to_test:
+		print(list_of_loss)
+		img_folder = path_origin 
+		path_output_mod = path_output + "_".join(list_of_loss)
+		if('nmoments' in list_of_loss) and (len(list_of_loss)==1):
+			for n in range(1,1,1):
+				print("n",n)
+				path_output_mod += "_"+str(n)+'/'
+				if not(os.path.isdir(path_output_mod)):
+					os.mkdir(path_output_mod)
+				parser.set_defaults(max_iter=max_iter,print_iter=print_iter,img_folder=img_folder,
+					init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,
+					optimizer=optimizer,n=n,loss=list_of_loss,style_img_name=style_img_name)
+				args = parser.parse_args()
+				generate_all_texture(args,path_output)
+		else:
+			path_output_mod +='/'
+			if not(os.path.isdir(path_output_mod)):
+					os.mkdir(path_output_mod)
+			parser.set_defaults(max_iter=max_iter,print_iter=print_iter,img_folder=img_folder,
+				init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,
+				optimizer=optimizer,loss=list_of_loss)
+			args = parser.parse_args()
+			generate_all_texture(args,path_output_mod)
 
 if __name__ == '__main__':
-	#generation_Texture()
-	TypeOfComputation='moments'
-	TypeOfComputation='Lp'
-	compute_moments_of_filter(TypeOfComputation)
-	plot_stats_etc_on_moment(TypeOfComputation)
+	generation_Texture()
+	#TypeOfComputation='moments'
+	#TypeOfComputation='Lp'
+	#compute_moments_of_filter(TypeOfComputation)
+	#plot_stats_etc_on_moment(TypeOfComputation)

@@ -221,20 +221,20 @@ def compute_4_moments(x):
 	return(mean_x,variance_x,skewness_x,kurtosis_x)
 		
 		
-def compute_n_moments(x,n):
+def compute_n_moments(x,n,axis=[0,1,2]):
 	"""
 	Compute the n first moments of the features (response of the kernel)
 	"""
 	assert(n > 0)
-	mean_x = tf.reduce_mean(x, axis=[0,1,2])
+	mean_x = tf.reduce_mean(x,axis=axis)
 	list_of_moments = [mean_x]
 	if(n>1):
-		variance_x = tf.subtract(tf.reduce_mean(tf.pow(x,2), axis=[0,1,2]),mean_x)
+		variance_x = tf.subtract(tf.reduce_mean(tf.pow(x,2), axis=axis),mean_x)
 		list_of_moments += [variance_x]
 		sig_x = tf.sqrt(variance_x)
 	if(n>2):
 		for r in range(3,n+1,1):
-			moment_r = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),r), axis=[0,1,2]) # Centré/réduit
+			moment_r = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),r), axis=axis) # Centré/réduit
 			# TODO : change that to some thing more optimal : pb computation of the power several times
 			list_of_moments += [moment_r]
 	return(list_of_moments)
@@ -398,8 +398,6 @@ def loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down',poolin
 						strides=[1, factor, factor, 1])
 				M_i = tf.to_int32(new_height*new_width)
 				M_i_1 = M_i
-			
-			#print("layer_i",layer_i,"x_i.shape",x_i.shape,"x_i_1.shape",x_i_1.shape)
 			F_x_i = tf.reshape(x_i,[M_i,N_i])
 			F_x_i_1 = tf.reshape(x_i_1,[M_i_1,N_i_1])
 			G_x = tf.matmul(tf.transpose(F_x_i),F_x_i_1)
@@ -418,30 +416,77 @@ def loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down',poolin
 def loss_autocorr(sess,net,image_style,M_dict):
 	"""
 	Computation of the autocorrelation of the filter 
-	!!! Don't work need to be change !!!
 	"""
 	# TODO : change the M value attention !!! different size between a and x maybe 
 	length_style_layers_int = len(style_layers)
 	length_style_layers = float(length_style_layers_int)
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
-	weight_help_convergence = 10**9 # This wight come from a paper of Gatys
-	# Because the function is pretty flat 
+	weight_help_convergence = 10**9
 	total_style_loss = 0.
-
 	x_temp = {}
-	for layer, weight in style_layers:
-		# For one layer
-		M = M_dict[layer[:5]]
-		x = net[layer].eval(session=sess)
-		R_x = (ifft2(fft2(x) * fft2(x).conj()).real)/M
-		x_temp[layer]  = R_x
 	sess.run(net['input'].assign(image_style))	
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
 		M = M_dict[layer[:5]]
 		a = sess.run(net[layer])
-		R_a = (ifft2(fft2(a) * fft2(a).conj()).real)/M
-		R_x = x_temp[layer]
+		#R_a = (ifft2(fft2(a) * fft2(a).conj()).real)/M
+		#R_x = x_temp[layer]
+		x = net[layer]
+		F_x = tf.fft2d(tf.complex(x,0.))
+		#print(F_x.shape)
+		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x)))
+		R_x /= tf.to_float(M)
+		#print(R_x.shape)
+		F_a = tf.fft2d(tf.complex(a,0.))
+		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a)))
+		R_a /= tf.to_float(M)
+		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
+def loss_spectrum(sess,net,image_style,M_dict):
+	"""
+	Computation of the spectrum loss
+	"""
+	
+	#x = net['input']
+	#F_x = tf.fft2d(tf.complex(x,0.))
+	#F_a = tf.fft2d(tf.complex(image_style,0.))
+	#innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True )  # sum(ftIm .* conj(ftRef), 3);
+	#dephase = innerProd ./ (abs(innerProd) + eps);
+	#ftNew = bsxfun(@times, ftRef, dephase);
+	#prod = tf.multiply(F_x,tf.conj(F_a))
+	#prod /= 
+	
+	#weight_help_convergence = 10**9
+	#[b, h, w, d] = x.get_shape()
+	#b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
+	#tv_y_size = tf.to_float(b * (h-1) * w * d)
+	#tv_x_size = tf.to_float(b * h * (w-1) * d)
+	#loss_y = tf.nn.l2_loss(x[:,1:,:,:] - x[:,:-1,:,:]) 
+	#loss_y /= tv_y_size
+	#loss_x = tf.nn.l2_loss(x[:,:,1:,:] - x[:,:,:-1,:]) 
+	#loss_x /= tv_x_size
+	#loss = 2 * weight_help_convergence * (loss_y + loss_x)
+	#loss = tf.cast(loss, tf.float32)
+	
+	
+	#length_style_layers_int = len(style_layers)
+	#length_style_layers = float(length_style_layers_int)
+	#style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	#weight_help_convergence = 10**9
+	#total_style_loss = 0.
+	#x_temp = {}
+	#sess.run(net['input'].assign(image_style))	
+	#for layer, weight in style_layers:
+		#N = style_layers_size[layer[:5]]
+		#M = M_dict[layer[:5]]
+		#a = sess.run(net[layer])
+		##R_a = (ifft2(fft2(a) * fft2(a).conj()).real)/M
+		##R_x = x_temp[layer]
+		#x = net[layer]
 		#F_x = tf.fft2d(tf.complex(x,0.))
 		#print(F_x.shape)
 		#R_x = tf.real(tf.multiply(F_x,tf.conj(F_x)))
@@ -450,12 +495,32 @@ def loss_autocorr(sess,net,image_style,M_dict):
 		#F_a = tf.fft2d(tf.complex(a,0.))
 		#R_a = tf.real(tf.multiply(F_a,tf.conj(F_a)))
 		#R_a /= tf.to_float(M)
-		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
-		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
-		total_style_loss += style_loss
-	total_style_loss =tf.to_float(total_style_loss)
-	#print(total_style_loss)
-	return(total_style_loss)
+		#style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		#style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		#total_style_loss += style_loss
+	#total_style_loss =tf.to_float(total_style_loss)
+	ptint("Not implmented at all")
+	total_style_loss = 0.0
+	return(total_style_loss)	
+
+def sum_total_variation_losses(sess, net):
+	"""
+	denoising loss function, this function come from : 
+	https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
+	"""
+	x = net['input']
+	weight_help_convergence = 10**9
+	[b, h, w, d] = x.get_shape()
+	b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
+	tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
+	tv_x_size = tf.to_float(b * h * (w-1) * d)
+	loss_y = tf.nn.l2_loss(x[:,1:,:,:] - x[:,:-1,:,:]) 
+	loss_y /= tv_y_size
+	loss_x = tf.nn.l2_loss(x[:,:,1:,:] - x[:,:,:-1,:]) 
+	loss_x /= tv_x_size
+	loss = 2 * weight_help_convergence * (loss_y + loss_x)
+	loss = tf.cast(loss, tf.float32)
+	return(loss)
 		
 def gram_matrix(x,N,M):
   """
@@ -614,7 +679,7 @@ def get_lbfgs_bnds(init_img):
 
 def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding='SAME'):
 	_,image_h_art, image_w_art, _ = image_style.shape
-	data_style_path = args.data_folder + "gram_"+args.image_style_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
+	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
 	try:
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
 	except(FileNotFoundError):
@@ -697,47 +762,51 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 	loss_total = tf.constant(0.)
 	list_loss =  []
 	list_loss_name =  []
-	if(args.loss=='Gatys') or (args.loss=='content') or (args.loss=='full'):
+	assert len(args.loss)
+	if('Gatys' in args.loss) or ('content'  in args.loss) or ('full' in args.loss):
 		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
 		list_loss +=  [content_loss]
 		list_loss_name +=  ['content_loss']
-	if(args.loss=='Gatys') or (args.loss=='texture') or (args.loss=='full'):
+	if('Gatys' in args.loss) or ('texture'  in args.loss) or ('full' in args.loss):
 		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
 		list_loss +=  [style_loss]
 		list_loss_name +=  ['style_loss']
-	if(args.loss=='4moments'):
+	if('4moments' in args.loss):
 		style_stats_loss = sum_style_stats_loss(sess,net,image_style,M_dict)
 		list_loss +=  [style_stats_loss]
 		list_loss_name +=  ['style_stats_loss']
-	if(args.loss=='InterScale') or (args.loss=='full'):
+	if('InterScale'  in args.loss) or ('full' in args.loss):
 		 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling=args.sampling,pooling_type=pooling_type)
 		 list_loss +=  [inter_scale_loss]
 		 list_loss_name +=  ['inter_scale_loss']
-	if(args.loss=='nmoments') or (args.loss=='full'):
+	if('nmoments'  in args.loss) or ('full' in args.loss):
 		loss_n_moments_val = loss_n_stats(sess,net,image_style,M_dict,args.n,TypeOfComputation='moments')
 		list_loss +=  [loss_n_moments_val]
 		list_loss_name +=  ['loss_n_moments_val with (n = '+str(args.n)+')']	 
-	if(args.loss=='Lp') or (args.loss=='full'):
+	if('Lp'  in args.loss) or ('full' in args.loss):
 		loss_L_p_val =  loss_n_stats(sess,net,image_style,M_dict,args.p,TypeOfComputation='Lp')
 		list_loss +=  [loss_L_p_val]
 		list_loss_name +=  ['loss_L_p_val with (p = '+str(args.p)+')']	
-	if(args.loss=='autocorr'):
-		 print("The FFT2D function doesn't work in tensorflow ! Bug, solution alternation pas encore implementer")
-		 return(0)
-		 #autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
-		 #loss_total += autocorr_loss
-		 #list_loss +=  [autocorr_loss]
-		 #list_loss_name +=  ['autocorr_loss']	
+	if('TV'  in args.loss) or ('full' in args.loss):
+		tv_loss =  sum_total_variation_losses(sess, net)
+		list_loss +=  [tv_loss]
+		list_loss_name +=  ['tv_loss']
+	if('autocorr'  in args.loss) or ('full' in args.loss):
+		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
+		 list_loss +=  [autocorr_loss]
+		 list_loss_name +=  ['autocorr_loss']	
 	if(args.type_of_loss=='add'):
 		loss_total = tf.reduce_sum(list_loss)
 	elif(args.type_of_loss=='max'):
 		loss_total = tf.reduce_max(list_loss)
 	elif(args.type_of_loss=='mul'):
 		# If one of the sub loss is zero the total loss is zero !
+		if(args.verbose): print("Mul for the total loss : If one of the sub loss is zero the total loss is zero.")
 		loss_total = tf.constant(1.)
 		for loss in list_loss:
 			loss_total *= (loss*10**(-9)) 
 	elif(args.type_of_loss=='Keeney'):
+		if(args.verbose): print("Keeney for the total loss : they are a lot of different weight everywhere.")
 		loss_total = tf.constant(1.*10**9)
 		for loss in list_loss:
 			loss_total *= (loss*10**(-9) + 1.) 
@@ -779,7 +848,14 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
 	try:
-		sess = tf.Session()
+		config = tf.ConfigProto()
+		if(args.gpu_frac <= 0.):
+			config.gpu_options.allow_growth = True
+			if args.verbose: print("Memory Growth")
+		elif(args.gpu_frac <= 1.):
+			config.gpu_options.per_process_gpu_memory_fraction = args.gpu_frac
+			if args.verbose: print("Becareful args.gpu_frac = ",args.gpu_frac,"It may cause problem if the value is superior to the available memory place.")
+		sess = tf.Session(config=config)
 
 		init_img = get_init_img_wrap(args,output_image_path,image_content)
 		
@@ -912,11 +988,11 @@ def main_with_option():
 	#image_style_name= "StarryNight"
 	image_style_name = "GrungeMarbled0021_S"
 	content_img_name  = "GrungeMarbled0021_S"
-	content_img_name  = "Louvre"
+	#content_img_name  = "Louvre"
 	max_iter = 1000
 	print_iter = 100
 	start_from_noise = 1 # True
-	init_noise_ratio = 1.0
+	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
 	optimizer = 'adam'
 	optimizer = 'lbfgs'

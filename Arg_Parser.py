@@ -75,7 +75,7 @@ def get_parser_args():
 	parser.add_argument('--content_strengh',  type=float,default=0.001,
 		help='Importance give to the content : alpha/beta ratio. (default %(default)s)')
 	
-	parser.add_argument('--init_noise_ratio',type=float,default=0.9,
+	parser.add_argument('--init_noise_ratio',type=float,default=0.1,
 		help='Propostion of the initialization image that is noise. (default %(default)s)')
 		
 	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
@@ -86,10 +86,13 @@ def get_parser_args():
     choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
 	
 	# Info on the loss function 
-	parser.add_argument('--loss',  type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp'],
-		help='Choice the term of the loss function. (default %(default)s)')
-		
+	parser.add_argument('--loss',nargs='+',type=str,default='full',
+		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV'],
+		help='Choice the term of the loss function. (default %(default)s)') # TODO need to be allow to get list of str loss
+	
+	parser.add_argument('--tv',  action='store_true',
+		help='Add a Total variation term for regularisation of the noise')	# TODO need to be change 
+	
 	parser.add_argument('--sampling',  type=str,default='down',
 		choices=['down','up'],
 		help='Sampling parameter in the inter scale loss function. (default %(default)s)')
@@ -102,6 +105,9 @@ def get_parser_args():
 	
 	parser.add_argument('--type_of_loss',  type=str,default='add',choices=['add','mul','max','Keeney'],
 		help='Type of map on the sub loss. (default %(default)s)')
-	
+		
+	# GPU Config :
+	parser.add_argument('--gpu_frac',  type=float,default=0.,
+		help='Fraction of the memory for the GPU process, if <=0. then memoryground = True if > 1. normal behaviour : 0.95%% of the memory is allocated without error. (default %(default)s)')
 	
 	return(parser)
