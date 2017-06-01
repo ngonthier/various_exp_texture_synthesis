@@ -446,6 +446,40 @@ def loss_autocorr(sess,net,image_style,M_dict):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
+def loss_fft3D(sess,net,image_style,M_dict):
+	"""
+	Computation of the 3-dimensional discrete Fourier Transform over the 
+	inner-most 3 dimensions of input i.e. height,width,channel :) 
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9
+	total_style_loss = 0.
+	x_temp = {}
+	sess.run(net['input'].assign(image_style))	
+	for layer, weight in style_layers:
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		#R_a = (ifft2(fft2(a) * fft2(a).conj()).real)/M
+		#R_x = x_temp[layer]
+		x = net[layer]
+		F_x = tf.fft3d(tf.complex(x,0.))
+		#print(F_x.shape)
+		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x)))
+		R_x /= tf.to_float(M)
+		#print(R_x.shape)
+		F_a = tf.fft3d(tf.complex(a,0.))
+		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a)))
+		R_a /= tf.to_float(M)
+		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
 def loss_spectrum(sess,net,image_style,M_dict):
 	"""
 	Computation of the spectrum loss
@@ -795,6 +829,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
 		 list_loss +=  [autocorr_loss]
 		 list_loss_name +=  ['autocorr_loss']	
+	if('fft3D'  in args.loss) or ('full' in args.loss):
+		 fft3D_loss = loss_fft3D(sess,net,image_style,M_dict)
+		 list_loss +=  [fft3D_loss]
+		 list_loss_name +=  ['fft3D_loss']	
 	if(args.type_of_loss=='add'):
 		loss_total = tf.reduce_sum(list_loss)
 	elif(args.type_of_loss=='max'):
@@ -986,8 +1024,8 @@ def main():
 def main_with_option():
 	parser = get_parser_args()
 	#image_style_name= "StarryNight"
-	image_style_name = "GrungeMarbled0021_S"
-	content_img_name  = "GrungeMarbled0021_S"
+	image_style_name = "BrickSmallBrown0293_1_S"
+	content_img_name  = "BrickSmallBrown0293_1_S"
 	#content_img_name  = "Louvre"
 	max_iter = 1000
 	print_iter = 100

@@ -299,24 +299,26 @@ def generation_Texture():
 	init_noise_ratio = 1.0
 	optimizer = 'lbfgs'
 	style_img_name = "temp"
-	
-	losses_to_test = [['nmoments'],['texture'],['InterScale'],['Lp'],['texture','nmoments'],['texture','Lp']]
+	max_order_nmoments = 5
+	losses_to_test = [['nmoments'],['texture'],['InterScale'],['Lp'],['texture','nmoments'],['texture','Lp'],['autocorr']]
 	
 	for list_of_loss in losses_to_test:
-		print(list_of_loss)
+		print("loss = ",list_of_loss)
 		img_folder = path_origin 
 		path_output_mod = path_output + "_".join(list_of_loss)
 		if('nmoments' in list_of_loss) and (len(list_of_loss)==1):
-			for n in range(1,1,1):
+			print("I am here")
+			for n in range(1,max_order_nmoments+1,1):
+				path_output_mod2 = path_output_mod
 				print("n",n)
-				path_output_mod += "_"+str(n)+'/'
-				if not(os.path.isdir(path_output_mod)):
-					os.mkdir(path_output_mod)
+				path_output_mod2 += "_"+str(n)+'/'
+				if not(os.path.isdir(path_output_mod2)):
+					os.mkdir(path_output_mod2)
 				parser.set_defaults(max_iter=max_iter,print_iter=print_iter,img_folder=img_folder,
 					init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,
 					optimizer=optimizer,n=n,loss=list_of_loss,style_img_name=style_img_name)
 				args = parser.parse_args()
-				generate_all_texture(args,path_output)
+				generate_all_texture(args,path_output_mod2)
 		else:
 			path_output_mod +='/'
 			if not(os.path.isdir(path_output_mod)):
