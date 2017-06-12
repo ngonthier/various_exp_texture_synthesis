@@ -300,15 +300,15 @@ def generation_Texture():
 	optimizer = 'lbfgs'
 	style_img_name = "temp"
 	max_order_nmoments = 5
-	losses_to_test = [['nmoments'],['texture'],['InterScale'],['Lp'],['texture','nmoments'],['texture','Lp'],['autocorr']]
+	min_order_nmoments = 3
+	losses_to_test = [['autocorr'],['nmoments'],['texture'],['InterScale'],['Lp'],['texture','nmoments'],['texture','Lp']]
 	
 	for list_of_loss in losses_to_test:
 		print("loss = ",list_of_loss)
 		img_folder = path_origin 
 		path_output_mod = path_output + "_".join(list_of_loss)
 		if('nmoments' in list_of_loss) and (len(list_of_loss)==1):
-			print("I am here")
-			for n in range(1,max_order_nmoments+1,1):
+			for n in range(min_order_nmoments,max_order_nmoments+1,1):
 				path_output_mod2 = path_output_mod
 				print("n",n)
 				path_output_mod2 += "_"+str(n)+'/'
