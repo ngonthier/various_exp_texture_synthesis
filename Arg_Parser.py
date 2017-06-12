@@ -106,6 +106,23 @@ def get_parser_args():
 	parser.add_argument('--type_of_loss',  type=str,default='add',choices=['add','mul','max','Keeney'],
 		help='Type of map on the sub loss. (default %(default)s)')
 		
+	# Info about the Gatys loss function and layer used in the different function
+	#parser.add_argument('--content_layers', nargs='+', type=str, 
+		#default=['conv4_2'],
+		#help='VGG19 layers used for the content image. (default: %(default)s)')
+  
+	#parser.add_argument('--style_layers', nargs='+', type=str,
+		#default=['conv1_1','conv2_1','conv3_1'],
+		#help='VGG19 layers used for the style image. (default: %(default)s)')
+  
+	#parser.add_argument('--content_layer_weights', nargs='+', type=float, 
+		#default=[1.0], 
+		#help='Contributions (weights) of each content layer to loss. (default: %(default)s)')
+  
+	#parser.add_argument('--style_layer_weights', nargs='+', type=float, 
+		#default=[1.,1.,1.],
+		#help='Contributions (weights) of each style layer to loss. (default: %(default)s)')
+		
 	# GPU Config :
 	parser.add_argument('--gpu_frac',  type=float,default=0.,
 		help='Fraction of the memory for the GPU process, if <=0. then memoryground = True if > 1. normal behaviour : 0.95%% of the memory is allocated without error. (default %(default)s)')

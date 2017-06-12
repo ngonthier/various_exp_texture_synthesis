@@ -46,15 +46,9 @@ VGG19_LAYERS = (
 clip_value_min=-124
 clip_value_max=152
 
-
-# TODO change that it is not a really good idea to have globla variable in Python
-content_layers = [('conv4_2',1.)]
-#style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
-style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
-#style_layers = [('conv1_1',1.)]
-# TODO : be able to choose more quickly the different parameters
-
-# TODO segment the vgg loader, and the rest
+# TODO segment the vgg loader, and the restfautoco
+content_layers = [('conv4_2',1)]
+style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
 
 def plot_image(path_to_image):
 	"""
@@ -413,6 +407,11 @@ def loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down',poolin
 			total_style_loss += style_loss
 	return(total_style_loss)
 
+def pgcd(a,b) :  
+	while a%b != 0 : 
+		a, b = b, a%b 
+	return b
+
 def loss_autocorr(sess,net,image_style,M_dict):
 	"""
 	Computation of the autocorrelation of the filter 
@@ -423,23 +422,35 @@ def loss_autocorr(sess,net,image_style,M_dict):
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	weight_help_convergence = 10**9
 	total_style_loss = 0.
-	x_temp = {}
-	sess.run(net['input'].assign(image_style))	
+	
+	_, h_a, w_a, N = image_style.shape
+	_, h_x, w_x,_ = net['input'].get_shape()
+	print(h_x, w_x)
+	if(not(h_a == h_x) or not(w_a==w_x)):
+		# Bilinear interpolation. 
+		image_style_resize = tf.image.resize_images(image_style, [tf.to_int32(h_x), tf.to_int32(w_x)], method=0, align_corners=False) 
+	
+	sess.run(net['input'].assign(image_style_resize))	
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
 		M = M_dict[layer[:5]]
 		a = sess.run(net[layer])
-		#R_a = (ifft2(fft2(a) * fft2(a).conj()).real)/M
-		#R_x = x_temp[layer]
 		x = net[layer]
+		
 		x = tf.transpose(x, [0,3,1,2])
+		a = tf.transpose(a, [0,3,1,2])
+		
 		F_x = tf.fft2d(tf.complex(x,0.))
 		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
 		R_x /= tf.to_float(M)
-		a = tf.transpose(a, [0,3,1,2])
+		
 		F_a = tf.fft2d(tf.complex(a,0.))
 		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
 		R_a /= tf.to_float(M)
+
+
+			
+		
 		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
 		
 		#diff_F = tf.subtract(F_x,F_a) 
@@ -1007,16 +1018,17 @@ def main():
 
 def main_with_option():
 	parser = get_parser_args()
-	#image_style_name= "StarryNight"
-	marbre = 'GrungeMarbled0021_S'
-	tile =  "TilesOrnate0158_1_S"
-	peddle = "pebbles"
+	image_style_name= "StarryNight_Big"
+	image_style_name= "StarryNight"
+	#marbre = 'GrungeMarbled0021_S'
+	#tile =  "TilesOrnate0158_1_S"
+	#peddle = "pebbles"
 	brick = "BrickSmallBrown0293_1_S"
-	image_style_name =brick
-	content_img_name  = image_style_name
+	image_style_name= brick 
+	content_img_name  = "Louvre"
 	#content_img_name  = "Louvre"
 	max_iter = 2000
-	print_iter = 200
+	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
