@@ -1024,8 +1024,8 @@ def main_with_option():
 	#tile =  "TilesOrnate0158_1_S"
 	#peddle = "pebbles"
 	brick = "BrickSmallBrown0293_1_S"
-	image_style_name= brick 
-	content_img_name  = "Louvre"
+	image_style_name= brick
+	content_img_name  = "StarryNight_Big"
 	#content_img_name  = "Louvre"
 	max_iter = 2000
 	print_iter = 100
