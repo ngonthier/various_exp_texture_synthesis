@@ -28,7 +28,7 @@ def get_parser_args():
 	# Name of the Images
 	parser.add_argument('--output_img_name', type=str, 
 		default='Pastiche',help='Filename of the output image.')
-
+		
 	parser.add_argument('--style_img_name',  type=str,default='StarryNight',
 		help='Filename of the style image (example: StarryNight). It must be a .jpg image otherwise change the img_ext.')
   
@@ -87,7 +87,7 @@ def get_parser_args():
 	
 	# Info on the loss function 
 	parser.add_argument('--loss',nargs='+',type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV','fft3D','spectrum'],
+		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr'],
 		help='Choice the term of the loss function. (default %(default)s)') # TODO need to be allow to get list of str loss
 	
 	parser.add_argument('--tv',  action='store_true',
@@ -125,6 +125,6 @@ def get_parser_args():
 		
 	# GPU Config :
 	parser.add_argument('--gpu_frac',  type=float,default=0.,
-		help='Fraction of the memory for the GPU process, if <=0. then memoryground = True if > 1. normal behaviour : 0.95%% of the memory is allocated without error. (default %(default)s)')
+		help='Fraction of the memory for the GPU process, if <=0. then memoryground = True. And if > 1. then normal behaviour ie 0.95%% of the memory is allocated without error. (default %(default)s)')
 	
 	return(parser)

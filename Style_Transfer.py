@@ -49,6 +49,8 @@ clip_value_max=152
 # TODO segment the vgg loader, and the restfautoco
 content_layers = [('conv4_2',1)]
 style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
+style_layers = [('conv1_1',1)]
+#style_layers = [('conv3_1',1)]
 
 def plot_image(path_to_image):
 	"""
@@ -425,8 +427,7 @@ def loss_autocorr(sess,net,image_style,M_dict):
 	
 	_, h_a, w_a, N = image_style.shape
 	_, h_x, w_x,_ = net['input'].get_shape()
-	print(h_x, w_x)
-	if(not(h_a == h_x) or not(w_a==w_x)):
+	if(not(tf.to_int32(h_a) == tf.to_int32(h_x)) or not(tf.to_int32(w_a)==tf.to_int32(w_x))):
 		# Bilinear interpolation. 
 		image_style_resize = tf.image.resize_images(image_style, [tf.to_int32(h_x), tf.to_int32(w_x)], method=0, align_corners=False) 
 	
@@ -436,30 +437,183 @@ def loss_autocorr(sess,net,image_style,M_dict):
 		M = M_dict[layer[:5]]
 		a = sess.run(net[layer])
 		x = net[layer]
-		
 		x = tf.transpose(x, [0,3,1,2])
 		a = tf.transpose(a, [0,3,1,2])
-		
 		F_x = tf.fft2d(tf.complex(x,0.))
 		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
-		R_x /= tf.to_float(M)
-		
+		R_x /= tf.to_float(M**2) # Normalisation du module de la TF
 		F_a = tf.fft2d(tf.complex(a,0.))
 		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
-		R_a /= tf.to_float(M)
-
-
-			
-		
+		R_a /= tf.to_float(M**2)
 		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
-		
 		#diff_F = tf.subtract(F_x,F_a) 
 		#style_loss = tf.nn.l2_loss(tf.real(tf.multiply(diff_F,tf.conj(diff_F))))
-		
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
+	
+def compute_ImagePhaseAlea(sess,net,image_style,M_dict): 
+	"""
+	"""
+	sess.run(net['input'].assign(image_style))
+	image_style_Phase = {}
+	layer, weight = style_layers[-1]
+	a = sess.run(net[layer])
+	b, h_a, w_a, N = a.shape
+	zeros = np.zeros(h_a*w_a)
+	#zeros = np.zeros(1)
+	imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(h_a*w_a))
+	#imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(1))
+	angle = tf.complex(zeros,imag)
+	exp = tf.exp(angle)
+	print(exp)
+	exptile = tf.tile(exp,tf.to_int32([N]))
+	exptile = tf.reshape( exptile,a.get_shape())
+	exptile_t = tf.transpose(exptile, [0,3,1,2])
+	exptile_t = tf.cast(exptile_t,tf.complex64)
+	#exptile = tf.tile(exp,tf.to_int32([h_a*w_a*N]))
+	at = tf.transpose(a, [0,3,1,2])
+	F_a = tf.fft2d(tf.complex(at,0.))
+	F_a_new_phase = tf.multiply(F_a,exptile_t)
+	#imF = tf.ifft2d(F_a_new_phase)
+	#imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
+	image_style_Phase[layer] = F_a_new_phase
+	return(image_style_Phase)
+	
+def loss_PhaseAleatoire(sess,net,image_style_Phase,M_dict):
+	"""
+	In this loss function we impose the spectrum on each features 
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9
+	total_style_loss = 0.
+	last_style_layers = style_layers[-1]
+	for layer, weight in style_layers:
+		if(last_style_layers==layer):
+			N = style_layers_size[layer[:5]]
+			M = M_dict[layer[:5]]
+			a = sess.run(net[layer])
+			x = net[layer]
+			xt = tf.transpose(x, [0,3,1,2])
+			F_x = tf.fft2d(tf.complex(xt,0.))
+			F_a = image_style_Phase[layer]
+			diff_F = tf.subtract(F_x,F_a)
+			diff_F /= M*N
+			module  = tf.multiply(diff_F,tf.conj(diff_F))
+			loss = tf.reduce_sum(module) # sum (x**2)/2
+			loss *= weight * weight_help_convergence /(length_style_layers)
+			total_style_loss += loss
+		else:
+			N = style_layers_size[layer[:5]]
+			M = M_dict[layer[:5]]
+			a = sess.run(net[layer])
+			x = net[layer]
+			x = tf.transpose(x, [0,3,1,2])
+			a = tf.transpose(a, [0,3,1,2])
+			F_x = tf.fft2d(tf.complex(x,0.))
+			R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
+			R_x /= tf.to_float(M**2) # Normalisation du module de la TF
+			F_a = tf.fft2d(tf.complex(a,0.))
+			R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
+			R_a /= tf.to_float(M**2)
+			style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+			style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+			total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
+def loss_intercorr(sess,net,image_style,M_dict):
+	"""
+	Computation of the autocorrelation of the filter and the interaction 
+	long distance of the features : intercorrelation
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9
+	total_style_loss = 0.
+	
+	sess.run(net['input'].assign(image_style))	
+	for layer, weight in style_layers:
+		print(layer)
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		x = net[layer]
+		x = tf.transpose(x, [0,3,1,2])
+		a = tf.transpose(a, [0,3,1,2])
+		F_x = tf.fft2d(tf.complex(x,0.))
+		F_x_conj = tf.conj(F_x)
+		F_a = tf.fft2d(tf.complex(a,0.))
+		F_a_conj = tf.conj(F_a)
+		
+		for i in range(N):
+			R_x = tf.real(tf.ifft2d(tf.multiply(F_x,F_x_conj)))
+			R_a = tf.real(tf.ifft2d(tf.multiply(F_a,F_a_conj)))
+			R_x /= tf.to_float(M**2)
+			R_a /= tf.to_float(M**2)
+			style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+			style_loss *=  weight * weight_help_convergence  / (2.*(N**4)*length_style_layers)
+			total_style_loss += style_loss
+			
+			#F_x = tf.stack([F_x[:,-1,:,:], F_x[:,:-1,:,:]], axis=1)
+			F_x = tf.concat([tf.expand_dims(F_x[:,-1,:,:],0), F_x[:,:-1,:,:]], axis=1)
+			#F_a = tf.stack([F_a[:,-1,:,:], F_a[:,:-1,:,:]], axis=1)
+			F_a = tf.concat([tf.expand_dims(F_a[:,-1,:,:],0), F_a[:,:-1,:,:]], axis=1)
+			
+			
+			#print(i)
+			#for j in range(i,N):
+				#print(j)
+				#F_corr_x = tf.multiply(F_x[0,i,:,:],F_x_conj[0,j,:,:])
+				#corr_x = tf.real(tf.ifft2d(F_corr_x)) 
+				#F_corr_a = tf.multiply(F_a[0,i,:,:],F_a_conj[0,j,:,:])
+				#corr_a = tf.real(tf.ifft2d(F_corr_a))
+				#style_loss = tf.nn.l2_loss(tf.subtract(corr_x,corr_a))
+				#style_loss /= tf.to_float(M**2) 
+				#style_loss /= tf.to_float(M**2) 
+		#style_loss *=  weight * weight_help_convergence  / ((N*(N+1))*length_style_layers)
+		#total_style_loss += style_loss
+	#total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
+def loss_SpectrumOnFeatures(sess,net,image_style,M_dict):
+	"""
+	In this loss function we impose the spectrum on each features 
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
+	weight_help_convergence = 10**9
+	total_style_loss = 0.
+	sess.run(net['input'].assign(image_style))	
+	for layer, weight in style_layers:
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		x = net[layer]
+		x_transpose = tf.transpose(x, [0,3,1,2])
+		a = tf.transpose(a, [0,3,1,2])
+		F_x = tf.fft2d(tf.complex(x_transpose,0.))
+		F_a = tf.fft2d(tf.complex(a,0.))
+		innerProd = tf.multiply(F_x,tf.conj(F_a))  # sum(ftIm .* conj(ftRef), 3);
+		module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
+		dephase = tf.divide(innerProd,module_InnerProd)
+		ftNew =  tf.multiply(dephase,F_x)
+		imF = tf.ifft2d(ftNew)
+		imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
+		loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
+		loss *= weight * weight_help_convergence /(M*3*(2.*(N**2)*length_style_layers))
+		total_style_loss += loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
 	
 def loss_fft3D(sess,net,image_style,M_dict):
 	"""
@@ -507,23 +661,15 @@ def loss_spectrum(sess,net,image_style,M_dict):
 	a = tf.transpose(image_style, [0,3,1,2])
 	x_t = tf.transpose(x, [0,3,1,2])
 	F_x = tf.fft2d(tf.complex(x_t,0.))
-	print(F_x.shape)
 	#F_a = tf.reduce_sum(tf.fft2d(tf.complex(a,0.)),1, keep_dims=True)
 	F_a = tf.fft2d(tf.complex(a,0.))
-	print(F_a.shape)
 	#innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True )  # sum(ftIm .* conj(ftRef), 3);
 	innerProd = tf.multiply(F_x,tf.conj(F_a))  # sum(ftIm .* conj(ftRef), 3);
-	print(innerProd.shape)
 	module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
-	print('module_InnerProd.shape',module_InnerProd.shape)
 	dephase = tf.divide(innerProd,module_InnerProd+eps)
-	print(dephase.shape)
 	ftNew =  tf.multiply(dephase,F_x)
-	print(ftNew.shape)
 	imF = tf.ifft2d(ftNew)
-	print(imF.shape)
 	imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
-	print(imF.shape)
 	loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
 	loss *= weight_amp/(M*3)
 	return(loss)	
@@ -678,7 +824,13 @@ def get_init_noise_img(image_content,init_noise_ratio):
 	_,image_h, image_w, number_of_channels = image_content.shape 
 	noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
 	noise_img = preprocess(noise_img)
-	noise_img = init_noise_ratio* noise_img + (1.-init_noise_ratio) * image_content
+	if(init_noise_ratio >= 1.):
+		noise_img = noise_img
+	elif(init_noise_ratio <= 0.0):
+		noise_img = image_content
+	else:
+		noise_img = init_noise_ratio* noise_img + (1.-init_noise_ratio) * image_content
+		
 	return(noise_img)
 
 def get_lbfgs_bnds(init_img):
@@ -706,6 +858,7 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
 	_,image_h_art, image_w_art, _ = image_style.shape
 	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
 	try:
+		if(args.verbose): print("Load Data ",data_style_path)
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
 	except(FileNotFoundError):
 		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
@@ -748,6 +901,7 @@ def get_init_img_wrap(args,output_image_path,image_content):
 			# White noise that we use at the beginning of the optimization
 			init_img = get_init_noise_img(image_content,args.init_noise_ratio)
 	else:
+		if(args.verbose): print("Noisy image generation init_noise_ratio = ",args.init_noise_ratio)
 		init_img = get_init_noise_img(image_content,args.init_noise_ratio)
 
 	if(args.plot):
@@ -828,6 +982,19 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 spectrum_loss = loss_spectrum(sess,net,image_style,M_dict)
 		 list_loss +=  [spectrum_loss]
 		 list_loss_name +=  ['spectrum_loss']	 
+	if('SpectrumOnFeatures'  in args.loss) or ('full' in args.loss):
+		 SpectrumOnFeatures_loss = loss_SpectrumOnFeatures(sess,net,image_style,M_dict)
+		 list_loss +=  [SpectrumOnFeatures_loss]
+		 list_loss_name +=  ['SpectrumOnFeatures_loss']	
+	if('phaseAlea' in args.loss) or ('full' in args.loss):
+		 image_style_Phase = compute_ImagePhaseAlea(sess,net,image_style,M_dict)
+		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style_Phase,M_dict)
+		 list_loss +=  [phaseAlea_loss]
+		 list_loss_name +=  ['phaseAlea_loss']	
+	if('intercorr' in args.loss) or ('full' in args.loss):
+		 intercorr_loss = loss_intercorr(sess,net,image_style,M_dict)
+		 list_loss +=  [intercorr_loss]
+		 list_loss_name +=  ['intercorr_loss']		 
 	if(args.type_of_loss=='add'):
 		loss_total = tf.reduce_sum(list_loss)
 	elif(args.type_of_loss=='max'):
@@ -854,10 +1021,11 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 	if args.verbose:
 		tinit = time.time()
 		print("verbosity turned on")
+		print("style",args.style_img_name,"content",args.content_img_name)
 	
 	output_image_path = args.img_folder + args.output_img_name +args.img_ext
 	image_content = load_img(args,args.content_img_name)
-	image_style = load_img(args,args.image_style_name)
+	image_style = load_img(args,args.style_img_name)
 	_,image_h, image_w, number_of_channels = image_content.shape 
 	M_dict = get_M_dict(image_h,image_w)
 	
@@ -872,6 +1040,7 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 	vgg_layers = get_vgg_layers()
 	
 	# Precomputation Phase :
+	print(args)
 	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
 	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
@@ -1020,14 +1189,14 @@ def main_with_option():
 	parser = get_parser_args()
 	image_style_name= "StarryNight_Big"
 	image_style_name= "StarryNight"
-	#marbre = 'GrungeMarbled0021_S'
-	#tile =  "TilesOrnate0158_1_S"
-	#peddle = "pebbles"
+	marbre = 'GrungeMarbled0021_S'
+	tile =  "TilesOrnate0158_1_S"
+	peddle = "pebbles"
 	brick = "BrickSmallBrown0293_1_S"
-	image_style_name= brick
-	content_img_name  = "StarryNight_Big"
+	image_style_name= tile
+	content_img_name  = tile
 	#content_img_name  = "Louvre"
-	max_iter = 2000
+	max_iter = 1000
 	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
@@ -1038,7 +1207,7 @@ def main_with_option():
 	maxcor = 10
 	sampling = 'up'
 	# In order to set the parameter before run the script
-	parser.set_defaults(image_style_name=image_style_name,max_iter=max_iter,
+	parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
 		content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
