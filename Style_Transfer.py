@@ -49,8 +49,8 @@ clip_value_max=152
 # TODO segment the vgg loader, and the restfautoco
 content_layers = [('conv4_2',1)]
 style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
-style_layers = [('conv1_1',1)]
 #style_layers = [('conv3_1',1)]
+
 
 def plot_image(path_to_image):
 	"""
@@ -422,7 +422,7 @@ def loss_autocorr(sess,net,image_style,M_dict):
 	length_style_layers_int = len(style_layers)
 	length_style_layers = float(length_style_layers_int)
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
-	weight_help_convergence = 10**9
+	weight_help_convergence = (10**9)
 	total_style_loss = 0.
 	
 	_, h_a, w_a, N = image_style.shape
@@ -467,21 +467,43 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict):
 	#imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(1))
 	angle = tf.complex(zeros,imag)
 	exp = tf.exp(angle)
-	print(exp)
+	#print(sess.run(exp))
 	exptile = tf.tile(exp,tf.to_int32([N]))
-	exptile = tf.reshape( exptile,a.get_shape())
+	#exptile = tf.tile(exp,tf.to_int32([h_a*w_a*N]))
+	exptile = tf.reshape( exptile,a.shape)
 	exptile_t = tf.transpose(exptile, [0,3,1,2])
 	exptile_t = tf.cast(exptile_t,tf.complex64)
-	#exptile = tf.tile(exp,tf.to_int32([h_a*w_a*N]))
+	#print(sess.run(exptile_t))
 	at = tf.transpose(a, [0,3,1,2])
 	F_a = tf.fft2d(tf.complex(at,0.))
 	F_a_new_phase = tf.multiply(F_a,exptile_t)
 	#imF = tf.ifft2d(F_a_new_phase)
 	#imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
 	image_style_Phase[layer] = F_a_new_phase
+	
+	#for layer, weight in style_layers:
+		#a = sess.run(net[layer])
+		#b, h_a, w_a, N = a.shape
+		##zeros = np.zeros(h_a*w_a)
+		#zeros = np.zeros(1)
+		##imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(h_a*w_a))
+		#imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(1))
+		#angle = tf.complex(zeros,imag)
+		#exp = tf.exp(angle)
+		##exptile = tf.tile(exp,tf.to_int32([N]))
+		#exptile = tf.tile(exp,tf.to_int32([h_a*w_a*N]))
+		#exptile = tf.reshape( exptile,a.shape)
+		#exptile_t = tf.transpose(exptile, [0,3,1,2])
+		#exptile_t = tf.cast(exptile_t,tf.complex64)
+		#at = tf.transpose(a, [0,3,1,2])
+		#F_a = tf.fft2d(tf.complex(at,0.))
+		#F_a_new_phase = tf.multiply(F_a,exptile_t)
+		##imF = tf.ifft2d(F_a_new_phase)
+		##imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
+		#image_style_Phase[layer] = F_a_new_phase
 	return(image_style_Phase)
 	
-def loss_PhaseAleatoire(sess,net,image_style_Phase,M_dict):
+def loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict):
 	"""
 	In this loss function we impose the spectrum on each features 
 	"""
@@ -491,23 +513,24 @@ def loss_PhaseAleatoire(sess,net,image_style_Phase,M_dict):
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
 	weight_help_convergence = 10**9
 	total_style_loss = 0.
-	last_style_layers = style_layers[-1]
+	last_style_layers,_ = style_layers[-1]
+	print(last_style_layers)
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
 			M = M_dict[layer[:5]]
-			a = sess.run(net[layer])
 			x = net[layer]
 			xt = tf.transpose(x, [0,3,1,2])
 			F_x = tf.fft2d(tf.complex(xt,0.))
 			F_a = image_style_Phase[layer]
 			diff_F = tf.subtract(F_x,F_a)
 			diff_F /= M*N
-			module  = tf.multiply(diff_F,tf.conj(diff_F))
-			loss = tf.reduce_sum(module) # sum (x**2)/2
+			module  = tf.real(tf.multiply(diff_F,tf.conj(diff_F)))
+			loss = tf.reduce_sum(module) 
 			loss *= weight * weight_help_convergence /(length_style_layers)
 			total_style_loss += loss
-		else:
+		elif True:
+			sess.run(net['input'].assign(image_style))
 			N = style_layers_size[layer[:5]]
 			M = M_dict[layer[:5]]
 			a = sess.run(net[layer])
@@ -535,7 +558,7 @@ def loss_intercorr(sess,net,image_style,M_dict):
 	length_style_layers_int = len(style_layers)
 	length_style_layers = float(length_style_layers_int)
 	style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
-	weight_help_convergence = 10**9
+	weight_help_convergence = (10**9)
 	total_style_loss = 0.
 	
 	sess.run(net['input'].assign(image_style))	
@@ -552,34 +575,44 @@ def loss_intercorr(sess,net,image_style,M_dict):
 		F_a = tf.fft2d(tf.complex(a,0.))
 		F_a_conj = tf.conj(F_a)
 		
-		for i in range(N):
-			R_x = tf.real(tf.ifft2d(tf.multiply(F_x,F_x_conj)))
-			R_a = tf.real(tf.ifft2d(tf.multiply(F_a,F_a_conj)))
-			R_x /= tf.to_float(M**2)
-			R_a /= tf.to_float(M**2)
-			style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
-			style_loss *=  weight * weight_help_convergence  / (2.*(N**4)*length_style_layers)
-			total_style_loss += style_loss
+		NN = 2
+		alpha = 10
+		R_x = tf.real(tf.ifft2d(tf.multiply(F_x,F_x_conj)))
+		R_a = tf.real(tf.ifft2d(tf.multiply(F_a,F_a_conj)))
+		R_x /= tf.to_float(M**2)
+		R_a /= tf.to_float(M**2)
+		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		style_loss *=  alpha * weight * weight_help_convergence  / (2.*(NN**4)*length_style_layers)
+		total_style_loss += style_loss
+		lenRoll = sess.run(tf.random_uniform(minval=0,maxval=N,dtype=tf.int32,shape=[1])) # Between [minval,maxval)
+		print(lenRoll)
+		F_x = tf.concat([F_x[:,lenRoll:,:,:], F_x[:,:lenRoll,:,:]], axis=1)
+		F_a = tf.concat([F_a[:,lenRoll:,:,:], F_a[:,:lenRoll,:,:]], axis=1)
+		R_x = tf.real(tf.ifft2d(tf.multiply(F_x,F_x_conj)))
+		R_a = tf.real(tf.ifft2d(tf.multiply(F_a,F_a_conj)))
+		R_x /= tf.to_float(M**2)
+		R_a /= tf.to_float(M**2)
+		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		style_loss *=  weight * weight_help_convergence  / (2.*(NN**4)*length_style_layers)
+		total_style_loss += style_loss
+		
+		#lenRoll = sess.run(tf.random_uniform(minval=0,maxval=N,dtype=tf.int32,shape=[1]))
+	
+		#print(lenRoll)
+		#NN = 1
+		#for i in range(NN):
+			#R_x = tf.real(tf.ifft2d(tf.multiply(F_x,F_x_conj)))
+			#R_a = tf.real(tf.ifft2d(tf.multiply(F_a,F_a_conj)))
+			#R_x /= tf.to_float(M**2)
+			#R_a /= tf.to_float(M**2)
+			#style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+			#style_loss *=  weight * weight_help_convergence  / (2.*(NN**4)*length_style_layers)
+			#total_style_loss += style_loss
+			##F_x = tf.stack([F_x[:,-1,:,:], F_x[:,:-1,:,:]], axis=1)
+			#F_x = tf.concat([tf.expand_dims(F_x[:,-lenRoll,:,:],0), F_x[:,::-lenRoll,:,:]], axis=1)
+			##F_a = tf.stack([F_a[:,-1,:,:], F_a[:,:-1,:,:]], axis=1)
+			#F_a = tf.concat([tf.expand_dims(F_a[:,-lenRoll,:,:],0), F_a[:,::-lenRoll,:,:]], axis=1)
 			
-			#F_x = tf.stack([F_x[:,-1,:,:], F_x[:,:-1,:,:]], axis=1)
-			F_x = tf.concat([tf.expand_dims(F_x[:,-1,:,:],0), F_x[:,:-1,:,:]], axis=1)
-			#F_a = tf.stack([F_a[:,-1,:,:], F_a[:,:-1,:,:]], axis=1)
-			F_a = tf.concat([tf.expand_dims(F_a[:,-1,:,:],0), F_a[:,:-1,:,:]], axis=1)
-			
-			
-			#print(i)
-			#for j in range(i,N):
-				#print(j)
-				#F_corr_x = tf.multiply(F_x[0,i,:,:],F_x_conj[0,j,:,:])
-				#corr_x = tf.real(tf.ifft2d(F_corr_x)) 
-				#F_corr_a = tf.multiply(F_a[0,i,:,:],F_a_conj[0,j,:,:])
-				#corr_a = tf.real(tf.ifft2d(F_corr_a))
-				#style_loss = tf.nn.l2_loss(tf.subtract(corr_x,corr_a))
-				#style_loss /= tf.to_float(M**2) 
-				#style_loss /= tf.to_float(M**2) 
-		#style_loss *=  weight * weight_help_convergence  / ((N*(N+1))*length_style_layers)
-		#total_style_loss += style_loss
-	#total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
 def loss_SpectrumOnFeatures(sess,net,image_style,M_dict):
@@ -988,7 +1021,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 list_loss_name +=  ['SpectrumOnFeatures_loss']	
 	if('phaseAlea' in args.loss) or ('full' in args.loss):
 		 image_style_Phase = compute_ImagePhaseAlea(sess,net,image_style,M_dict)
-		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style_Phase,M_dict)
+		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict)
 		 list_loss +=  [phaseAlea_loss]
 		 list_loss_name +=  ['phaseAlea_loss']	
 	if('intercorr' in args.loss) or ('full' in args.loss):
