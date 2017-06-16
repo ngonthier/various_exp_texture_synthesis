@@ -446,9 +446,9 @@ def loss_autocorr(sess,net,image_style,M_dict):
 		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
 		R_a /= tf.to_float(M**2)
 		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
-		#diff_F = tf.subtract(F_x,F_a) 
+		diff_F = tf.subtract(F_x,F_a) 
 		#style_loss = tf.nn.l2_loss(tf.real(tf.multiply(diff_F,tf.conj(diff_F))))
-		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		#style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
@@ -461,14 +461,14 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict):
 	layer, weight = style_layers[-1]
 	a = sess.run(net[layer])
 	b, h_a, w_a, N = a.shape
-	zeros = np.zeros(h_a*w_a)
+	#zeros = np.zeros(h_a*w_a)
 	#zeros = np.zeros(1)
 	imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(h_a*w_a))
 	#imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(1))
 	angle = tf.complex(zeros,imag)
 	exp = tf.exp(angle)
 	#print(sess.run(exp))
-	exptile = tf.tile(exp,tf.to_int32([N]))
+	exptile = tf.tile(exp,tf.to_int32([N])) # TODO : verifier la multiplication par une phase aleatoire des features certainement tres mal applique !!! 
 	#exptile = tf.tile(exp,tf.to_int32([h_a*w_a*N]))
 	exptile = tf.reshape( exptile,a.shape)
 	exptile_t = tf.transpose(exptile, [0,3,1,2])
@@ -505,7 +505,8 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict):
 	
 def loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict):
 	"""
-	In this loss function we impose the spectrum on each features 
+	In this loss function we impose the TF transform to the last layer 
+	with a random phase imposed and only the spectrum of the 
 	"""
 	# TODO : change the M value attention !!! different size between a and x maybe 
 	length_style_layers_int = len(style_layers)
@@ -514,7 +515,6 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict):
 	weight_help_convergence = 10**9
 	total_style_loss = 0.
 	last_style_layers,_ = style_layers[-1]
-	print(last_style_layers)
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
@@ -527,7 +527,7 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict):
 			diff_F /= M*N
 			module  = tf.real(tf.multiply(diff_F,tf.conj(diff_F)))
 			loss = tf.reduce_sum(module) 
-			loss *= weight * weight_help_convergence /(length_style_layers)
+			loss *=  weight * weight_help_convergence /(length_style_layers)
 			total_style_loss += loss
 		elif True:
 			sess.run(net['input'].assign(image_style))
