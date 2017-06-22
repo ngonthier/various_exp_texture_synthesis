@@ -1063,7 +1063,9 @@ def print_loss(sess,loss_total,content_loss,style_loss):
 
 def get_init_noise_img(image_content,init_noise_ratio):
     _,image_h, image_w, number_of_channels = image_content.shape 
-    noise_img = np.random.uniform(0,255, (image_h, image_w, number_of_channels)).astype('float32')
+    low = 0
+    high = 1
+    noise_img = np.random.uniform(low,high, (image_h, image_w, number_of_channels)).astype('float32')
     noise_img = preprocess(noise_img)
     if(init_noise_ratio >= 1.):
         noise_img = noise_img
@@ -1410,6 +1412,9 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
                 scipy.misc.imsave(output_image_path,result_img_postproc)
                 #scipy.misc.toimage(result_img_postproc).save(output_image_pathpng)
                 scipy.misc.imsave(output_image_pathpng,result_img_postproc)
+                #scipy.misc.toimage(result_img_postproc,mode='P').save(output_image_path, format='JPEG', subsampling=0, quality=100)
+                #import cv2
+                #cv2.imwrite("P1.png", result_img_postproc)
                 
 
         # The last iterations are not made
@@ -1454,7 +1459,7 @@ def main_with_option():
     image_style_name= brick
     content_img_name  = brick
     #content_img_name  = "Louvre"
-    max_iter = 200
+    max_iter = 2000
     print_iter = 200
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
