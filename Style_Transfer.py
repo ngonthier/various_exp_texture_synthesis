@@ -41,7 +41,7 @@ VGG19_LAYERS = (
     'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
     'relu5_3', 'conv5_4', 'relu5_4'
 )
-
+#layers   = [2 5 10 19 28]; for texture generation
 # Max et min value from the ImageNet databse mean
 clip_value_min=-124
 clip_value_max=152
@@ -49,10 +49,13 @@ clip_value_max=152
 # TODO segment the vgg loader, and the restfautoco
 content_layers = [('conv4_2',1)]
 style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
+#style_layers = [('conv1_1',1)]
 #style_layers = [('relu1_1',1),('relu2_1',1),('relu3_1',1)]
 #style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1),('conv4_1',1),('conv5_1',1)]
+#style_layers = [('conv1_1',1),('relu1_2',1),('relu2_2',1),('relu3_4',1),('relu4_4',1)]
 #style_layers = [('conv3_1',1)]
 
+style_layers_size =  {'conv1' : 64,'relu1' : 64,'conv2' : 128,'relu2' : 128,'conv3' : 256,'relu3' : 256,'conv4': 512,'relu4' : 512,'conv5' : 512,'relu5' : 512}
 
 def plot_image(path_to_image):
     """
@@ -184,7 +187,6 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
     - the dictionnary of Gram Matrices
     - the dictionnary of the size of the image content through the net
     """
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     # Info for the vgg19
     length_style_layers = float(len(style_layers))
     weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
@@ -198,9 +200,8 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
         # Get the value of this layer with the generated image
         M = M_dict[layer[:5]]
         x = net[layer]
-        G = gram_matrix(x,N,M)
+        G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
         style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
-        # TODO selon le type de style voulu soit reshape the style image sinon Mcontenu/Mstyle
         style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
         total_style_loss += style_loss
     return(total_style_loss)
@@ -256,7 +257,6 @@ def sum_style_stats_loss(sess,net,image_style,M_dict):
     Compute a loss that is the l2 norm of the 4th moment of the optimization
     """
     length_style_layers = float(len(style_layers))
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9 # This wight come from a paper of Gatys
     # Because the function is pretty flat 
     total_style_loss = 0
@@ -279,7 +279,6 @@ def loss_n_moments(sess,net,image_style,M_dict,n):
     Compute a loss that is the l2 norm of the nth moment of the optimization
     """
     length_style_layers = float(len(style_layers))
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9 # This wight come from a paper of Gatys
     # Because the function is pretty flat 
     total_style_loss = 0
@@ -303,7 +302,6 @@ def loss_n_stats(sess,net,image_style,M_dict,n,TypeOfComputation='moments'):
     the features maps : moments or norm
     """
     length_style_layers = float(len(style_layers))
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9 # This wight come from a paper of Gatys
     # Because the function is pretty flat 
     total_style_loss = 0
@@ -327,7 +325,6 @@ def loss_n_stats(sess,net,image_style,M_dict,n,TypeOfComputation='moments'):
 
 def loss_p_norm(sess,net,image_style,M_dict,p): # Faire une fonction génértique qui prend en entree le type de norme !!! 
     length_style_layers = float(len(style_layers))
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9 # This wight come from a paper of Gatys
     # Because the function is pretty flat 
     total_style_loss = 0
@@ -354,7 +351,6 @@ def loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down',poolin
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9 # This wight come from a paper of Gatys
     # Because the function is pretty flat 
     total_style_loss = 0.
@@ -424,7 +420,6 @@ def loss_autocorr(sess,net,image_style,M_dict):
     
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9
     total_style_loss = 0.
 
@@ -453,7 +448,6 @@ def loss_autocorr2(sess,net,image_style,M_dict):
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = (10**9)
     total_style_loss = 0.
     
@@ -559,7 +553,6 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict):
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9
     total_style_loss = 0.
     last_style_layers,_ = style_layers[-1]
@@ -604,7 +597,6 @@ def loss_PhaseImpose1(sess,net,image_style,M_dict):
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9
     total_style_loss = 0.
     last_style_layers,_ = style_layers[-1]
@@ -663,7 +655,6 @@ def loss_PhaseImpose(sess,net,image_style,M_dict):
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9
     total_style_loss = 0.
     last_style_layers,_ = style_layers[0]
@@ -729,9 +720,9 @@ def loss_PhaseImpose(sess,net,image_style,M_dict):
             total_style_loss += style_loss
         if True:
             R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
-            R_x /= tf.to_float(M**2) # Normalisation du module de la TF
+            R_x /= tf.to_float(M) # Normalisation du module de la TF
             R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
-            R_a /= tf.to_float(M**2)
+            R_a /= tf.to_float(M)
             style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a)) 
             style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
             total_style_loss += style_loss
@@ -777,7 +768,6 @@ def loss_intercorr(sess,net,image_style,M_dict):
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = (10**9)
     total_style_loss = 0.
     
@@ -842,7 +832,6 @@ def loss_SpectrumOnFeatures(sess,net,image_style,M_dict):
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9
     total_style_loss = 0.
     sess.run(net['input'].assign(image_style))  
@@ -876,7 +865,6 @@ def loss_fft3D(sess,net,image_style,M_dict):
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
-    style_layers_size =  {'conv1' : 64,'conv2' : 128,'conv3' : 256,'conv4': 512,'conv5' : 512}
     weight_help_convergence = 10**9
     total_style_loss = 0.
     x_temp = {}
@@ -976,13 +964,11 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
     sess.run(net['input'].assign(image_style))
     dict_gram = {}
     for layer in VGG19_LAYERS:
-        kind = layer[:4]
-        if(kind == 'conv'): 
-            a = net[layer]
-            _,height,width,N = a.shape
-            M = height*width
-            A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
-            dict_gram[layer] = sess.run(A) # Computation
+        a = net[layer]
+        _,height,width,N = a.shape
+        M = height*width
+        A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
+        dict_gram[layer] = sess.run(A) # Computation
     sess.close()
     tf.reset_default_graph() # To clear all operation and variable
     return(dict_gram)        
@@ -997,10 +983,8 @@ def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'
     sess.run(net['input'].assign(image_content))
     dict_features_repr = {}
     for layer in VGG19_LAYERS:
-        kind = layer[:4]
-        if(kind == 'conv'): 
-            P = sess.run(net[layer])
-            dict_features_repr[layer] = P # Computation
+        P = sess.run(net[layer])
+        dict_features_repr[layer] = P # Computation
     sess.close()
     tf.reset_default_graph() # To clear all operation and variable
     return(dict_features_repr)  
@@ -1048,15 +1032,19 @@ def get_M_dict(image_h,image_w):
     This function compute the size of the different dimension in the con
     volutionnal net
     """
-    M_dict =  {'conv1' : 0,'conv2' : 0,'conv3' : 0,'conv4': 0,'conv5' : 0}
-    M = image_h * image_w # Depend on the image size
+    M_dict =  {'conv1' : 0,'relu1' : 0,'conv2' : 0,'relu2' : 0,'conv3' : 0,'relu3' : 0,'conv4': 0,'relu4' : 0,'conv5' : 0,'relu5' : 0}
     image_h_tmp = image_h
     image_w_tmp = image_w
+    M = image_h_tmp*image_w_tmp
     for key in M_dict.keys():
-        M_dict[key] = M
-        image_h_tmp =  math.ceil(image_h_tmp / 2)
-        image_w_tmp = math.ceil(image_w_tmp / 2)
-        M = image_h_tmp*image_w_tmp
+        if(key[:4]=='conv'):
+            M_dict[key] = M
+            image_h_tmp =  math.ceil(image_h_tmp / 2)
+            image_w_tmp = math.ceil(image_w_tmp / 2)
+            M = image_h_tmp*image_w_tmp
+        else:
+            keystr = 'conv' + key[4]
+            M_dict[key] = M_dict[keystr]
     return(M_dict)  
     
 def print_loss_tab(sess,list_loss,list_loss_name):
@@ -1136,6 +1124,7 @@ def get_features_repr_wrap(args,vgg_layers,image_content,pooling_type='avg',padd
     return(dict_features_repr)
 
 def plot_image_with_postprocess(args,image,name="",fig=None):
+    # TODO change that ! doesn't work
     if(fig==None):
         fig = plt.figure()
     plt.imshow(postprocess(image))
@@ -1281,7 +1270,8 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
         print("verbosity turned on")
         print("style",args.style_img_name,"content",args.content_img_name)
     
-    output_image_path = args.img_folder + args.output_img_name +args.img_ext
+    output_image_path = args.img_folder + args.output_img_name + '.jpg' #args.img_ext
+    output_image_pathpng = args.img_folder + args.output_img_name + '.png' #args.img_ext
     image_content = load_img(args,args.content_img_name)
     image_style = load_img(args,args.style_img_name)
     _,image_h, image_w, number_of_channels = image_content.shape 
@@ -1416,8 +1406,12 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
                 result_img = sess.run(net['input'])
                 if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
                 result_img_postproc = postprocess(result_img)
-                scipy.misc.toimage(result_img_postproc).save(output_image_path)
-            
+                #scipy.misc.toimage(result_img_postproc).save(output_image_path)
+                scipy.misc.imsave(output_image_path,result_img_postproc)
+                #scipy.misc.toimage(result_img_postproc).save(output_image_pathpng)
+                scipy.misc.imsave(output_image_pathpng,result_img_postproc)
+                
+
         # The last iterations are not made
         # The End : save the resulting image
         result_img = sess.run(net['input'])
@@ -1451,15 +1445,16 @@ def main_with_option():
     parser = get_parser_args()
     image_style_name= "StarryNight_Big"
     image_style_name= "StarryNight"
+    starry = "StarryNight"
     marbre = 'GrungeMarbled0021_S'
     tile =  "TilesOrnate0158_1_S"
     tile2 = "TilesZellige0099_1_S"
     peddle = "pebbles"
     brick = "BrickSmallBrown0293_1_S"
-    image_style_name= tile
-    content_img_name  = tile
+    image_style_name= brick
+    content_img_name  = brick
     #content_img_name  = "Louvre"
-    max_iter = 10000
+    max_iter = 200
     print_iter = 200
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
