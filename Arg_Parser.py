@@ -78,6 +78,9 @@ def get_parser_args():
 	parser.add_argument('--init_noise_ratio',type=float,default=0.1,
 		help='Propostion of the initialization image that is noise. (default %(default)s)')
 		
+	parser.add_argument('--smooth_grad',action="store_true",
+		help='Boolean flag indicating if the initial image must be a smooth gradient, small range image.')
+		
 	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
 		help='Start compulsory from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
 	
