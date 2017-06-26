@@ -13,6 +13,8 @@ import argparse
 def get_parser_args():
 	"""
 	Parser of the argument of the program
+	Becareful there is an order to use the option in the command line 
+	terminal :'(
 	"""
 	desc = "TensorFlow implementation of 'A Neural Algorithm for Artisitc Style'"  
 	parser = argparse.ArgumentParser(description=desc)
@@ -44,7 +46,7 @@ def get_parser_args():
 	
 	# Extension of the image
 	parser.add_argument('--img_ext',  type=str,default='.png',
-		choices=['.jpg','.png'],help='Extension of the image')
+		choices=['.jpg','.png'],help='Extension of the image') #TODO : remove the '.' that cannot be read in command line 
 		
 	# Infomartion about the optimization
 	parser.add_argument('--optimizer',  type=str,default='lbfgs',
@@ -78,8 +80,8 @@ def get_parser_args():
 	parser.add_argument('--init_noise_ratio',type=float,default=0.1,
 		help='Propostion of the initialization image that is noise. (default %(default)s)')
 		
-	parser.add_argument('--smooth_grad',action="store_true",
-		help='Boolean flag indicating if the initial image must be a smooth gradient, small range image.')
+	parser.add_argument('--init',type=str,default='Uniform',choices=['Uniform','smooth_grad','Gaussian'],
+		help='Type of initialization for the image variable.')
 		
 	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
 		help='Start compulsory from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')

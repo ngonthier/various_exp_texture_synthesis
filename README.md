@@ -12,5 +12,6 @@ This code is inspired from :
 ## Requirement 
 
 Tensorflow >= 1.2
+
 VGG19 CNN weight (It can be downloaded here : http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat)
 

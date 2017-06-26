@@ -29,3 +29,8 @@ __pycache__/*
 *.pdf
 Results/*
 
+# The data folder #
+###################
+
+data/*
+

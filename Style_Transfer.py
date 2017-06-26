@@ -993,42 +993,60 @@ def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'
 	return(dict_features_repr)  
 	
 	
+#def preprocess(img):
+	#"""
+	#This function takes a RGB image and process it to be used with 
+	#tensorflow
+	#"""
+	## shape (h, w, d) to (1, h, w, d)
+	#img = img[np.newaxis,:,:,:]
+	
+	## subtract the imagenet mean for a RGB image
+	#img -= np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3)) # In order to have channel = (channel - mean) / std with std = 1
+	## The input images should be zero-centered by mean pixel (rather than mean image) 
+	## subtraction. Namely, the following BGR values should be subtracted: [103.939, 116.779, 123.68].
+	## From https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md
+	#try:
+		#img = img[...,::-1] # rgb to bgr
+	#except IndexError:
+		#raise
+	## Both VGG-16 and VGG-19 were trained using Caffe, and Caffe uses OpenCV to 
+	## load images which uses BGR by default, so both VGG models are expecting BGR images.
+	## It is the case for the .mat save we are using here.
+	
+	#return(img)
+
 def preprocess(img):
-	"""
-	This function takes a RGB image and process it to be used with 
-	tensorflow
-	"""
-	# shape (h, w, d) to (1, h, w, d)
-	img = img[np.newaxis,:,:,:]
-	
-	# subtract the imagenet mean for a RGB image
-	img -= np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3)) # In order to have channel = (channel - mean) / std with std = 1
-	# The input images should be zero-centered by mean pixel (rather than mean image) 
-	# subtraction. Namely, the following BGR values should be subtracted: [103.939, 116.779, 123.68].
-	# From https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md
-	try:
-		img = img[...,::-1] # rgb to bgr
-	except IndexError:
-		raise
-	# Both VGG-16 and VGG-19 were trained using Caffe, and Caffe uses OpenCV to 
-	# load images which uses BGR by default, so both VGG models are expecting BGR images.
-	# It is the case for the .mat save we are using here.
-	
-	return(img)
+  # bgr to rgb
+  img = img[...,::-1]
+  # shape (h, w, d) to (1, h, w, d)
+  img = img[np.newaxis,:,:,:]
+  img -= np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
+  return img
 
 def postprocess(img):
-	"""
-	To the unprocessing analogue to the "preprocess" function from 4D array
-	to RGB image
-	"""
-	# bgr to rgb
-	img = img[...,::-1]
-	# add the imagenet mean 
-	img += np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
-	# shape (1, h, w, d) to (h, w, d)
-	img = img[0]
-	img = np.clip(img,0,255).astype('uint8')
-	return(img)  
+  img += np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
+  # shape (1, h, w, d) to (h, w, d)
+  img = img[0]
+  img = np.clip(img, 0, 255).astype('uint8')
+  # rgb to bgr
+  img = img[...,::-1]
+  return img
+
+
+#def postprocess(img):
+	#"""
+	#To the unprocessing analogue to the "preprocess" function from 4D array
+	#to RGB image
+	#"""
+	## bgr to rgb
+	#img = img[...,::-1]
+	## add the imagenet mean 
+	#img += np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
+	## shape (1, h, w, d) to (h, w, d)
+	#img = img[0]
+	#img = np.clip(img,0,255).astype('uint8')
+	#return(img)  
 
 def get_M_dict(image_h,image_w):
 	"""
@@ -1070,8 +1088,10 @@ def get_init_noise_img(image_content,init_noise_ratio):
 	this image can be linearly miwed with the image content with a ratio
 	"""
 	_,image_h, image_w, number_of_channels = image_content.shape 
-	low = 0
-	high = 255
+	low = 128-20
+	low = 0.
+	high = 128+20
+	high = 255.
 	noise_img = np.random.uniform(low,high, (image_h, image_w, number_of_channels)).astype('float32')
 	noise_img = preprocess(noise_img)
 	if(init_noise_ratio >= 1.):
@@ -1098,6 +1118,17 @@ def get_init_noise_img_smooth_grad(image_content):
 	gaussian_noise_img = np.clip(gaussian_noise_img,0.,255.)
 	preprocess_img = preprocess(gaussian_noise_img)
 	return(preprocess_img)
+	
+def get_init_noise_img_gaussian(image_content):
+	"""
+	Generate an image with a gaussian white noise
+	"""
+	b,image_h, image_w, number_of_channels = image_content.shape 
+	noise_img = np.random.randn(b,image_h, image_w, number_of_channels) 
+	# random floats sampled from a univariate “normal” (Gaussian) distribution of mean 0 and variance 1 
+	# Doesn't need preprocess because already arond 0 with a small range
+	return(noise_img)
+	
 
 def get_lbfgs_bnds(init_img):
 	"""
@@ -1170,10 +1201,13 @@ def get_init_img_wrap(args,output_image_path,image_content):
 			if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
 			# White noise that we use at the beginning of the optimization
 			init_img = get_init_noise_img(image_content,args.init_noise_ratio)
-	elif(args.smooth_grad):
+	elif(args.init =='smooth_grad'):
 		if(args.verbose): print("Noisy image generation with a smooth gradient")
-		init_img = get_init_noise_img_smooth_grad(image_content)
-	else:
+		init_img = get_init_noise_img_smooth_grad(image_content) # TODO add a ratio for this kind of initialization also
+	elif(args.init=='Gaussian'):
+		if(args.verbose): print("Noisy image generation with a Gaussian white noise")
+		init_img = get_init_noise_img_gaussian(image_content)
+	elif(args.init=='Uniform'):
 		if(args.verbose): print("Noisy image generation init_noise_ratio = ",args.init_noise_ratio)
 		init_img = get_init_noise_img(image_content,args.init_noise_ratio)
 
@@ -1301,8 +1335,8 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 		print("verbosity turned on")
 		print("style",args.style_img_name,"content",args.content_img_name)
 	
-	output_image_path = args.img_folder + args.output_img_name + '.jpg' #args.img_ext
-	output_image_pathpng = args.img_folder + args.output_img_name + '.png' #args.img_ext
+	output_image_path = args.img_folder + args.output_img_name + args.img_ext
+	if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
 	image_content = load_img(args,args.content_img_name)
 	image_style = load_img(args,args.style_img_name)
 	_,image_h, image_w, number_of_channels = image_content.shape 
@@ -1437,14 +1471,7 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 				result_img = sess.run(net['input'])
 				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
 				result_img_postproc = postprocess(result_img)
-				#scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				scipy.misc.imsave(output_image_path,result_img_postproc)
-				#scipy.misc.toimage(result_img_postproc).save(output_image_pathpng)
-				scipy.misc.imsave(output_image_pathpng,result_img_postproc)
-				#scipy.misc.toimage(result_img_postproc,mode='P').save(output_image_path, format='JPEG', subsampling=0, quality=100)
-				#import cv2
-				#cv2.imwrite("P1.png", result_img_postproc)
-				
 
 		# The last iterations are not made
 		# The End : save the resulting image
@@ -1488,8 +1515,8 @@ def main_with_option():
 	image_style_name= brick
 	content_img_name  = brick
 	#content_img_name  = "Louvre"
-	max_iter = 2000
-	print_iter = 200
+	max_iter = 1000
+	print_iter = 200 
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
