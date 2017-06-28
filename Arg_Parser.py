@@ -41,6 +41,9 @@ def get_parser_args():
 	parser.add_argument('--img_folder',  type=str,default='images/',
 		help='Name of the images folder')
   
+	parser.add_argument('--img_output_folder',  type=str,default='images/',
+		help='Name of the images output folder')
+  
 	parser.add_argument('--data_folder', type=str,default='data/',
 		help='Name of the data folder')
 	
@@ -80,8 +83,11 @@ def get_parser_args():
 	parser.add_argument('--init_noise_ratio',type=float,default=0.1,
 		help='Propostion of the initialization image that is noise. (default %(default)s)')
 		
-	parser.add_argument('--init',type=str,default='Uniform',choices=['Uniform','smooth_grad','Gaussian'],
+	parser.add_argument('--init',type=str,default='Uniform',choices=['Uniform','smooth_grad','Gaussian','Cst'],
 		help='Type of initialization for the image variable.')
+		
+	parser.add_argument('--init_range',type=float,default=127.5,
+		help='Range for the initialialisation value')
 		
 	parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
 		help='Start compulsory from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
@@ -92,7 +98,7 @@ def get_parser_args():
 	
 	# Info on the loss function 
 	parser.add_argument('--loss',nargs='+',type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr','current'],
+		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr','bizarre','current'],
 		help='Choice the term of the loss function. (default %(default)s)') # TODO need to be allow to get list of str loss
 	
 	parser.add_argument('--tv',  action='store_true',

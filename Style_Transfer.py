@@ -55,7 +55,7 @@ style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
 style_layers = [('conv1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
 #style_layers = [('conv3_1',1)]
 
-style_layers_size =  {'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
+style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
 # TODO : check if the N value are right for the poolx
 
 def plot_image(path_to_image):
@@ -94,7 +94,7 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 		if(kind == 'conv'):
 			# Only way to get the weight of the kernel of convolution
 			# Inspired by http://programtalk.com/vs2/python/2964/facenet/tmp/vggverydeep19.py/
-			kernels = vgg_layers[i][0][0][2][0][0]
+			kernels = vgg_layers[i][0][0][2][0][0] 
 			bias = vgg_layers[i][0][0][2][0][1]
 			# matconvnet: weights are [width, height, in_channels, out_channels]
 			# tensorflow: weights are [height, width, in_channels, out_channels]
@@ -107,9 +107,15 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 			current = tf.nn.relu(current,name=name)
 		elif(kind == 'pool'):
 			current = _pool_layer(current,name,pooling_type,padding)
-		net[name] = current
 		#print(name,current.shape)
+		#for style_layer,_ in style_layers:
+			#if(name in style_layer):
+				#print(name,'dropout')
+				#keep_prob = 1./(style_layers_size[name[:5]]-1)
+				#keep_prob = 1.0
+				#current = tf.nn.dropout(current,keep_prob)
 
+		net[name] = current
 	assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right 
 	return(net)
 
@@ -182,7 +188,8 @@ def sum_content_losses(sess, net, dict_features_repr,M_dict):
 
 def sum_style_losses(sess, net, dict_gram,M_dict):
 	"""
-	Compute the style term of the loss function 
+	Compute the style term of the loss function with Gram Matrix from the
+	Gatys Paper
 	Input : 
 	- the tensforflow session sess
 	- the vgg19 net
@@ -202,7 +209,6 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 		# Get the value of this layer with the generated image
 		M = M_dict[layer[:5]]
 		x = net[layer]
-		print(layer,N,M)
 		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
 		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
@@ -415,7 +421,7 @@ def pgcd(a,b) :
 		a, b = b, a%b 
 	return b
 
-def loss_autocorr(sess,net,image_style,M_dict):
+def loss_autocorrbizarre(sess,net,image_style,M_dict):
 	"""
 	Computation of the autocorrelation of the filters
 	"""
@@ -434,17 +440,17 @@ def loss_autocorr(sess,net,image_style,M_dict):
 		x = net[layer]
 		F_x = tf.fft2d(tf.complex(x,0.))
 		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x)))
-		R_x /= tf.to_float(M)
+		R_x /= tf.to_float(M**2)
 		F_a = tf.fft2d(tf.complex(a,0.))
 		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a)))
-		R_a /= tf.to_float(M)
+		R_a /= tf.to_float(M**2)
 		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 
-def loss_autocorr2(sess,net,image_style,M_dict):
+def loss_autocorr(sess,net,image_style,M_dict):
 	"""
 	Computation of the autocorrelation of the filters
 	"""
@@ -454,14 +460,7 @@ def loss_autocorr2(sess,net,image_style,M_dict):
 	weight_help_convergence = (10**9)
 	total_style_loss = 0.
 	
-	_, h_a, w_a, N = image_style.shape
-	#_, h_x, w_x,_ = net['input'].get_shape()
-	#if(not(tf.to_int32(h_a) == tf.to_int32(h_x)) or not(tf.to_int32(w_a)==tf.to_int32(w_x))):
-		## Bilinear interpolation. 
-		#print("Bilinear interpolation. ")
-		#image_style_resize = tf.image.resize_images(image_style, [tf.to_int32(h_x), tf.to_int32(w_x)], method=0, align_corners=False) 
-		#sess.run(net['input'].assign(image_style_resize))  
-		
+	_, h_a, w_a, N = image_style.shape		
 	sess.run(net['input'].assign(image_style))
 		
 	for layer, weight in style_layers:
@@ -473,15 +472,11 @@ def loss_autocorr2(sess,net,image_style,M_dict):
 		a = tf.transpose(a, [0,3,1,2])
 		F_x = tf.fft2d(tf.complex(x,0.))
 		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
-		#R_x /= tf.to_float(M**2) # Normalisation du module de la TF
-		#R_x /= tf.to_float(M) # Normalisation du module de la TF
+		R_x /= tf.to_float(M**2) # Normalisation du module de la TF
 		F_a = tf.fft2d(tf.complex(a,0.))
 		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
-		#R_a /= tf.to_float(M**2)
-		#R_a /= tf.to_float(M) # Which one to get good result ???? TODO ISSUE divde by M M**2 or don't divide ?
+		R_a /= tf.to_float(M**2)
 		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
-		#diff_F = tf.subtract(F_x,F_a) 
-		#style_loss = tf.nn.l2_loss(tf.real(tf.multiply(diff_F,tf.conj(diff_F))))
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	total_style_loss =tf.to_float(total_style_loss)
@@ -882,11 +877,11 @@ def loss_fft3D(sess,net,image_style,M_dict):
 		F_x = tf.fft3d(tf.complex(x,0.))
 		#print(F_x.shape)
 		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x)))
-		R_x /= tf.to_float(M)
+		R_x /= tf.to_float(M**2)
 		#print(R_x.shape)
 		F_a = tf.fft3d(tf.complex(a,0.))
 		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a)))
-		R_a /= tf.to_float(M)
+		R_a /= tf.to_float(M**2)
 		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
@@ -962,10 +957,15 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
 	Computation of all the Gram matrices from one image thanks to the 
 	vgg_layers
 	"""
+	dict_gram = {}
 	net = net_preloaded(vgg_layers, image_style,pooling_type,padding) # net for the style image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_style))
-	dict_gram = {}
+	a = net['input']
+	_,height,width,N = a.shape
+	M = height*width
+	A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
+	dict_gram['input'] = sess.run(A)
 	for layer in VGG19_LAYERS:
 		a = net[layer]
 		_,height,width,N = a.shape
@@ -993,60 +993,42 @@ def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'
 	return(dict_features_repr)  
 	
 	
-#def preprocess(img):
-	#"""
-	#This function takes a RGB image and process it to be used with 
-	#tensorflow
-	#"""
-	## shape (h, w, d) to (1, h, w, d)
-	#img = img[np.newaxis,:,:,:]
-	
-	## subtract the imagenet mean for a RGB image
-	#img -= np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3)) # In order to have channel = (channel - mean) / std with std = 1
-	## The input images should be zero-centered by mean pixel (rather than mean image) 
-	## subtraction. Namely, the following BGR values should be subtracted: [103.939, 116.779, 123.68].
-	## From https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md
-	#try:
-		#img = img[...,::-1] # rgb to bgr
-	#except IndexError:
-		#raise
-	## Both VGG-16 and VGG-19 were trained using Caffe, and Caffe uses OpenCV to 
-	## load images which uses BGR by default, so both VGG models are expecting BGR images.
-	## It is the case for the .mat save we are using here.
-	
-	#return(img)
-
 def preprocess(img):
-  # bgr to rgb
-  img = img[...,::-1]
-  # shape (h, w, d) to (1, h, w, d)
-  img = img[np.newaxis,:,:,:]
-  img -= np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
-  return img
+	"""
+	This function takes a RGB image and process it to be used with 
+	tensorflow
+	"""
+	# shape (h, w, d) to (1, h, w, d)
+	img = img[np.newaxis,:,:,:]
+	
+	# subtract the imagenet mean for a RGB image
+	img -= np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3)) # In order to have channel = (channel - mean) / std with std = 1
+	# The input images should be zero-centered by mean pixel (rather than mean image) 
+	# subtraction. Namely, the following BGR values should be subtracted: [103.939, 116.779, 123.68].
+	# From https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md
+	try:
+		img = img[...,::-1] # rgb to bgr
+	except IndexError:
+		raise
+	# Both VGG-16 and VGG-19 were trained using Caffe, and Caffe uses OpenCV to 
+	# load images which uses BGR by default, so both VGG models are expecting BGR images.
+	# It is the case for the .mat save we are using here.
+	
+	return(img)
 
 def postprocess(img):
-  img += np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
-  # shape (1, h, w, d) to (h, w, d)
-  img = img[0]
-  img = np.clip(img, 0, 255).astype('uint8')
-  # rgb to bgr
-  img = img[...,::-1]
-  return img
-
-
-#def postprocess(img):
-	#"""
-	#To the unprocessing analogue to the "preprocess" function from 4D array
-	#to RGB image
-	#"""
-	## bgr to rgb
-	#img = img[...,::-1]
-	## add the imagenet mean 
-	#img += np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
-	## shape (1, h, w, d) to (h, w, d)
-	#img = img[0]
-	#img = np.clip(img,0,255).astype('uint8')
-	#return(img)  
+	"""
+	To the unprocessing analogue to the "preprocess" function from 4D array
+	to RGB image
+	"""
+	# bgr to rgb
+	img = img[...,::-1]
+	# add the imagenet mean 
+	img += np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3))
+	# shape (1, h, w, d) to (h, w, d)
+	img = img[0]
+	img = np.clip(img,0,255).astype('uint8')
+	return(img)  
 
 def get_M_dict(image_h,image_w):
 	"""
@@ -1067,6 +1049,7 @@ def get_M_dict(image_h,image_w):
 			M_dict[key] = M
 		elif(key[:4]=='relu'):
 			M_dict[key] = M
+	M_dict['input'] = M_dict['conv1']
 	return(M_dict)  
 	
 def print_loss_tab(sess,list_loss,list_loss_name):
@@ -1083,15 +1066,13 @@ def print_loss(sess,loss_total,content_loss,style_loss):
 	strToPrint ='Total loss = {:.2e}, Content loss  = {:.2e}, Style loss  = {:.2e}'.format(loss_total_tmp,content_loss_tmp,style_loss_tmp)
 	print(strToPrint)
 
-def get_init_noise_img(image_content,init_noise_ratio):
+def get_init_noise_img(image_content,init_noise_ratio,range_value):
 	""" This function return a white noise image for the initialisation 
 	this image can be linearly miwed with the image content with a ratio
 	"""
 	_,image_h, image_w, number_of_channels = image_content.shape 
-	low = 128-20
-	low = 0.
-	high = 128+20
-	high = 255.
+	low = 127.5 - range_value
+	high = 127.5 + range_value
 	noise_img = np.random.uniform(low,high, (image_h, image_w, number_of_channels)).astype('float32')
 	noise_img = preprocess(noise_img)
 	if(init_noise_ratio >= 1.):
@@ -1194,13 +1175,17 @@ def plot_image_with_postprocess(args,image,name="",fig=None):
 	return(fig)
 
 def get_init_img_wrap(args,output_image_path,image_content):
+	"""
+	Function that regroup different way to create differente value for 
+	initial condition 
+	"""
 	if(not(args.start_from_noise)):
 		try:
 			init_img = preprocess(scipy.misc.imread(output_image_path).astype('float32'))
 		except(FileNotFoundError):
 			if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
 			# White noise that we use at the beginning of the optimization
-			init_img = get_init_noise_img(image_content,args.init_noise_ratio)
+			init_img = get_init_noise_img(image_content,args.init_noise_ratio,args.init_range)
 	elif(args.init =='smooth_grad'):
 		if(args.verbose): print("Noisy image generation with a smooth gradient")
 		init_img = get_init_noise_img_smooth_grad(image_content) # TODO add a ratio for this kind of initialization also
@@ -1209,8 +1194,12 @@ def get_init_img_wrap(args,output_image_path,image_content):
 		init_img = get_init_noise_img_gaussian(image_content)
 	elif(args.init=='Uniform'):
 		if(args.verbose): print("Noisy image generation init_noise_ratio = ",args.init_noise_ratio)
-		init_img = get_init_noise_img(image_content,args.init_noise_ratio)
-
+		init_img = get_init_noise_img(image_content,args.init_noise_ratio,args.init_range)
+	elif(args.init=='Cst'):
+		if(args.verbose): print("Constante image")
+		_,image_h, image_w, number_of_channels = image_content.shape 
+		noise_img = (127.5*np.ones((image_h, image_w, number_of_channels))).astype('float32')
+		init_img = preprocess(noise_img)
 	if(args.plot):
 		plot_image_with_postprocess(args,init_img.copy(),"Initial Image")
 		
@@ -1277,10 +1266,14 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		tv_loss =  sum_total_variation_losses(sess, net)
 		list_loss +=  [tv_loss]
 		list_loss_name +=  ['tv_loss']
+	if('bizarre'  in args.loss) or ('full' in args.loss):
+		 autocorrbizarre_loss = loss_autocorrbizarre(sess,net,image_style,M_dict)
+		 list_loss +=  [autocorrbizarre_loss]
+		 list_loss_name +=  ['autocorrbizarre_loss']   
 	if('autocorr'  in args.loss) or ('full' in args.loss):
 		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
 		 list_loss +=  [autocorr_loss]
-		 list_loss_name +=  ['autocorr_loss']   
+		 list_loss_name +=  ['autocorr_loss'] 
 	if('fft3D'  in args.loss) or ('full' in args.loss):
 		 fft3D_loss = loss_fft3D(sess,net,image_style,M_dict)
 		 list_loss +=  [fft3D_loss]
@@ -1333,9 +1326,9 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 	if args.verbose:
 		tinit = time.time()
 		print("verbosity turned on")
-		print("style",args.style_img_name,"content",args.content_img_name)
+		print(args)
 	
-	output_image_path = args.img_folder + args.output_img_name + args.img_ext
+	output_image_path = args.img_output_folder + args.output_img_name + args.img_ext
 	if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
 	image_content = load_img(args,args.content_img_name)
 	image_style = load_img(args,args.style_img_name)
@@ -1353,7 +1346,7 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 	vgg_layers = get_vgg_layers()
 	
 	# Precomputation Phase :
-	print(args)
+	
 	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
 	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
@@ -1484,7 +1477,7 @@ def style_transfer(args,pooling_type='avg',padding='VALID'):
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 		result_img = sess.run(net['input'])
 		result_img_postproc = postprocess(result_img)
-		output_image_path_error = args.img_folder + args.output_img_name+'_error' +args.img_ext
+		output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
 		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
 		raise 
@@ -1512,8 +1505,8 @@ def main_with_option():
 	tile2 = "TilesZellige0099_1_S"
 	peddle = "pebbles"
 	brick = "BrickSmallBrown0293_1_S"
-	image_style_name= brick
-	content_img_name  = brick
+	image_style_name= tile
+	content_img_name  = tile
 	#content_img_name  = "Louvre"
 	max_iter = 1000
 	print_iter = 200 

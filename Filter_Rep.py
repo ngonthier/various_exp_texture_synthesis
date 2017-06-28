@@ -56,7 +56,7 @@ VGG19_LAYERS_INTEREST = (
 #VGG19_LAYERS_INTEREST = ('conv1_1' ,'conv1_2','conv2_1' ,'conv2_2' ,
 	#'conv3_1','conv3_2','conv3_3' ,'conv3_4','conv4_1' ,'conv4_2')
 
-#VGG19_LAYERS_INTEREST = {'conv1_1'}
+VGG19_LAYERS_INTEREST = {'conv1_1'}
 
 def hist(values,value_range,nbins=100,dtype=dtypes.float32):
 	nbins_float = float(nbins)
@@ -148,7 +148,9 @@ def plot_and_save_pdf(Matrix,path,name=''):
 
 
 def plot_Rep(args):
-	
+	"""
+	Plot the reponse to the filters/kernels and the histogram
+	"""
 	directory_path = 'Results/Filter_Rep/'+args.style_img_name+'/' 
 	if not os.path.exists(directory_path):
 		os.makedirs(directory_path)
@@ -164,7 +166,7 @@ def plot_Rep(args):
 	net = st.net_preloaded(vgg_layers, image_style) # net for the style image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_style))
-	for layer in VGG19_LAYERS:
+	for layer in VGG19_LAYERS_INTEREST:
 		a = net[layer].eval(session=sess)
 		print(layer,a.shape)
 		plot_and_save_pdf(a,directory_path,layer)
@@ -581,31 +583,48 @@ def plot_compare_pdf(vgg_layers,Matrix,path,name):
 
 	
 
-def main_plot():
+def main_plot(name=None):
+	"""
+	Plot the reponse to the filters/kernels and histogram in differents pdfs
+	"""
 	parser = get_parser_args()
-	style_img_name = "StarryNight"
+	if(name==None):
+		style_img_name = "StarryNight"
+	else:
+		style_img_name = name
 	#style_img_name = "Louvre_Big"
 	parser.set_defaults(style_img_name=style_img_name)
 	args = parser.parse_args()
 	plot_Rep(args)
 	
-def main_distrib():
+def main_distrib(name=None):
+	"""
+	Estimate the distribution of the distribution 
+	"""
 	parser = get_parser_args()
-	style_img_name = "StarryNight"
+	if(name==None):
+		style_img_name = "StarryNight"
+	else:
+		style_img_name = name
 	parser.set_defaults(style_img_name=style_img_name)
 	args = parser.parse_args()
 	estimate_gennorm(args)
 	
-
-
-if __name__ == '__main__':
+def main_plot_commun(name=None):
+	"""
+	Plot for each layer in VGG Interest the kernels, the response of the 
+	kernel but also the histogram fitted
+	"""
 	parser = get_parser_args()
-	style_img_name = "Nymphea_Big"
-	output_img_name = "Gen"
-	max_iter = 10
-	print_iter = 1
-	parser.set_defaults(style_img_name=style_img_name,output_img_name=output_img_name,
-						max_iter=max_iter,    print_iter=print_iter)
+	if(name==None):
+		style_img_name = "StarryNight"
+	else:
+		style_img_name = name
+	parser.set_defaults(style_img_name=style_img_name)
 	args = parser.parse_args()
 	do_pdf_comparison(args)
+
+if __name__ == '__main__':
+	main_plot_commun('grad_Uniform')
+	
 	
