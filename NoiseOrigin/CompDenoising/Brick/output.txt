@@ -1,0 +1,10 @@
+noisy_img 7.25223e+16
+nlmeans_denoised_user 7.12598e+17
+nlmeans_denoised 4.75831e+17
+gaussian_filtered 2.89231e+17
+median_filtered 4.74849e+17
+tv_filtered 2.62683e+17
+moyen_img 2.54215e+17
+bilateral_filtered 1.74445e+17
+wavelet_filtered 3.81288e+17
+

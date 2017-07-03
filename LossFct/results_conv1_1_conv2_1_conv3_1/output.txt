@@ -1,0 +1,1060 @@
+verbosity turned on
+Namespace(clip_var=1, content_img_name='BrickSmallBrown0293_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['autocorr'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='BrickSmallBrown0293_1_S_autocorr', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='BrickSmallBrown0293_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_BrickSmallBrown0293_1_S_248_265_avg_SAME.pkl
+net loaded and gram computation after  5.263531446456909  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorr_loss = 8.76e+15, loss_total = 8.76e+15, 
+Iteration  0 after  22.09470295906067  s
+autocorr_loss = 2.89e+12, loss_total = 2.89e+12, 
+Iteration  1 after  20.91789174079895  s
+autocorr_loss = 1.91e+12, loss_total = 1.91e+12, 
+Iteration  2 after  21.75113558769226  s
+autocorr_loss = 1.66e+12, loss_total = 1.66e+12, 
+Iteration  3 after  21.06292152404785  s
+autocorr_loss = 1.57e+12, loss_total = 1.57e+12, 
+Iteration  4 after  21.096014976501465  s
+autocorr_loss = 1.52e+12, loss_total = 1.52e+12, 
+Iteration  5 after  20.488542556762695  s
+autocorr_loss = 1.49e+12, loss_total = 1.49e+12, 
+Iteration  6 after  20.279723167419434  s
+autocorr_loss = 1.47e+12, loss_total = 1.47e+12, 
+Iteration  7 after  20.482299089431763  s
+autocorr_loss = 1.46e+12, loss_total = 1.46e+12, 
+Iteration  8 after  20.743536949157715  s
+autocorr_loss = 1.45e+12, loss_total = 1.45e+12, 
+Iteration  9 after  20.586535692214966  s
+autocorr_loss = 1.44e+12, loss_total = 1.44e+12, 
+Iteration  10 after  20.890118837356567  s
+autocorr_loss = 1.44e+12, loss_total = 1.44e+12, 
+Iteration  11 after  20.63476848602295  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  12 after  20.780826807022095  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  13 after  20.8686044216156  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  14 after  20.940876722335815  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  15 after  21.22877073287964  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  16 after  20.852286100387573  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  17 after  20.998388051986694  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  18 after  4.179948806762695  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Iteration  19 after  1.9898362159729004  s
+autocorr_loss = 1.43e+12, loss_total = 1.43e+12, 
+Close Sess
+Computation total for  404.89291644096375  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='GrungeMarbled0021_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['autocorr'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='GrungeMarbled0021_S_autocorr', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='GrungeMarbled0021_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_GrungeMarbled0021_S_217_304_avg_SAME.pkl
+net loaded and gram computation after  5.189947128295898  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorr_loss = 1.85e+16, loss_total = 1.85e+16, 
+Iteration  0 after  22.900590658187866  s
+autocorr_loss = 1.16e+12, loss_total = 1.16e+12, 
+Iteration  1 after  21.167771339416504  s
+autocorr_loss = 5.83e+11, loss_total = 5.83e+11, 
+Iteration  2 after  21.957942485809326  s
+autocorr_loss = 4.69e+11, loss_total = 4.69e+11, 
+Iteration  3 after  20.887067317962646  s
+autocorr_loss = 4.13e+11, loss_total = 4.13e+11, 
+Iteration  4 after  20.78459620475769  s
+autocorr_loss = 3.83e+11, loss_total = 3.83e+11, 
+Iteration  5 after  21.661313772201538  s
+autocorr_loss = 3.62e+11, loss_total = 3.62e+11, 
+Iteration  6 after  21.199798583984375  s
+autocorr_loss = 3.49e+11, loss_total = 3.49e+11, 
+Iteration  7 after  21.234100341796875  s
+autocorr_loss = 3.39e+11, loss_total = 3.39e+11, 
+Iteration  8 after  20.75001573562622  s
+autocorr_loss = 3.31e+11, loss_total = 3.31e+11, 
+Iteration  9 after  20.89842915534973  s
+autocorr_loss = 3.25e+11, loss_total = 3.25e+11, 
+Iteration  10 after  22.009520292282104  s
+autocorr_loss = 3.20e+11, loss_total = 3.20e+11, 
+Iteration  11 after  21.983826160430908  s
+autocorr_loss = 3.15e+11, loss_total = 3.15e+11, 
+Iteration  12 after  21.68758487701416  s
+autocorr_loss = 3.11e+11, loss_total = 3.11e+11, 
+Iteration  13 after  20.873679399490356  s
+autocorr_loss = 3.08e+11, loss_total = 3.08e+11, 
+Iteration  14 after  20.9734845161438  s
+autocorr_loss = 3.06e+11, loss_total = 3.06e+11, 
+Iteration  15 after  22.42278218269348  s
+autocorr_loss = 3.03e+11, loss_total = 3.03e+11, 
+Iteration  16 after  21.79990029335022  s
+autocorr_loss = 3.01e+11, loss_total = 3.01e+11, 
+Iteration  17 after  21.77890634536743  s
+autocorr_loss = 2.99e+11, loss_total = 2.99e+11, 
+Iteration  18 after  21.82992911338806  s
+autocorr_loss = 2.97e+11, loss_total = 2.97e+11, 
+Iteration  19 after  21.734251976013184  s
+autocorr_loss = 2.95e+11, loss_total = 2.95e+11, 
+Close Sess
+Computation total for  439.8150854110718  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='pebbles', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['autocorr'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='pebbles_autocorr', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='pebbles', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_pebbles_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.124690532684326  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorr_loss = 2.18e+14, loss_total = 2.18e+14, 
+Iteration  0 after  20.624824285507202  s
+autocorr_loss = 1.46e+12, loss_total = 1.46e+12, 
+Iteration  1 after  19.56811237335205  s
+autocorr_loss = 9.20e+11, loss_total = 9.20e+11, 
+Iteration  2 after  19.379950284957886  s
+autocorr_loss = 8.06e+11, loss_total = 8.06e+11, 
+Iteration  3 after  19.763001680374146  s
+autocorr_loss = 7.53e+11, loss_total = 7.53e+11, 
+Iteration  4 after  19.789702892303467  s
+autocorr_loss = 7.23e+11, loss_total = 7.23e+11, 
+Iteration  5 after  19.620742797851562  s
+autocorr_loss = 7.05e+11, loss_total = 7.05e+11, 
+Iteration  6 after  19.96884775161743  s
+autocorr_loss = 6.92e+11, loss_total = 6.92e+11, 
+Iteration  7 after  19.45378613471985  s
+autocorr_loss = 6.82e+11, loss_total = 6.82e+11, 
+Iteration  8 after  19.115281581878662  s
+autocorr_loss = 6.75e+11, loss_total = 6.75e+11, 
+Iteration  9 after  19.39899754524231  s
+autocorr_loss = 6.70e+11, loss_total = 6.70e+11, 
+Iteration  10 after  19.532495737075806  s
+autocorr_loss = 6.66e+11, loss_total = 6.66e+11, 
+Iteration  11 after  19.423896312713623  s
+autocorr_loss = 6.62e+11, loss_total = 6.62e+11, 
+Iteration  12 after  19.156283617019653  s
+autocorr_loss = 6.59e+11, loss_total = 6.59e+11, 
+Iteration  13 after  19.306898593902588  s
+autocorr_loss = 6.57e+11, loss_total = 6.57e+11, 
+Iteration  14 after  20.086089849472046  s
+autocorr_loss = 6.55e+11, loss_total = 6.55e+11, 
+Iteration  15 after  19.431092262268066  s
+autocorr_loss = 6.53e+11, loss_total = 6.53e+11, 
+Iteration  16 after  19.400439500808716  s
+autocorr_loss = 6.51e+11, loss_total = 6.51e+11, 
+Iteration  17 after  19.290433883666992  s
+autocorr_loss = 6.49e+11, loss_total = 6.49e+11, 
+Iteration  18 after  19.4314181804657  s
+autocorr_loss = 6.48e+11, loss_total = 6.48e+11, 
+Iteration  19 after  19.493494510650635  s
+autocorr_loss = 6.46e+11, loss_total = 6.46e+11, 
+Close Sess
+Computation total for  399.8586537837982  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='TilesOrnate0158_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['autocorr'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='TilesOrnate0158_1_S_autocorr', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='TilesOrnate0158_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_TilesOrnate0158_1_S_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.185227632522583  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorr_loss = 1.84e+16, loss_total = 1.84e+16, 
+Iteration  0 after  23.17404341697693  s
+autocorr_loss = 1.04e+13, loss_total = 1.04e+13, 
+Iteration  1 after  22.800609827041626  s
+autocorr_loss = 4.92e+12, loss_total = 4.92e+12, 
+Iteration  2 after  22.330233812332153  s
+autocorr_loss = 3.76e+12, loss_total = 3.76e+12, 
+Iteration  3 after  22.045494079589844  s
+autocorr_loss = 3.17e+12, loss_total = 3.17e+12, 
+Iteration  4 after  22.034348249435425  s
+autocorr_loss = 2.75e+12, loss_total = 2.75e+12, 
+Iteration  5 after  22.37498950958252  s
+autocorr_loss = 2.47e+12, loss_total = 2.47e+12, 
+Iteration  6 after  22.257075309753418  s
+autocorr_loss = 2.27e+12, loss_total = 2.27e+12, 
+Iteration  7 after  22.729329824447632  s
+autocorr_loss = 2.11e+12, loss_total = 2.11e+12, 
+Iteration  8 after  22.979957342147827  s
+autocorr_loss = 1.97e+12, loss_total = 1.97e+12, 
+Iteration  9 after  22.51687264442444  s
+autocorr_loss = 1.84e+12, loss_total = 1.84e+12, 
+Iteration  10 after  23.506258010864258  s
+autocorr_loss = 1.73e+12, loss_total = 1.73e+12, 
+Iteration  11 after  22.81792449951172  s
+autocorr_loss = 1.64e+12, loss_total = 1.64e+12, 
+Iteration  12 after  22.96033239364624  s
+autocorr_loss = 1.55e+12, loss_total = 1.55e+12, 
+Iteration  13 after  23.627037286758423  s
+autocorr_loss = 1.47e+12, loss_total = 1.47e+12, 
+Iteration  14 after  22.843492031097412  s
+autocorr_loss = 1.39e+12, loss_total = 1.39e+12, 
+Iteration  15 after  22.507018327713013  s
+autocorr_loss = 1.31e+12, loss_total = 1.31e+12, 
+Iteration  16 after  22.741714000701904  s
+autocorr_loss = 1.21e+12, loss_total = 1.21e+12, 
+Iteration  17 after  22.611612558364868  s
+autocorr_loss = 1.07e+12, loss_total = 1.07e+12, 
+Iteration  18 after  22.22618007659912  s
+autocorr_loss = 8.69e+11, loss_total = 8.69e+11, 
+Iteration  19 after  22.56378483772278  s
+autocorr_loss = 7.36e+11, loss_total = 7.36e+11, 
+Close Sess
+Computation total for  461.95354080200195  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='BrickSmallBrown0293_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['Lp'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='BrickSmallBrown0293_1_S_Lp', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='BrickSmallBrown0293_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_BrickSmallBrown0293_1_S_248_265_avg_SAME.pkl
+net loaded and gram computation after  5.07192325592041  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+loss_L_p_val with (p = 4) = 6.52e+11, loss_total = 6.52e+11, 
+Iteration  0 after  18.658138275146484  s
+loss_L_p_val with (p = 4) = 7.96e+07, loss_total = 7.96e+07, 
+Iteration  1 after  18.008647918701172  s
+loss_L_p_val with (p = 4) = 3.63e+07, loss_total = 3.63e+07, 
+Iteration  2 after  17.987390279769897  s
+loss_L_p_val with (p = 4) = 2.56e+07, loss_total = 2.56e+07, 
+Iteration  3 after  18.1897029876709  s
+loss_L_p_val with (p = 4) = 2.07e+07, loss_total = 2.07e+07, 
+Iteration  4 after  18.47013831138611  s
+loss_L_p_val with (p = 4) = 1.78e+07, loss_total = 1.78e+07, 
+Iteration  5 after  18.4257709980011  s
+loss_L_p_val with (p = 4) = 1.60e+07, loss_total = 1.60e+07, 
+Iteration  6 after  17.771638870239258  s
+loss_L_p_val with (p = 4) = 1.46e+07, loss_total = 1.46e+07, 
+Iteration  7 after  18.354105234146118  s
+loss_L_p_val with (p = 4) = 1.33e+07, loss_total = 1.33e+07, 
+Iteration  8 after  18.221123218536377  s
+loss_L_p_val with (p = 4) = 1.19e+07, loss_total = 1.19e+07, 
+Iteration  9 after  17.720073461532593  s
+loss_L_p_val with (p = 4) = 1.09e+07, loss_total = 1.09e+07, 
+Iteration  10 after  17.822014331817627  s
+loss_L_p_val with (p = 4) = 9.97e+06, loss_total = 9.97e+06, 
+Iteration  11 after  18.068731546401978  s
+loss_L_p_val with (p = 4) = 9.38e+06, loss_total = 9.38e+06, 
+Iteration  12 after  17.929197311401367  s
+loss_L_p_val with (p = 4) = 8.97e+06, loss_total = 8.97e+06, 
+Iteration  13 after  18.24041247367859  s
+loss_L_p_val with (p = 4) = 8.62e+06, loss_total = 8.62e+06, 
+Iteration  14 after  18.042234897613525  s
+loss_L_p_val with (p = 4) = 8.36e+06, loss_total = 8.36e+06, 
+Iteration  15 after  18.1617534160614  s
+loss_L_p_val with (p = 4) = 8.10e+06, loss_total = 8.10e+06, 
+Iteration  16 after  17.828028917312622  s
+loss_L_p_val with (p = 4) = 7.90e+06, loss_total = 7.90e+06, 
+Iteration  17 after  17.750797033309937  s
+loss_L_p_val with (p = 4) = 7.70e+06, loss_total = 7.70e+06, 
+Iteration  18 after  18.321293830871582  s
+loss_L_p_val with (p = 4) = 7.49e+06, loss_total = 7.49e+06, 
+Iteration  19 after  18.115633726119995  s
+loss_L_p_val with (p = 4) = 7.35e+06, loss_total = 7.35e+06, 
+Close Sess
+Computation total for  371.084504365921  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='GrungeMarbled0021_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['Lp'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='GrungeMarbled0021_S_Lp', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='GrungeMarbled0021_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_GrungeMarbled0021_S_217_304_avg_SAME.pkl
+net loaded and gram computation after  5.087433576583862  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+loss_L_p_val with (p = 4) = 5.32e+11, loss_total = 5.32e+11, 
+Iteration  0 after  19.18026828765869  s
+loss_L_p_val with (p = 4) = 7.37e+05, loss_total = 7.37e+05, 
+Iteration  1 after  18.781596183776855  s
+loss_L_p_val with (p = 4) = 1.15e+05, loss_total = 1.15e+05, 
+Iteration  2 after  18.970154285430908  s
+loss_L_p_val with (p = 4) = 5.46e+04, loss_total = 5.46e+04, 
+Iteration  3 after  18.346458435058594  s
+loss_L_p_val with (p = 4) = 3.28e+04, loss_total = 3.28e+04, 
+Iteration  4 after  18.912968397140503  s
+loss_L_p_val with (p = 4) = 2.18e+04, loss_total = 2.18e+04, 
+Iteration  5 after  18.56484031677246  s
+loss_L_p_val with (p = 4) = 1.60e+04, loss_total = 1.60e+04, 
+Iteration  6 after  18.3259437084198  s
+loss_L_p_val with (p = 4) = 1.20e+04, loss_total = 1.20e+04, 
+Iteration  7 after  18.560408353805542  s
+loss_L_p_val with (p = 4) = 9.41e+03, loss_total = 9.41e+03, 
+Iteration  8 after  18.095452308654785  s
+loss_L_p_val with (p = 4) = 7.88e+03, loss_total = 7.87e+03, 
+Iteration  9 after  18.242180824279785  s
+loss_L_p_val with (p = 4) = 6.88e+03, loss_total = 6.88e+03, 
+Iteration  10 after  18.536064863204956  s
+loss_L_p_val with (p = 4) = 6.04e+03, loss_total = 6.04e+03, 
+Iteration  11 after  18.58097767829895  s
+loss_L_p_val with (p = 4) = 5.34e+03, loss_total = 5.34e+03, 
+Iteration  12 after  16.394333600997925  s
+loss_L_p_val with (p = 4) = 4.90e+03, loss_total = 4.90e+03, 
+Iteration  13 after  1.481842041015625  s
+loss_L_p_val with (p = 4) = 4.90e+03, loss_total = 4.89e+03, 
+Iteration  14 after  1.7869956493377686  s
+loss_L_p_val with (p = 4) = 4.89e+03, loss_total = 4.89e+03, 
+Iteration  15 after  1.411372423171997  s
+loss_L_p_val with (p = 4) = 4.89e+03, loss_total = 4.89e+03, 
+Iteration  16 after  19.110302209854126  s
+loss_L_p_val with (p = 4) = 3.96e+03, loss_total = 3.96e+03, 
+Iteration  17 after  6.345549583435059  s
+loss_L_p_val with (p = 4) = 3.63e+03, loss_total = 3.63e+03, 
+Iteration  18 after  18.33314538002014  s
+loss_L_p_val with (p = 4) = 3.15e+03, loss_total = 3.15e+03, 
+Iteration  19 after  15.637763261795044  s
+loss_L_p_val with (p = 4) = 2.86e+03, loss_total = 2.86e+03, 
+Close Sess
+Computation total for  312.5255353450775  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='pebbles', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['Lp'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='pebbles_Lp', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='pebbles', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_pebbles_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.085032224655151  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+loss_L_p_val with (p = 4) = 4.07e+11, loss_total = 4.07e+11, 
+Iteration  0 after  22.117149353027344  s
+loss_L_p_val with (p = 4) = 1.06e+07, loss_total = 1.06e+07, 
+Iteration  1 after  21.743805408477783  s
+loss_L_p_val with (p = 4) = 1.10e+06, loss_total = 1.10e+06, 
+Iteration  2 after  21.820541858673096  s
+loss_L_p_val with (p = 4) = 3.78e+05, loss_total = 3.78e+05, 
+Iteration  3 after  21.51256227493286  s
+loss_L_p_val with (p = 4) = 2.00e+05, loss_total = 2.00e+05, 
+Iteration  4 after  21.498809337615967  s
+loss_L_p_val with (p = 4) = 1.23e+05, loss_total = 1.23e+05, 
+Iteration  5 after  21.3502459526062  s
+loss_L_p_val with (p = 4) = 8.86e+04, loss_total = 8.86e+04, 
+Iteration  6 after  21.319202423095703  s
+loss_L_p_val with (p = 4) = 6.80e+04, loss_total = 6.80e+04, 
+Iteration  7 after  21.992170333862305  s
+loss_L_p_val with (p = 4) = 5.38e+04, loss_total = 5.38e+04, 
+Iteration  8 after  21.824379682540894  s
+loss_L_p_val with (p = 4) = 4.44e+04, loss_total = 4.44e+04, 
+Iteration  9 after  21.5299551486969  s
+loss_L_p_val with (p = 4) = 3.75e+04, loss_total = 3.75e+04, 
+Iteration  10 after  21.610018968582153  s
+loss_L_p_val with (p = 4) = 3.26e+04, loss_total = 3.26e+04, 
+Iteration  11 after  21.504465341567993  s
+loss_L_p_val with (p = 4) = 2.82e+04, loss_total = 2.82e+04, 
+Iteration  12 after  21.76979088783264  s
+loss_L_p_val with (p = 4) = 2.48e+04, loss_total = 2.48e+04, 
+Iteration  13 after  21.04641580581665  s
+loss_L_p_val with (p = 4) = 2.18e+04, loss_total = 2.18e+04, 
+Iteration  14 after  21.685378789901733  s
+loss_L_p_val with (p = 4) = 1.93e+04, loss_total = 1.93e+04, 
+Iteration  15 after  21.41259264945984  s
+loss_L_p_val with (p = 4) = 1.74e+04, loss_total = 1.74e+04, 
+Iteration  16 after  21.318682193756104  s
+loss_L_p_val with (p = 4) = 1.58e+04, loss_total = 1.58e+04, 
+Iteration  17 after  21.89271569252014  s
+loss_L_p_val with (p = 4) = 1.44e+04, loss_total = 1.44e+04, 
+Iteration  18 after  21.539104223251343  s
+loss_L_p_val with (p = 4) = 1.25e+04, loss_total = 1.25e+04, 
+Iteration  19 after  21.56022810935974  s
+loss_L_p_val with (p = 4) = 1.13e+04, loss_total = 1.13e+04, 
+Close Sess
+Computation total for  440.7355215549469  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='TilesOrnate0158_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['Lp'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='TilesOrnate0158_1_S_Lp', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='TilesOrnate0158_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_TilesOrnate0158_1_S_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.169576644897461  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+loss_L_p_val with (p = 4) = 9.99e+11, loss_total = 9.99e+11, 
+Iteration  0 after  22.789509057998657  s
+loss_L_p_val with (p = 4) = 5.00e+06, loss_total = 5.00e+06, 
+Iteration  1 after  21.92270541191101  s
+loss_L_p_val with (p = 4) = 9.54e+05, loss_total = 9.54e+05, 
+Iteration  2 after  22.616950035095215  s
+loss_L_p_val with (p = 4) = 3.86e+05, loss_total = 3.86e+05, 
+Iteration  3 after  22.289264678955078  s
+loss_L_p_val with (p = 4) = 2.22e+05, loss_total = 2.22e+05, 
+Iteration  4 after  22.369139671325684  s
+loss_L_p_val with (p = 4) = 1.40e+05, loss_total = 1.40e+05, 
+Iteration  5 after  22.062639474868774  s
+loss_L_p_val with (p = 4) = 1.05e+05, loss_total = 1.05e+05, 
+Iteration  6 after  22.39147973060608  s
+loss_L_p_val with (p = 4) = 8.50e+04, loss_total = 8.50e+04, 
+Iteration  7 after  22.11732292175293  s
+loss_L_p_val with (p = 4) = 7.10e+04, loss_total = 7.10e+04, 
+Iteration  8 after  22.452540397644043  s
+loss_L_p_val with (p = 4) = 6.00e+04, loss_total = 6.00e+04, 
+Iteration  9 after  22.310414791107178  s
+loss_L_p_val with (p = 4) = 5.17e+04, loss_total = 5.17e+04, 
+Iteration  10 after  22.428072452545166  s
+loss_L_p_val with (p = 4) = 4.58e+04, loss_total = 4.58e+04, 
+Iteration  11 after  22.195048332214355  s
+loss_L_p_val with (p = 4) = 4.05e+04, loss_total = 4.05e+04, 
+Iteration  12 after  22.172680377960205  s
+loss_L_p_val with (p = 4) = 3.64e+04, loss_total = 3.64e+04, 
+Iteration  13 after  22.17616581916809  s
+loss_L_p_val with (p = 4) = 3.34e+04, loss_total = 3.34e+04, 
+Iteration  14 after  22.579829454421997  s
+loss_L_p_val with (p = 4) = 3.00e+04, loss_total = 3.00e+04, 
+Iteration  15 after  22.216161727905273  s
+loss_L_p_val with (p = 4) = 2.75e+04, loss_total = 2.75e+04, 
+Iteration  16 after  22.134782552719116  s
+loss_L_p_val with (p = 4) = 2.56e+04, loss_total = 2.56e+04, 
+Iteration  17 after  22.881229400634766  s
+loss_L_p_val with (p = 4) = 2.34e+04, loss_total = 2.34e+04, 
+Iteration  18 after  22.474047899246216  s
+loss_L_p_val with (p = 4) = 2.14e+04, loss_total = 2.14e+04, 
+Iteration  19 after  22.780802488327026  s
+loss_L_p_val with (p = 4) = 2.01e+04, loss_total = 2.01e+04, 
+Close Sess
+Computation total for  456.09321761131287  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='BrickSmallBrown0293_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['fft3D'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='BrickSmallBrown0293_1_S_fft3D', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='BrickSmallBrown0293_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_BrickSmallBrown0293_1_S_248_265_avg_SAME.pkl
+net loaded and gram computation after  5.070263624191284  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+fft3D_loss = 1.75e+20, loss_total = 1.75e+20, 
+Iteration  0 after  21.09334421157837  s
+fft3D_loss = 9.44e+16, loss_total = 9.44e+16, 
+Iteration  1 after  20.83331274986267  s
+fft3D_loss = 6.66e+16, loss_total = 6.66e+16, 
+Iteration  2 after  20.654020071029663  s
+fft3D_loss = 6.07e+16, loss_total = 6.07e+16, 
+Iteration  3 after  21.535967111587524  s
+fft3D_loss = 5.85e+16, loss_total = 5.85e+16, 
+Iteration  4 after  20.58796453475952  s
+fft3D_loss = 5.73e+16, loss_total = 5.73e+16, 
+Iteration  5 after  20.57478618621826  s
+fft3D_loss = 5.65e+16, loss_total = 5.65e+16, 
+Iteration  6 after  20.24763536453247  s
+fft3D_loss = 5.60e+16, loss_total = 5.60e+16, 
+Iteration  7 after  20.596038579940796  s
+fft3D_loss = 5.56e+16, loss_total = 5.56e+16, 
+Iteration  8 after  20.493598699569702  s
+fft3D_loss = 5.53e+16, loss_total = 5.53e+16, 
+Iteration  9 after  20.319828987121582  s
+fft3D_loss = 5.52e+16, loss_total = 5.52e+16, 
+Iteration  10 after  20.960975170135498  s
+fft3D_loss = 5.51e+16, loss_total = 5.51e+16, 
+Iteration  11 after  20.348737239837646  s
+fft3D_loss = 5.51e+16, loss_total = 5.51e+16, 
+Iteration  12 after  20.496144771575928  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Iteration  13 after  20.192081928253174  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Iteration  14 after  20.701493501663208  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Iteration  15 after  20.620319604873657  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Iteration  16 after  11.847301006317139  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Iteration  17 after  4.160625457763672  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Iteration  18 after  3.0590267181396484  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Iteration  19 after  2.55661678314209  s
+fft3D_loss = 5.50e+16, loss_total = 5.50e+16, 
+Close Sess
+Computation total for  360.7263677120209  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='GrungeMarbled0021_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['fft3D'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='GrungeMarbled0021_S_fft3D', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='GrungeMarbled0021_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_GrungeMarbled0021_S_217_304_avg_SAME.pkl
+net loaded and gram computation after  5.073796272277832  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+fft3D_loss = 1.23e+20, loss_total = 1.23e+20, 
+Iteration  0 after  22.351624011993408  s
+fft3D_loss = 4.28e+16, loss_total = 4.28e+16, 
+Iteration  1 after  20.94149422645569  s
+fft3D_loss = 2.06e+16, loss_total = 2.06e+16, 
+Iteration  2 after  20.57746434211731  s
+fft3D_loss = 1.67e+16, loss_total = 1.67e+16, 
+Iteration  3 after  20.901100635528564  s
+fft3D_loss = 1.51e+16, loss_total = 1.51e+16, 
+Iteration  4 after  21.163010120391846  s
+fft3D_loss = 1.41e+16, loss_total = 1.41e+16, 
+Iteration  5 after  20.871593475341797  s
+fft3D_loss = 1.34e+16, loss_total = 1.34e+16, 
+Iteration  6 after  21.04865074157715  s
+fft3D_loss = 1.30e+16, loss_total = 1.30e+16, 
+Iteration  7 after  20.819915533065796  s
+fft3D_loss = 1.27e+16, loss_total = 1.27e+16, 
+Iteration  8 after  20.891236066818237  s
+fft3D_loss = 1.24e+16, loss_total = 1.24e+16, 
+Iteration  9 after  20.767765998840332  s
+fft3D_loss = 1.22e+16, loss_total = 1.22e+16, 
+Iteration  10 after  20.991873264312744  s
+fft3D_loss = 1.21e+16, loss_total = 1.21e+16, 
+Iteration  11 after  21.02641725540161  s
+fft3D_loss = 1.19e+16, loss_total = 1.19e+16, 
+Iteration  12 after  20.600171089172363  s
+fft3D_loss = 1.18e+16, loss_total = 1.18e+16, 
+Iteration  13 after  20.61355209350586  s
+fft3D_loss = 1.17e+16, loss_total = 1.17e+16, 
+Iteration  14 after  21.02824378013611  s
+fft3D_loss = 1.16e+16, loss_total = 1.16e+16, 
+Iteration  15 after  20.661978006362915  s
+fft3D_loss = 1.16e+16, loss_total = 1.16e+16, 
+Iteration  16 after  20.46785259246826  s
+fft3D_loss = 1.15e+16, loss_total = 1.15e+16, 
+Iteration  17 after  20.397538423538208  s
+fft3D_loss = 1.14e+16, loss_total = 1.14e+16, 
+Iteration  18 after  20.56675624847412  s
+fft3D_loss = 1.14e+16, loss_total = 1.14e+16, 
+Iteration  19 after  20.321890830993652  s
+fft3D_loss = 1.13e+16, loss_total = 1.13e+16, 
+Close Sess
+Computation total for  425.63879680633545  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='pebbles', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['fft3D'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='pebbles_fft3D', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='pebbles', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_pebbles_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.050694942474365  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+fft3D_loss = 5.55e+18, loss_total = 5.55e+18, 
+Iteration  0 after  22.846446990966797  s
+fft3D_loss = 5.84e+16, loss_total = 5.84e+16, 
+Iteration  1 after  22.74061894416809  s
+fft3D_loss = 3.09e+16, loss_total = 3.09e+16, 
+Iteration  2 after  22.875545263290405  s
+fft3D_loss = 2.55e+16, loss_total = 2.55e+16, 
+Iteration  3 after  22.746323585510254  s
+fft3D_loss = 2.31e+16, loss_total = 2.31e+16, 
+Iteration  4 after  23.10581922531128  s
+fft3D_loss = 2.19e+16, loss_total = 2.19e+16, 
+Iteration  5 after  22.667263984680176  s
+fft3D_loss = 2.12e+16, loss_total = 2.12e+16, 
+Iteration  6 after  22.566010236740112  s
+fft3D_loss = 2.08e+16, loss_total = 2.08e+16, 
+Iteration  7 after  22.7154541015625  s
+fft3D_loss = 2.05e+16, loss_total = 2.05e+16, 
+Iteration  8 after  22.63157296180725  s
+fft3D_loss = 2.03e+16, loss_total = 2.03e+16, 
+Iteration  9 after  22.524353742599487  s
+fft3D_loss = 2.01e+16, loss_total = 2.01e+16, 
+Iteration  10 after  22.899238109588623  s
+fft3D_loss = 1.99e+16, loss_total = 1.99e+16, 
+Iteration  11 after  22.80353546142578  s
+fft3D_loss = 1.98e+16, loss_total = 1.98e+16, 
+Iteration  12 after  23.044076681137085  s
+fft3D_loss = 1.96e+16, loss_total = 1.96e+16, 
+Iteration  13 after  23.17766523361206  s
+fft3D_loss = 1.95e+16, loss_total = 1.95e+16, 
+Iteration  14 after  22.538564920425415  s
+fft3D_loss = 1.94e+16, loss_total = 1.94e+16, 
+Iteration  15 after  22.440261840820312  s
+fft3D_loss = 1.93e+16, loss_total = 1.93e+16, 
+Iteration  16 after  22.777225971221924  s
+fft3D_loss = 1.92e+16, loss_total = 1.92e+16, 
+Iteration  17 after  22.3846595287323  s
+fft3D_loss = 1.91e+16, loss_total = 1.91e+16, 
+Iteration  18 after  22.48052978515625  s
+fft3D_loss = 1.91e+16, loss_total = 1.91e+16, 
+Iteration  19 after  22.488465309143066  s
+fft3D_loss = 1.91e+16, loss_total = 1.91e+16, 
+Close Sess
+Computation total for  462.9717435836792  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='TilesOrnate0158_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['fft3D'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='TilesOrnate0158_1_S_fft3D', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='TilesOrnate0158_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_TilesOrnate0158_1_S_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.062049627304077  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+fft3D_loss = 3.27e+20, loss_total = 3.27e+20, 
+Iteration  0 after  23.93561339378357  s
+fft3D_loss = 2.11e+17, loss_total = 2.11e+17, 
+Iteration  1 after  22.792893648147583  s
+fft3D_loss = 1.16e+17, loss_total = 1.16e+17, 
+Iteration  2 after  22.700249195098877  s
+fft3D_loss = 8.94e+16, loss_total = 8.94e+16, 
+Iteration  3 after  22.775245189666748  s
+fft3D_loss = 6.86e+16, loss_total = 6.86e+16, 
+Iteration  4 after  22.811116456985474  s
+fft3D_loss = 4.65e+16, loss_total = 4.65e+16, 
+Iteration  5 after  22.884278535842896  s
+fft3D_loss = 3.39e+16, loss_total = 3.39e+16, 
+Iteration  6 after  22.7074134349823  s
+fft3D_loss = 2.67e+16, loss_total = 2.67e+16, 
+Iteration  7 after  22.948997259140015  s
+fft3D_loss = 2.19e+16, loss_total = 2.19e+16, 
+Iteration  8 after  22.642049312591553  s
+fft3D_loss = 1.88e+16, loss_total = 1.88e+16, 
+Iteration  9 after  22.617413997650146  s
+fft3D_loss = 1.69e+16, loss_total = 1.69e+16, 
+Iteration  10 after  23.047289848327637  s
+fft3D_loss = 1.57e+16, loss_total = 1.57e+16, 
+Iteration  11 after  22.705465078353882  s
+fft3D_loss = 1.49e+16, loss_total = 1.49e+16, 
+Iteration  12 after  22.86374855041504  s
+fft3D_loss = 1.43e+16, loss_total = 1.43e+16, 
+Iteration  13 after  23.1442813873291  s
+fft3D_loss = 1.39e+16, loss_total = 1.39e+16, 
+Iteration  14 after  23.215839624404907  s
+fft3D_loss = 1.35e+16, loss_total = 1.35e+16, 
+Iteration  15 after  22.959177255630493  s
+fft3D_loss = 1.33e+16, loss_total = 1.33e+16, 
+Iteration  16 after  23.109583139419556  s
+fft3D_loss = 1.30e+16, loss_total = 1.30e+16, 
+Iteration  17 after  23.1329562664032  s
+fft3D_loss = 1.28e+16, loss_total = 1.28e+16, 
+Iteration  18 after  22.782852172851562  s
+fft3D_loss = 1.27e+16, loss_total = 1.27e+16, 
+Iteration  19 after  22.801772832870483  s
+fft3D_loss = 1.25e+16, loss_total = 1.25e+16, 
+Close Sess
+Computation total for  466.74923753738403  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='BrickSmallBrown0293_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['bizarre'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='BrickSmallBrown0293_1_S_bizarre', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='BrickSmallBrown0293_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_BrickSmallBrown0293_1_S_248_265_avg_SAME.pkl
+net loaded and gram computation after  5.15333104133606  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorrbizarre_loss = 2.76e+15, loss_total = 2.76e+15, 
+Iteration  0 after  20.06890296936035  s
+autocorrbizarre_loss = 2.30e+12, loss_total = 2.30e+12, 
+Iteration  1 after  19.160449028015137  s
+autocorrbizarre_loss = 1.27e+12, loss_total = 1.27e+12, 
+Iteration  2 after  19.281731843948364  s
+autocorrbizarre_loss = 1.14e+12, loss_total = 1.14e+12, 
+Iteration  3 after  19.294888019561768  s
+autocorrbizarre_loss = 1.07e+12, loss_total = 1.07e+12, 
+Iteration  4 after  19.056466341018677  s
+autocorrbizarre_loss = 1.04e+12, loss_total = 1.04e+12, 
+Iteration  5 after  19.04452395439148  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  6 after  18.962247371673584  s
+autocorrbizarre_loss = 9.83e+11, loss_total = 9.83e+11, 
+Iteration  7 after  19.535112142562866  s
+autocorrbizarre_loss = 9.64e+11, loss_total = 9.64e+11, 
+Iteration  8 after  19.198796033859253  s
+autocorrbizarre_loss = 9.48e+11, loss_total = 9.48e+11, 
+Iteration  9 after  19.325080156326294  s
+autocorrbizarre_loss = 9.34e+11, loss_total = 9.34e+11, 
+Iteration  10 after  19.213214874267578  s
+autocorrbizarre_loss = 9.23e+11, loss_total = 9.23e+11, 
+Iteration  11 after  19.614216566085815  s
+autocorrbizarre_loss = 9.13e+11, loss_total = 9.13e+11, 
+Iteration  12 after  19.404569149017334  s
+autocorrbizarre_loss = 9.03e+11, loss_total = 9.03e+11, 
+Iteration  13 after  19.507131576538086  s
+autocorrbizarre_loss = 8.95e+11, loss_total = 8.95e+11, 
+Iteration  14 after  20.250428676605225  s
+autocorrbizarre_loss = 8.86e+11, loss_total = 8.86e+11, 
+Iteration  15 after  19.99793553352356  s
+autocorrbizarre_loss = 8.78e+11, loss_total = 8.78e+11, 
+Iteration  16 after  19.921826601028442  s
+autocorrbizarre_loss = 8.71e+11, loss_total = 8.71e+11, 
+Iteration  17 after  19.829742908477783  s
+autocorrbizarre_loss = 8.64e+11, loss_total = 8.64e+11, 
+Iteration  18 after  20.291215896606445  s
+autocorrbizarre_loss = 8.58e+11, loss_total = 8.58e+11, 
+Iteration  19 after  18.994637966156006  s
+autocorrbizarre_loss = 8.54e+11, loss_total = 8.54e+11, 
+Close Sess
+Computation total for  398.2850835323334  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='GrungeMarbled0021_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['bizarre'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='GrungeMarbled0021_S_bizarre', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='GrungeMarbled0021_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_GrungeMarbled0021_S_217_304_avg_SAME.pkl
+net loaded and gram computation after  5.043932199478149  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorrbizarre_loss = 4.46e+14, loss_total = 4.46e+14, 
+Iteration  0 after  20.962607622146606  s
+autocorrbizarre_loss = 5.59e+12, loss_total = 5.59e+12, 
+Iteration  1 after  19.64195728302002  s
+autocorrbizarre_loss = 2.91e+12, loss_total = 2.91e+12, 
+Iteration  2 after  19.810418128967285  s
+autocorrbizarre_loss = 2.30e+12, loss_total = 2.30e+12, 
+Iteration  3 after  19.720104455947876  s
+autocorrbizarre_loss = 2.09e+12, loss_total = 2.09e+12, 
+Iteration  4 after  19.724759578704834  s
+autocorrbizarre_loss = 1.88e+12, loss_total = 1.88e+12, 
+Iteration  5 after  19.240880012512207  s
+autocorrbizarre_loss = 1.69e+12, loss_total = 1.69e+12, 
+Iteration  6 after  19.016804218292236  s
+autocorrbizarre_loss = 1.61e+12, loss_total = 1.61e+12, 
+Iteration  7 after  19.614015579223633  s
+autocorrbizarre_loss = 1.56e+12, loss_total = 1.56e+12, 
+Iteration  8 after  20.16876721382141  s
+autocorrbizarre_loss = 1.51e+12, loss_total = 1.51e+12, 
+Iteration  9 after  19.525009155273438  s
+autocorrbizarre_loss = 1.48e+12, loss_total = 1.48e+12, 
+Iteration  10 after  19.730143308639526  s
+autocorrbizarre_loss = 1.42e+12, loss_total = 1.42e+12, 
+Iteration  11 after  19.211835145950317  s
+autocorrbizarre_loss = 1.38e+12, loss_total = 1.38e+12, 
+Iteration  12 after  19.214585542678833  s
+autocorrbizarre_loss = 1.36e+12, loss_total = 1.36e+12, 
+Iteration  13 after  19.528324365615845  s
+autocorrbizarre_loss = 1.34e+12, loss_total = 1.34e+12, 
+Iteration  14 after  19.02084755897522  s
+autocorrbizarre_loss = 1.33e+12, loss_total = 1.33e+12, 
+Iteration  15 after  18.89831018447876  s
+autocorrbizarre_loss = 1.32e+12, loss_total = 1.32e+12, 
+Iteration  16 after  19.339911699295044  s
+autocorrbizarre_loss = 1.31e+12, loss_total = 1.31e+12, 
+Iteration  17 after  19.381982564926147  s
+autocorrbizarre_loss = 1.31e+12, loss_total = 1.31e+12, 
+Iteration  18 after  19.05341362953186  s
+autocorrbizarre_loss = 1.30e+12, loss_total = 1.30e+12, 
+Iteration  19 after  19.267563819885254  s
+autocorrbizarre_loss = 1.30e+12, loss_total = 1.30e+12, 
+Close Sess
+Computation total for  398.4224109649658  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='pebbles', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['bizarre'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='pebbles_bizarre', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='pebbles', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_pebbles_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.16288948059082  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorrbizarre_loss = 6.55e+13, loss_total = 6.55e+13, 
+Iteration  0 after  22.30679225921631  s
+autocorrbizarre_loss = 3.66e+12, loss_total = 3.66e+12, 
+Iteration  1 after  22.022314310073853  s
+autocorrbizarre_loss = 1.91e+12, loss_total = 1.91e+12, 
+Iteration  2 after  22.243464469909668  s
+autocorrbizarre_loss = 1.36e+12, loss_total = 1.36e+12, 
+Iteration  3 after  23.063580989837646  s
+autocorrbizarre_loss = 1.15e+12, loss_total = 1.15e+12, 
+Iteration  4 after  23.17920684814453  s
+autocorrbizarre_loss = 1.09e+12, loss_total = 1.09e+12, 
+Iteration  5 after  22.951966047286987  s
+autocorrbizarre_loss = 1.06e+12, loss_total = 1.06e+12, 
+Iteration  6 after  23.037273168563843  s
+autocorrbizarre_loss = 1.04e+12, loss_total = 1.04e+12, 
+Iteration  7 after  22.733271837234497  s
+autocorrbizarre_loss = 1.03e+12, loss_total = 1.03e+12, 
+Iteration  8 after  21.987422227859497  s
+autocorrbizarre_loss = 1.02e+12, loss_total = 1.02e+12, 
+Iteration  9 after  22.05575728416443  s
+autocorrbizarre_loss = 1.02e+12, loss_total = 1.02e+12, 
+Iteration  10 after  22.412084341049194  s
+autocorrbizarre_loss = 1.02e+12, loss_total = 1.02e+12, 
+Iteration  11 after  23.578116416931152  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  12 after  22.283697605133057  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  13 after  22.611626148223877  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  14 after  22.503576278686523  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  15 after  22.854724168777466  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  16 after  24.21978998184204  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  17 after  23.09959101676941  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  18 after  22.599823713302612  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Iteration  19 after  22.251752376556396  s
+autocorrbizarre_loss = 1.01e+12, loss_total = 1.01e+12, 
+Close Sess
+Computation total for  462.63698053359985  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='TilesOrnate0158_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['bizarre'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='TilesOrnate0158_1_S_bizarre', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='TilesOrnate0158_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_TilesOrnate0158_1_S_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.075159311294556  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+autocorrbizarre_loss = 1.74e+15, loss_total = 1.74e+15, 
+Iteration  0 after  22.682741403579712  s
+autocorrbizarre_loss = 1.43e+13, loss_total = 1.43e+13, 
+Iteration  1 after  22.859434127807617  s
+autocorrbizarre_loss = 7.52e+12, loss_total = 7.52e+12, 
+Iteration  2 after  22.268977642059326  s
+autocorrbizarre_loss = 6.06e+12, loss_total = 6.06e+12, 
+Iteration  3 after  23.033437967300415  s
+autocorrbizarre_loss = 5.55e+12, loss_total = 5.55e+12, 
+Iteration  4 after  23.12975525856018  s
+autocorrbizarre_loss = 5.33e+12, loss_total = 5.33e+12, 
+Iteration  5 after  22.31228733062744  s
+autocorrbizarre_loss = 5.18e+12, loss_total = 5.18e+12, 
+Iteration  6 after  21.93119478225708  s
+autocorrbizarre_loss = 5.02e+12, loss_total = 5.02e+12, 
+Iteration  7 after  22.42962884902954  s
+autocorrbizarre_loss = 4.91e+12, loss_total = 4.91e+12, 
+Iteration  8 after  21.936554670333862  s
+autocorrbizarre_loss = 4.83e+12, loss_total = 4.83e+12, 
+Iteration  9 after  22.313838005065918  s
+autocorrbizarre_loss = 4.78e+12, loss_total = 4.78e+12, 
+Iteration  10 after  22.393082857131958  s
+autocorrbizarre_loss = 4.74e+12, loss_total = 4.74e+12, 
+Iteration  11 after  22.168211698532104  s
+autocorrbizarre_loss = 4.70e+12, loss_total = 4.70e+12, 
+Iteration  12 after  21.83815908432007  s
+autocorrbizarre_loss = 4.68e+12, loss_total = 4.68e+12, 
+Iteration  13 after  22.323185920715332  s
+autocorrbizarre_loss = 4.66e+12, loss_total = 4.66e+12, 
+Iteration  14 after  22.3977313041687  s
+autocorrbizarre_loss = 4.65e+12, loss_total = 4.65e+12, 
+Iteration  15 after  22.167352199554443  s
+autocorrbizarre_loss = 4.64e+12, loss_total = 4.64e+12, 
+Iteration  16 after  22.281702995300293  s
+autocorrbizarre_loss = 4.63e+12, loss_total = 4.63e+12, 
+Iteration  17 after  22.1028892993927  s
+autocorrbizarre_loss = 4.63e+12, loss_total = 4.63e+12, 
+Iteration  18 after  21.917035341262817  s
+autocorrbizarre_loss = 4.62e+12, loss_total = 4.62e+12, 
+Iteration  19 after  22.3286030292511  s
+autocorrbizarre_loss = 4.62e+12, loss_total = 4.62e+12, 
+Close Sess
+Computation total for  454.7626554965973  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='BrickSmallBrown0293_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['texture'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='BrickSmallBrown0293_1_S_texture', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='BrickSmallBrown0293_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_BrickSmallBrown0293_1_S_248_265_avg_SAME.pkl
+net loaded and gram computation after  5.893544673919678  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+style_loss = 6.71e+17, loss_total = 6.71e+17, 
+Iteration  0 after  17.993213415145874  s
+style_loss = 3.52e+14, loss_total = 3.52e+14, 
+Iteration  1 after  16.797837495803833  s
+style_loss = 1.23e+14, loss_total = 1.23e+14, 
+Iteration  2 after  17.9359929561615  s
+style_loss = 5.99e+13, loss_total = 5.99e+13, 
+Iteration  3 after  17.26676297187805  s
+style_loss = 4.12e+13, loss_total = 4.12e+13, 
+Iteration  4 after  17.029927015304565  s
+style_loss = 3.24e+13, loss_total = 3.24e+13, 
+Iteration  5 after  17.595325231552124  s
+style_loss = 2.75e+13, loss_total = 2.75e+13, 
+Iteration  6 after  17.39700722694397  s
+style_loss = 2.44e+13, loss_total = 2.44e+13, 
+Iteration  7 after  17.36572003364563  s
+style_loss = 2.21e+13, loss_total = 2.21e+13, 
+Iteration  8 after  17.38798427581787  s
+style_loss = 2.05e+13, loss_total = 2.05e+13, 
+Iteration  9 after  16.976771593093872  s
+style_loss = 1.91e+13, loss_total = 1.91e+13, 
+Iteration  10 after  17.16994333267212  s
+style_loss = 1.81e+13, loss_total = 1.81e+13, 
+Iteration  11 after  16.866923570632935  s
+style_loss = 1.73e+13, loss_total = 1.73e+13, 
+Iteration  12 after  16.89118218421936  s
+style_loss = 1.66e+13, loss_total = 1.66e+13, 
+Iteration  13 after  16.9330096244812  s
+style_loss = 1.61e+13, loss_total = 1.61e+13, 
+Iteration  14 after  17.06122589111328  s
+style_loss = 1.55e+13, loss_total = 1.55e+13, 
+Iteration  15 after  16.88565444946289  s
+style_loss = 1.50e+13, loss_total = 1.50e+13, 
+Iteration  16 after  17.473143577575684  s
+style_loss = 1.45e+13, loss_total = 1.45e+13, 
+Iteration  17 after  17.18254780769348  s
+style_loss = 1.41e+13, loss_total = 1.41e+13, 
+Iteration  18 after  17.068692207336426  s
+style_loss = 1.36e+13, loss_total = 1.36e+13, 
+Iteration  19 after  17.24145746231079  s
+style_loss = 1.32e+13, loss_total = 1.32e+13, 
+Close Sess
+Computation total for  365.78146982192993  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='GrungeMarbled0021_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['texture'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='GrungeMarbled0021_S_texture', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='GrungeMarbled0021_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_GrungeMarbled0021_S_217_304_avg_SAME.pkl
+net loaded and gram computation after  5.523266792297363  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+style_loss = 4.65e+17, loss_total = 4.65e+17, 
+Iteration  0 after  18.531622886657715  s
+style_loss = 9.87e+12, loss_total = 9.87e+12, 
+Iteration  1 after  17.593295574188232  s
+style_loss = 1.55e+12, loss_total = 1.55e+12, 
+Iteration  2 after  17.365647554397583  s
+style_loss = 7.67e+11, loss_total = 7.67e+11, 
+Iteration  3 after  17.486806631088257  s
+style_loss = 5.04e+11, loss_total = 5.04e+11, 
+Iteration  4 after  17.728365898132324  s
+style_loss = 3.88e+11, loss_total = 3.88e+11, 
+Iteration  5 after  17.632817268371582  s
+style_loss = 3.20e+11, loss_total = 3.20e+11, 
+Iteration  6 after  17.5764479637146  s
+style_loss = 2.71e+11, loss_total = 2.71e+11, 
+Iteration  7 after  18.282608032226562  s
+style_loss = 2.38e+11, loss_total = 2.38e+11, 
+Iteration  8 after  17.60735321044922  s
+style_loss = 2.13e+11, loss_total = 2.13e+11, 
+Iteration  9 after  17.58401584625244  s
+style_loss = 1.94e+11, loss_total = 1.94e+11, 
+Iteration  10 after  16.85778832435608  s
+style_loss = 1.79e+11, loss_total = 1.79e+11, 
+Iteration  11 after  17.05644130706787  s
+style_loss = 1.65e+11, loss_total = 1.65e+11, 
+Iteration  12 after  17.006261348724365  s
+style_loss = 1.54e+11, loss_total = 1.54e+11, 
+Iteration  13 after  17.047363758087158  s
+style_loss = 1.44e+11, loss_total = 1.44e+11, 
+Iteration  14 after  17.40924096107483  s
+style_loss = 1.36e+11, loss_total = 1.36e+11, 
+Iteration  15 after  17.437106370925903  s
+style_loss = 1.29e+11, loss_total = 1.29e+11, 
+Iteration  16 after  17.96021580696106  s
+style_loss = 1.23e+11, loss_total = 1.23e+11, 
+Iteration  17 after  18.05092215538025  s
+style_loss = 1.18e+11, loss_total = 1.18e+11, 
+Iteration  18 after  17.022716760635376  s
+style_loss = 1.13e+11, loss_total = 1.13e+11, 
+Iteration  19 after  17.337839365005493  s
+style_loss = 1.08e+11, loss_total = 1.08e+11, 
+Close Sess
+Computation total for  358.6545729637146  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='pebbles', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['texture'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='pebbles_texture', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='pebbles', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_pebbles_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.480762958526611  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+style_loss = 8.35e+16, loss_total = 8.35e+16, 
+Iteration  0 after  19.293314456939697  s
+style_loss = 1.67e+13, loss_total = 1.67e+13, 
+Iteration  1 after  19.01350426673889  s
+style_loss = 2.64e+12, loss_total = 2.64e+12, 
+Iteration  2 after  18.992292642593384  s
+style_loss = 1.27e+12, loss_total = 1.27e+12, 
+Iteration  3 after  19.003581523895264  s
+style_loss = 8.61e+11, loss_total = 8.61e+11, 
+Iteration  4 after  19.43290376663208  s
+style_loss = 6.66e+11, loss_total = 6.66e+11, 
+Iteration  5 after  19.019102334976196  s
+style_loss = 5.51e+11, loss_total = 5.51e+11, 
+Iteration  6 after  19.074320554733276  s
+style_loss = 4.73e+11, loss_total = 4.73e+11, 
+Iteration  7 after  19.079081058502197  s
+style_loss = 4.17e+11, loss_total = 4.17e+11, 
+Iteration  8 after  19.190030336380005  s
+style_loss = 3.75e+11, loss_total = 3.75e+11, 
+Iteration  9 after  19.32746171951294  s
+style_loss = 3.41e+11, loss_total = 3.41e+11, 
+Iteration  10 after  19.03896713256836  s
+style_loss = 3.13e+11, loss_total = 3.13e+11, 
+Iteration  11 after  19.126803398132324  s
+style_loss = 2.89e+11, loss_total = 2.89e+11, 
+Iteration  12 after  18.736053705215454  s
+style_loss = 2.67e+11, loss_total = 2.67e+11, 
+Iteration  13 after  18.741242170333862  s
+style_loss = 2.50e+11, loss_total = 2.50e+11, 
+Iteration  14 after  19.16390109062195  s
+style_loss = 2.35e+11, loss_total = 2.35e+11, 
+Iteration  15 after  19.065916538238525  s
+style_loss = 2.23e+11, loss_total = 2.23e+11, 
+Iteration  16 after  18.72608971595764  s
+style_loss = 2.12e+11, loss_total = 2.12e+11, 
+Iteration  17 after  18.841830015182495  s
+style_loss = 2.02e+11, loss_total = 2.02e+11, 
+Iteration  18 after  18.83291721343994  s
+style_loss = 1.93e+11, loss_total = 1.93e+11, 
+Iteration  19 after  19.130281448364258  s
+style_loss = 1.86e+11, loss_total = 1.86e+11, 
+Close Sess
+Computation total for  388.73474764823914  s
+verbosity turned on
+Namespace(clip_var=1, content_img_name='TilesOrnate0158_1_S', content_strengh=0.001, data_folder='data/', gpu_frac=0.0, img_ext='.png', img_folder='/home/nicolas/Style-Transfer/InitializationTest/data/', img_output_folder='/home/nicolas/Style-Transfer/LossFct/results/', init='Gaussian', init_noise_ratio=1.0, init_range=0.0, learning_rate=10.0, loss=['texture'], max_iter=2000, maxcor=10, n=4, optimizer='lbfgs', output_img_name='TilesOrnate0158_1_S_texture', p=4, plot=False, pooling_type='avg', print_iter=100, sampling='down', start_from_noise=1, style_img_name='TilesOrnate0158_1_S', tf_profiler=False, tv=False, type_of_loss='add', verbose=True)
+Load Data  data/gram_TilesOrnate0158_1_S_256_256_avg_SAME.pkl
+net loaded and gram computation after  5.305962324142456  s
+Memory Growth
+Noisy image generation with a Gaussian white noise
+init loss total
+Start LBFGS optim with a print each  100  iterations
+sess.graph.finalize()
+loss before optimization
+style_loss = 1.17e+18, loss_total = 1.17e+18, 
+Iteration  0 after  17.60241174697876  s
+style_loss = 1.01e+14, loss_total = 1.01e+14, 
+Iteration  1 after  17.492669820785522  s
+style_loss = 3.30e+13, loss_total = 3.30e+13, 
+Iteration  2 after  17.661255359649658  s
+style_loss = 1.97e+13, loss_total = 1.97e+13, 
+Iteration  3 after  17.537458419799805  s
+style_loss = 1.44e+13, loss_total = 1.44e+13, 
+Iteration  4 after  17.817360877990723  s
+style_loss = 1.17e+13, loss_total = 1.17e+13, 
+Iteration  5 after  17.682809829711914  s
+style_loss = 9.95e+12, loss_total = 9.95e+12, 
+Iteration  6 after  17.72167181968689  s
+style_loss = 8.72e+12, loss_total = 8.72e+12, 
+Iteration  7 after  18.29225778579712  s
+style_loss = 7.86e+12, loss_total = 7.86e+12, 
+Iteration  8 after  18.11630630493164  s
+style_loss = 7.19e+12, loss_total = 7.19e+12, 
+Iteration  9 after  17.780125379562378  s
+style_loss = 6.64e+12, loss_total = 6.64e+12, 
+Iteration  10 after  17.685105323791504  s
+style_loss = 6.13e+12, loss_total = 6.13e+12, 
+Iteration  11 after  17.89849042892456  s
+style_loss = 5.73e+12, loss_total = 5.73e+12, 
+Iteration  12 after  17.663419246673584  s
+style_loss = 5.40e+12, loss_total = 5.40e+12, 
+Iteration  13 after  17.93590235710144  s
+style_loss = 5.13e+12, loss_total = 5.13e+12, 
+Iteration  14 after  17.802460432052612  s
+style_loss = 4.90e+12, loss_total = 4.90e+12, 
+Iteration  15 after  17.77945375442505  s
+style_loss = 4.70e+12, loss_total = 4.70e+12, 
+Iteration  16 after  17.834294080734253  s
+style_loss = 4.49e+12, loss_total = 4.49e+12, 
+Iteration  17 after  17.57790470123291  s
+style_loss = 4.31e+12, loss_total = 4.31e+12, 
+Iteration  18 after  18.077966928482056  s
+style_loss = 4.17e+12, loss_total = 4.17e+12, 
+Iteration  19 after  17.899983882904053  s
+style_loss = 4.04e+12, loss_total = 4.04e+12, 
+Close Sess
+Computation total for  363.2216286659241  s

@@ -18,15 +18,13 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-import time
 import pickle
 from matplotlib.backends.backend_pdf import PdfPages
-import scipy.stats as stats
-from tensorflow.python.framework import dtypes
-import matplotlib.gridspec as gridspec
-import math
-from skimage import exposure
 from PIL import Image
+from skimage import filters
+from skimage.restoration import (denoise_tv_chambolle, denoise_bilateral,denoise_wavelet, estimate_sigma,denoise_nl_means)
+import scipy.ndimage
+from skimage.morphology import disk
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -50,7 +48,7 @@ VGG19_LAYERS_INDICES = {'conv1_1' : 0,'conv1_2' : 2,'conv2_1' : 5,'conv2_2' : 7,
 	'conv5_3' : 32,'conv5_4' : 34}
 
 VGG19_LAYERS_INTEREST = (
-    'conv1_1','conv2_1', 'conv3_1'
+	'conv1_1','conv2_1', 'conv3_1'
 )
 
 style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
@@ -178,7 +176,7 @@ def do_pdf_comparison_forNoise():
 				#titre = list_name[j] + ' Gram Elt = {:.2e}'.format(list_G[j][i,i])
 				titre = list_name[j] 
 				axarr[j%2,j//2].set_title(titre)
-				axarr[j%2,j//2].axis('off')	
+				axarr[j%2,j//2].axis('off') 
 			titre = 'Kernel {}'.format(i)
 			plt.suptitle(titre)
 			plt.savefig(pp, format='pdf')
@@ -302,7 +300,7 @@ def plot_compare_pdf(vgg_layers,Matrix,path,name):
 		#print("pvalue",pvalue)
 		df_Matrix.hist(column = i, bins = 128,ax=ax1,normed=True, histtype='stepfilled', alpha=1) 
 		x = np.linspace(stats.gennorm.ppf(0.005, beta, loc, scale),
-                stats.gennorm.ppf(0.995, beta, loc, scale), 128)
+				stats.gennorm.ppf(0.995, beta, loc, scale), 128)
 		ax1.plot(x, stats.gennorm.pdf(x, beta, loc, scale ),'r-',alpha=0.4, label='gennorm pdf')
 		#ax1.legend(loc='best', frameon=False)
 		#textstr = '$\mu=%.2f$\n$\mathrm{scale}=%.2f$\n$beta=%.2f$ \n $\mathrm{D}=%.4f$ \n $\mathrm{Dcri}=%.4f$ '%(loc,scale,beta,D,Dcritial)
@@ -320,6 +318,135 @@ def plot_compare_pdf(vgg_layers,Matrix,path,name):
 	pp.close()
 	plt.clf()
 	
+def Test_If_Net_See_Noise():
+	"""
+	This function test to see if the noise is invisible for the net or not
+	"""
+	list_img = []
+	list_name_img = []
+	img_folder = 'NoiseOrigin/CompDenoising/'
+	img_name = 'Pastiche_Uniform'
+	img_ext = '.png'
+	image_path = img_folder + img_name +img_ext
+	noisy_img = scipy.misc.imread(image_path) 
+	list_img += [noisy_img]
+	list_name_img += ['noisy_img']
+	
+	# NLmeans : read a image desoined by the user
+	image_path = img_folder + 'denoised_Uniform' +img_ext
+	nlmeans_denoised_img_user = scipy.misc.imread(image_path) 
+	list_img += [nlmeans_denoised_img_user]
+	list_name_img += ['nlmeans_denoised_user']
+	
+	# NLmeans by scikit image
+	output_image_path = img_folder + 'nlmeans_denoised' +img_ext
+	try:
+		nlmeans_denoised_img = scipy.misc.imread(output_image_path)
+	except: 
+		nlmeans_denoised_img = denoise_nl_means(noisy_img,  patch_size=7, patch_distance=40, h=40, multichannel=True, fast_mode=False)
+		scipy.misc.toimage(nlmeans_denoised_img).save(output_image_path)
+	list_img += [nlmeans_denoised_img]
+	list_name_img += ['nlmeans_denoised']
+
+	# Gaussian Filters
+	output_image_path = img_folder + 'gaussian_filtered' +img_ext
+	try:
+		gaussian_filter_img = scipy.misc.imread(output_image_path)
+	except: 
+		gaussian_filter_img = filters.gaussian(noisy_img, sigma=1,mode='reflect',multichannel=True)
+		scipy.misc.toimage(gaussian_filter_img).save(output_image_path)
+	list_img += [gaussian_filter_img]
+	list_name_img += ['gaussian_filtered']
+
+	# Median Filters
+	output_image_path = img_folder + 'median_filtered' +img_ext
+	try:
+		median_filter_img = scipy.misc.imread(output_image_path)
+	except: 
+		median_filter_img = np.zeros(shape=noisy_img.shape)
+		for i in range(3):
+			median_filter_img[:,:,i] = filters.rank.median(noisy_img[:,:,i])
+		scipy.misc.toimage(median_filter_img).save(output_image_path)
+	list_img += [median_filter_img]
+	list_name_img += ['median_filtered']
+	
+	# Median Filters
+	output_image_path = img_folder + 'tv_filtered' +img_ext
+	try:
+		tv_img = scipy.misc.imread(output_image_path)
+	except:
+		tv_img = denoise_tv_chambolle(noisy_img, weight=0.1, multichannel=True)
+		scipy.misc.toimage(tv_img).save(output_image_path)
+	list_img += [tv_img]
+	list_name_img += ['tv_filtered']
+	
+	
+	
+	# Moyen Filters
+	output_image_path = img_folder + 'moyen_img' +img_ext
+	try:
+		moyen_img =  scipy.misc.imread(output_image_path)
+	except:
+		weights = (1./9.)*np.array([[1,1,1],[1,1,1],[1,1,1]])
+		moyen_img = np.zeros(shape=noisy_img.shape)
+		for i in range(3):
+			moyen_img[:,:,i] = scipy.ndimage.filters.convolve(noisy_img[:,:,i], weights, output=None, mode='reflect', cval=0.0, origin=0)
+		scipy.misc.toimage(moyen_img).save(output_image_path)
+	list_img += [moyen_img]
+	list_name_img += ['moyen_img']
+	
+	# Bilateral 
+	output_image_path = img_folder + 'bilateral_filtered' +img_ext
+	try: 
+		bilateral_img = scipy.misc.imread(output_image_path)
+	except:
+		bilateral_img = denoise_bilateral(noisy_img, sigma_color=0.05, sigma_spatial=15, multichannel=True)
+		scipy.misc.toimage(bilateral_img).save(output_image_path)
+	list_img += [bilateral_img]
+	list_name_img += ['bilateral_filtered']
+
+	# Wavelet 
+	output_image_path = img_folder + 'wavelet_filtered' +img_ext
+	try: 
+		wavelet_img = scipy.misc.imread(output_image_path)
+	except:
+		wavelet_img = denoise_wavelet(noisy_img, multichannel=True)
+		scipy.misc.toimage(wavelet_img).save(output_image_path)
+	list_img += [wavelet_img]
+	list_name_img += ['wavelet_filtered']
+	
+	# Reference Image
+	ref_img_name = 'BrickSmallBrown0293_1_S'
+	image_path = img_folder + ref_img_name +img_ext
+	ref_img = st.preprocess(scipy.misc.imread(image_path).astype('float32'))
+	
+	parser = get_parser_args()
+	parser.set_defaults(loss='texture')
+	args = parser.parse_args()
+	image_content = ref_img
+	image_style = ref_img
+	_,image_h, image_w, number_of_channels = image_content.shape 
+	M_dict = st.get_M_dict(image_h,image_w)
+	sess = tf.Session()
+	vgg_layers = st.get_vgg_layers()
+	dict_gram = st.get_Gram_matrix_wrap(args,vgg_layers,image_style)
+	dict_features_repr = st.get_features_repr_wrap(args,vgg_layers,image_content)
+	net = st.net_preloaded(vgg_layers, image_content)
+	
+	style_loss = st.sum_style_losses(sess,net,dict_gram,M_dict)
+	placeholder = tf.placeholder(tf.float32, shape=image_style.shape)
+	assign_op = net['input'].assign(placeholder)
+	
+	sess.run(tf.global_variables_initializer())
+	print("Loss function for differents denoised image")
+	print(ref_img_name)
+	for img,img_name in zip(list_img,list_name_img):
+		img = st.preprocess(img.astype('float32'))
+		sess.run(assign_op, {placeholder: img})
+		loss = style_loss.eval(session=sess)
+		print(img_name,loss)
+
+	return(0)
 
 def main_plot_commun(name=None):
 	"""
@@ -337,4 +464,5 @@ def main_plot_commun(name=None):
 
 if __name__ == '__main__':
 	#main_plot_commun('grad_Uniform')
-	do_pdf_comparison_forNoise()
+	#do_pdf_comparison_forNoise()
+	Test_If_Net_See_Noise()

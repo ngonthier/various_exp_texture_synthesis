@@ -98,7 +98,7 @@ def get_parser_args():
 	
 	# Info on the loss function 
 	parser.add_argument('--loss',nargs='+',type=str,default='full',
-		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr','bizarre','current'],
+		choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr','bizarre','HF','current'],
 		help='Choice the term of the loss function. (default %(default)s)') # TODO need to be allow to get list of str loss
 	
 	parser.add_argument('--tv',  action='store_true',
