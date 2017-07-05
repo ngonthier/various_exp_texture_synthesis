@@ -37,6 +37,7 @@ def generation_Texture_LossFct():
 	n = 4
 	p = 4
 	losses_to_test = [['autocorr'],['Lp'],['fft3D'],['bizarre']]
+	losses_to_test = [['variance']]
 	losses_to_test = [['texture']]
 	list_img = get_list_of_images(path_origin)
 	
