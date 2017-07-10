@@ -302,7 +302,6 @@ def generation_Texture():
 	max_order_nmoments = 5
 	min_order_nmoments = 3
 	losses_to_test = [['autocorr'],['nmoments'],['texture'],['InterScale'],['Lp'],['texture','nmoments'],['texture','Lp']]
-	
 	for list_of_loss in losses_to_test:
 		print("loss = ",list_of_loss)
 		img_folder = path_origin 

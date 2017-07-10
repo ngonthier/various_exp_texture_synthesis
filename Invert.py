@@ -8,7 +8,7 @@ The goal of this script is to code the Style Transfer Algorithm
 Inspired from https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
 and https://github.com/leongatys/PytorchNeuralStyleTransfer/blob/master/NeuralStyleTransfer.ipynb
 
-The goal of this script is to test with a stride = 3 
+Inversion des canaux
 
 @author: nicolas
 """
@@ -664,7 +664,7 @@ def style_transfer(args,pooling_type='avg',padding='SAME'):
 		print("verbosity turned on")
 		print(args)
 	
-	args.img_output_folder = args.img_output_folder + args.style_img_name + '/'
+	args.img_output_folder = args.img_output_folder + args.style_img_name + '_I/'
 	do_mkdir(args.img_output_folder)
 	
 	output_image_path = args.img_output_folder + args.output_img_name + args.img_ext
@@ -681,7 +681,6 @@ def style_transfer(args,pooling_type='avg',padding='SAME'):
 		fig = None # initialization for later
 		
 	# TODO add something that reshape the image 
-	t1 = time.time()
 	vgg_layers = get_vgg_layers()
 	
 	# Precomputation Phase :
@@ -689,169 +688,88 @@ def style_transfer(args,pooling_type='avg',padding='SAME'):
 	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
 	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
-	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
-	
-	t2 = time.time()
-	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
+	nb_iter = args.max_iter  // args.print_iter
+	max_iterations_local = args.max_iter // nb_iter
 
-	try:
-		config = tf.ConfigProto()
-		if(args.gpu_frac <= 0.):
-			config.gpu_options.allow_growth = True
-			if args.verbose: print("Memory Growth")
-		elif(args.gpu_frac <= 1.):
-			config.gpu_options.per_process_gpu_memory_fraction = args.gpu_frac
-			if args.verbose: print("Becareful args.gpu_frac = ",args.gpu_frac,"It may cause problem if the value is superior to the available memory place.")
-		sess = tf.Session(config=config)
-
-		init_img = get_init_img_wrap(args,output_image_path,image_content)
-		
-		
-
-		loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)
-		
-		# Preparation of the assignation operation
-		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
-		placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
-		assign_op = net['input'].assign(placeholder)
-		clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=clip_value_min,clip_value_max=clip_value_max,name="Clip")
-		
-		if(args.verbose): print("init loss total")
-
-		if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
-			optimizer = tf.train.AdamOptimizer(args.learning_rate)
-		elif(args.optimizer=='GD'): # Gradient Descente 
-			if((args.learning_rate > 1) and (args.verbose)): print("We recommande you to use a smaller value of learning rate when using the GD algo")
-			optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
+	for i in range(nb_iter):
+		net = net_preloaded(vgg_layers, image_content,pooling_type,padding) 
+		if(not(i==0)):
+			print("Inversion",i)
+			image_style = postprocess(image_style)
+			image_style_last_channel = image_style[...,-1]
+			image_style_last_channel = image_style_last_channel[:,:,np.newaxis]
+			image_style = np.concatenate((image_style_last_channel,image_style[...,:-1]),axis=2)
+			image_style = preprocess(image_style.astype('float32'))
 			
-		if((args.optimizer=='GD') or (args.optimizer=='adam')):
-			train = optimizer.minimize(loss_total)
+			init_img = postprocess(result_img)
+			init_img_last_channel = init_img[...,-1]
+			init_img_last_channel = init_img_last_channel[:,:,np.newaxis]
+			init_img = np.concatenate((init_img_last_channel,init_img[...,:-1]),axis=2)
+			init_img = preprocess(init_img.astype('float32'))
+		
+		try:
+			config = tf.ConfigProto()
+			if(args.gpu_frac <= 0.):
+				config.gpu_options.allow_growth = True
+				if args.verbose: print("Memory Growth")
+			elif(args.gpu_frac <= 1.):
+				config.gpu_options.per_process_gpu_memory_fraction = args.gpu_frac
+				if args.verbose: print("Becareful args.gpu_frac = ",args.gpu_frac,"It may cause problem if the value is superior to the available memory place.")
+			sess = tf.Session(config=config)
+			
+			if(i==0):
+				init_img = get_init_img_wrap(args,output_image_path,image_content)
 
-			sess.run(tf.global_variables_initializer())
-			sess.run(assign_op, {placeholder: init_img})
-						
-			sess.graph.finalize() # To test if the graph is correct
-			if(args.verbose): print("sess.graph.finalize()") 
+			loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)
+			
+			# Preparation of the assignation operation
+			placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
+			placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
+			assign_op = net['input'].assign(placeholder)
+			clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=clip_value_min,clip_value_max=clip_value_max,name="Clip")
+			
+			if(args.verbose): print("init loss total")
 
-			t3 = time.time()
-			if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
-			# turn on interactive mode
-			if(args.verbose): print("loss before optimization")
-			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-			for i in range(args.max_iter):
-				if(i%args.print_iter==0):
-					if(args.tf_profiler):
-						run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-						run_metadata = tf.RunMetadata()
-						sess.run(train,options=run_options, run_metadata=run_metadata)
-						# Create the Timeline object, and write it to a json
-						tl = timeline.Timeline(run_metadata.step_stats)
-						ctf = tl.generate_chrome_trace_format()
-						if(args.verbose): print("Time Line generated")
-						nameFile = 'timeline'+str(i)+'.json'
-						with open(nameFile, 'w') as f:
-							if(args.verbose): print("Save Json tracking")
-							f.write(ctf)
-							# Read with chrome://tracing
-					else:
-						t3 =  time.time()
-						sess.run(train)
-						t4 = time.time()
-						result_img = sess.run(net['input'])
-						if(args.clip_var==1): # Clipping the variable
-							cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
-							sess.run(assign_op, {placeholder: cliptensor})
-						if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-						if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-						if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
-						result_img_postproc = postprocess(result_img)
-						scipy.misc.toimage(result_img_postproc).save(output_image_path)
-				else:
-					# Just training
-					sess.run(train)
-					if(args.clip_var==1): # Clipping the variable
-						result_img = sess.run(net['input'])
-						cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
-						sess.run(assign_op, {placeholder: cliptensor}) 
-		elif(args.optimizer=='lbfgs'):
+			
 			# LBFGS seem to require more memory than Adam optimizer
 			
 			bnds = get_lbfgs_bnds(init_img)
 			# TODO : be able to detect of print_iter > max_iter and deal with it
-			nb_iter = args.max_iter  // args.print_iter
-			max_iterations_local = args.max_iter // nb_iter
 			if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
-			## FYI that we've now added a var_to_bounds argument to ScipyOptimizerInterface that allows specifying per-Variable bounds. 
-			# It's submitted in the internal Google repository so should be available in GitHub/PyPi soon. 
-			# Also be aware that once the update is rolled out, supplying the bounds keyword explicitly as I suggested above will raise an exception...
-			# TODO change that when you will update tensorflow
 			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
 			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
 				method='L-BFGS-B',options=optimizer_kwargs)         
 			sess.run(tf.global_variables_initializer())
-			sess.run(assign_op, {placeholder: init_img})
-			
-			init_img = sess.run(net['input'])
-			result_img_postproc = postprocess(init_img)
-			output_image_path = args.img_output_folder + args.output_img_name + args.img_ext
-			scipy.misc.imsave(output_image_path,result_img_postproc)
-						
+			sess.run(assign_op, {placeholder: init_img})						
 			#sess.graph.finalize() # To test if the graph is correct
 			if(args.verbose): print("sess.graph.finalize()") 
 			
 			if(args.verbose): print("loss before optimization")
 			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-			for i in range(nb_iter):
-				t3 =  time.time()
-				optimizer.minimize(sess)
-				t4 = time.time()
-				if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-				if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-				result_img = sess.run(net['input'])
-				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
-				result_img_postproc = postprocess(result_img)
-				output_image_path = args.img_output_folder + args.output_img_name +"_" +str(i) + args.img_ext
-				scipy.misc.imsave(output_image_path,result_img_postproc)
-				
-				
-				#if(i%10==0): 
-					## do A COPY !!!!! 
-					#loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding) # Change the input image in the net ! 
-					#loss_total *= 10.0
-					#print("increase gradient")
-					#optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
-						#method='L-BFGS-B',options=optimizer_kwargs)
-					#sess.run(tf.global_variables_initializer())
-					#sess.run(assign_op, {placeholder: result_img})
-				# Random shifts are applied to the image to blur tile boundaries over multiple iterations
-				#sz = 250
-				#h, w = result_img.shape[:2]
-				#sx, sy = np.random.randint(sz, size=2)
-				#img_shift = np.roll(np.roll(result_img[0], sx, 1), sy, 0)
-				#img_shift = np.expand_dims(img_shift,axis=0)
-				#sess.run(assign_op, {placeholder: img_shift})
-
-		# The last iterations are not made
-		# The End : save the resulting image
-		result_img = sess.run(net['input'])
-		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
-		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path)     
-		
-	except:
-		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
-		result_img = sess.run(net['input'])
-		result_img_postproc = postprocess(result_img)
-		output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
-		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
-		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
-		raise 
-	finally:
-		sess.close()
-		if(args.verbose): 
-			print("Close Sess")
-			tend = time.time()
-			print("Computation total for ",tend-tinit," s")
+			
+			optimizer.minimize(sess)
+			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
+			result_img = sess.run(net['input'])
+			if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
+			result_img_postproc = postprocess(result_img)
+			output_image_path = args.img_output_folder + args.output_img_name +"_" +str(i) + args.img_ext
+			scipy.misc.imsave(output_image_path,result_img_postproc)
+			
+		except:
+			if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
+			result_img = sess.run(net['input'])
+			result_img_postproc = postprocess(result_img)
+			output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
+			scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
+			# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
+			raise 
+		finally:
+			sess.close()
+			tf.reset_default_graph()
+			if(args.verbose): 
+				print("Close Sess")
+				tend = time.time()
+				print("Computation total for ",tend-tinit," s")
 	if(args.plot): input("Press enter to end and close all")
 
 def main():
@@ -877,8 +795,8 @@ def main_with_option():
 	image_style_name= D
 	content_img_name  = D
 	#content_img_name  = "Louvre"
-	max_iter = 1000
-	print_iter = 1 
+	max_iter = 3*99*3*3
+	print_iter = 99
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001

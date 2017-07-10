@@ -8,7 +8,8 @@ The goal of this script is to code the Style Transfer Algorithm
 Inspired from https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
 and https://github.com/leongatys/PytorchNeuralStyleTransfer/blob/master/NeuralStyleTransfer.ipynb
 
-The goal of this script is to test with a stride = 3 
+The goal of this script is to kill one kernel to see if some kernel have 
+bad effect
 
 @author: nicolas
 """
@@ -51,11 +52,11 @@ clip_value_max=152
 # TODO segment the vgg loader, and the restfautoco
 content_layers = [('conv4_2',1)]
 #style_layers = [('input',1),('conv1_1',1),('conv2_1',1),('conv3_1',1)]
-#style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
+style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
 #style_layers = [('conv1_1',1)]
 #style_layers = [('relu1_1',1),('relu2_1',1),('relu3_1',1)]
 #style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1),('conv4_1',1),('conv5_1',1)]
-style_layers = [('conv1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
+#style_layers = [('conv1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
 #style_layers = [('conv3_1',1)]
 
 style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
@@ -233,8 +234,101 @@ def sum_style_losses(sess, net, image_style):
 			total_style_loss += style_loss
 	return(total_style_loss)
 
+def sum_style_losses_red(sess, net, image_style,infoSuppres):
+	"""
+	Compute the style term of the loss function with Gram Matrix from the
+	Gatys Paper
+	Input : 
+	- the tensforflow session sess
+	- the vgg19 net
+	- the dictionnary of Gram Matrices
+	- the dictionnary of the size of the image content through the net
+	"""
+	# Info for the vgg19 
+	# Tu travailles ici 
+	layerToChange, k = infoSuppres
+	length_style_layers = float(len(style_layers))
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	#k = tf.random_uniform([1], minval=0, maxval=3, dtype=tf.int32, seed=None, name=None) # Random Biased
+	#image_style = tf.image.rot90(image_style[0], k=k[0], name=None)
+	#image_style = image_style[np.newaxis,:,:,:]
+	#image_style = tf.contrib.image.rotate(image_style,angles=k)
+	sess.run(net['input'].assign(image_style))
+	for layer, weight in style_layers:
+		# For one layer
+		x = net[layer]
+		a = sess.run(net[layer])
+		b,h,w,N_np = a.shape
+		M = tf.to_int32(h*w)
+		N = tf.to_int32(N_np)
+		if(layer==layerToChange):
+			N_np_nmoins1 = N_np - 1
+			mask = np.ones(shape=(N_np,N_np))
+			mask[:,k] = 0
+			mask[k,:] = 0
+			A = gram_matrix(a,N,M)
+			A = tf.multiply(A,mask)
+			# Get the value of this layer with the generated image
+			G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
+			G = tf.multiply(G,mask)
+			style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
+			style_loss *=  weight * weight_help_convergence  / (2.*(tf.to_float(N_np_nmoins1)**2)*length_style_layers)
+			total_style_loss += style_loss
+		else:
+			A = gram_matrix(a,N,M)
+			#A = tf.multiply(A,mask)
+			# Get the value of this layer with the generated image
+			G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
+			#G = tf.multiply(G,mask)
+			style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
+			style_loss *=  weight * weight_help_convergence  / (2.*(tf.to_float(N_np)**2)*length_style_layers)
+			total_style_loss += style_loss
+			
+	return(total_style_loss)
 	
-
+	
+def sum_style_losses(sess, net, image_style):
+	"""
+	Compute the style term of the loss function with Gram Matrix from the
+	Gatys Paper
+	Input : 
+	- the tensforflow session sess
+	- the vgg19 net
+	- the dictionnary of Gram Matrices
+	- the dictionnary of the size of the image content through the net
+	"""
+	# Info for the vgg19 
+	# Tu travailles ici 
+	layerToChange, numberFeature = infoSuppres
+	length_style_layers = float(len(style_layers))
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	#k = tf.random_uniform([1], minval=0, maxval=3, dtype=tf.int32, seed=None, name=None) # Random Biased
+	#image_style = tf.image.rot90(image_style[0], k=k[0], name=None)
+	#image_style = image_style[np.newaxis,:,:,:]
+	#image_style = tf.contrib.image.rotate(image_style,angles=k)
+	sess.run(net['input'].assign(image_style))
+	for layer, weight in style_layers:
+		# For one layer
+		x = net[layer]
+		a = sess.run(net[layer])
+		b,h,w,N = a.shape
+		M = tf.to_int32(h*w)
+		N = tf.to_int32(N)
+		for j in range(b):
+			aa = a[j,:,:,:]
+			xx = x[j,:,:,:]
+			A = gram_matrix(aa,N,M)
+			print(layer,sess.run(M),sess.run(N))
+			# Get the value of this layer with the generated image
+			G = gram_matrix(xx,N,M) # Nota Bene : the Gram matrix is normalized by M
+			style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
+			style_loss *=  weight * weight_help_convergence  / (2.*(tf.to_float(N)**2)*length_style_layers)
+			total_style_loss += style_loss
+	return(total_style_loss)
 def sum_total_variation_losses(sess, net):
 	"""
 	denoising loss function, this function come from : 
@@ -660,198 +754,95 @@ def do_mkdir(path):
 	
 def style_transfer(args,pooling_type='avg',padding='SAME'):
 	if args.verbose:
-		tinit = time.time()
 		print("verbosity turned on")
 		print(args)
-	
-	args.img_output_folder = args.img_output_folder + args.style_img_name + '/'
+
+				
+	args.img_output_folder = args.img_output_folder + args.style_img_name + '_Net2/'
 	do_mkdir(args.img_output_folder)
-	
 	output_image_path = args.img_output_folder + args.output_img_name + args.img_ext
 	if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
 	image_content = load_img(args,args.content_img_name)
 	image_style = load_img(args,args.style_img_name)
 	_,image_h, image_w, number_of_channels = image_content.shape 
 	M_dict = get_M_dict(image_h,image_w)
-	
-	if(args.plot):
-		plt.ion()
-		plot_image_with_postprocess(args,image_content.copy(),"Content Image")
-		plot_image_with_postprocess(args,image_style.copy(),"Style Image")
-		fig = None # initialization for later
-		
-	# TODO add something that reshape the image 
-	t1 = time.time()
+	init_img = get_init_img_wrap(args,output_image_path,image_content)
+	bnds = get_lbfgs_bnds(init_img)
 	vgg_layers = get_vgg_layers()
-	
-	# Precomputation Phase :
-	
-	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
-	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
-	
-	t2 = time.time()
-	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
-
-	try:
-		config = tf.ConfigProto()
-		if(args.gpu_frac <= 0.):
-			config.gpu_options.allow_growth = True
-			if args.verbose: print("Memory Growth")
-		elif(args.gpu_frac <= 1.):
-			config.gpu_options.per_process_gpu_memory_fraction = args.gpu_frac
-			if args.verbose: print("Becareful args.gpu_frac = ",args.gpu_frac,"It may cause problem if the value is superior to the available memory place.")
-		sess = tf.Session(config=config)
-
-		init_img = get_init_img_wrap(args,output_image_path,image_content)
-		
-		
-
-		loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)
-		
-		# Preparation of the assignation operation
-		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
-		placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
-		assign_op = net['input'].assign(placeholder)
-		clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=clip_value_min,clip_value_max=clip_value_max,name="Clip")
-		
-		if(args.verbose): print("init loss total")
-
-		if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
-			optimizer = tf.train.AdamOptimizer(args.learning_rate)
-		elif(args.optimizer=='GD'): # Gradient Descente 
-			if((args.learning_rate > 1) and (args.verbose)): print("We recommande you to use a smaller value of learning rate when using the GD algo")
-			optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
+	for layer,_ in style_layers:
+		size = style_layers_size[layer[:5]] 
+		for k in range(size):
+			print(layer,k)
+			output_image_path = args.img_output_folder + args.output_img_name + '_' + layer + '_' + str(k) + args.img_ext
+			tf.reset_default_graph() # Necessity to use a new graph !! 
 			
-		if((args.optimizer=='GD') or (args.optimizer=='adam')):
-			train = optimizer.minimize(loss_total)
+			try:
+				config = tf.ConfigProto()
+				if(args.gpu_frac <= 0.):
+					config.gpu_options.allow_growth = True
+					if args.verbose: print("Memory Growth")
+				elif(args.gpu_frac <= 1.):
+					config.gpu_options.per_process_gpu_memory_fraction = args.gpu_frac
+					if args.verbose: print("Becareful args.gpu_frac = ",args.gpu_frac,"It may cause problem if the value is superior to the available memory place.")
+				sess = tf.Session(config=config)
+				
+					
+				if(args.verbose): print("loss = texture by Gatys")
+				dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
+				dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
-			sess.run(tf.global_variables_initializer())
-			sess.run(assign_op, {placeholder: init_img})
-						
-			sess.graph.finalize() # To test if the graph is correct
-			if(args.verbose): print("sess.graph.finalize()") 
-
-			t3 = time.time()
-			if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
-			# turn on interactive mode
-			if(args.verbose): print("loss before optimization")
-			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-			for i in range(args.max_iter):
-				if(i%args.print_iter==0):
-					if(args.tf_profiler):
-						run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-						run_metadata = tf.RunMetadata()
-						sess.run(train,options=run_options, run_metadata=run_metadata)
-						# Create the Timeline object, and write it to a json
-						tl = timeline.Timeline(run_metadata.step_stats)
-						ctf = tl.generate_chrome_trace_format()
-						if(args.verbose): print("Time Line generated")
-						nameFile = 'timeline'+str(i)+'.json'
-						with open(nameFile, 'w') as f:
-							if(args.verbose): print("Save Json tracking")
-							f.write(ctf)
-							# Read with chrome://tracing
-					else:
-						t3 =  time.time()
-						sess.run(train)
-						t4 = time.time()
-						result_img = sess.run(net['input'])
-						if(args.clip_var==1): # Clipping the variable
-							cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
-							sess.run(assign_op, {placeholder: cliptensor})
-						if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-						if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-						if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
-						result_img_postproc = postprocess(result_img)
-						scipy.misc.toimage(result_img_postproc).save(output_image_path)
-				else:
-					# Just training
-					sess.run(train)
-					if(args.clip_var==1): # Clipping the variable
-						result_img = sess.run(net['input'])
-						cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
-						sess.run(assign_op, {placeholder: cliptensor}) 
-		elif(args.optimizer=='lbfgs'):
-			# LBFGS seem to require more memory than Adam optimizer
+				net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
+				
+				loss_total = tf.constant(0.)
+				list_loss =  []
+				list_loss_name =  []
+				style_loss = sum_style_losses_red(sess, net, image_style,(layer,k))
+				list_loss +=  [style_loss]
+				list_loss_name +=  ['style_loss']
+				loss_total = tf.reduce_sum(list_loss)
+				list_loss +=  [loss_total]
+				list_loss_name +=  ['loss_total']
+				
+				# Preparation of the assignation operation
+				placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
+				assign_op = net['input'].assign(placeholder)
+				
+				# TODO : be able to detect of print_iter > max_iter and deal with it
+				nb_iter = args.max_iter  // args.print_iter
+				max_iterations_local = args.max_iter // nb_iter
+				if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
+				## FYI that we've now added a var_to_bounds argument to ScipyOptimizerInterface that allows specifying per-Variable bounds. 
+				# It's submitted in the internal Google repository so should be available in GitHub/PyPi soon. 
+				# Also be aware that once the update is rolled out, supplying the bounds keyword explicitly as I suggested above will raise an exception...
+				# TODO change that when you will update tensorflow
+				optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
+				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
+					method='L-BFGS-B',options=optimizer_kwargs)         
+				sess.run(tf.global_variables_initializer())
+				sess.run(assign_op, {placeholder: init_img})
 			
-			bnds = get_lbfgs_bnds(init_img)
-			# TODO : be able to detect of print_iter > max_iter and deal with it
-			nb_iter = args.max_iter  // args.print_iter
-			max_iterations_local = args.max_iter // nb_iter
-			if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
-			## FYI that we've now added a var_to_bounds argument to ScipyOptimizerInterface that allows specifying per-Variable bounds. 
-			# It's submitted in the internal Google repository so should be available in GitHub/PyPi soon. 
-			# Also be aware that once the update is rolled out, supplying the bounds keyword explicitly as I suggested above will raise an exception...
-			# TODO change that when you will update tensorflow
-			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
-			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
-				method='L-BFGS-B',options=optimizer_kwargs)         
-			sess.run(tf.global_variables_initializer())
-			sess.run(assign_op, {placeholder: init_img})
-			
-			init_img = sess.run(net['input'])
-			result_img_postproc = postprocess(init_img)
-			output_image_path = args.img_output_folder + args.output_img_name + args.img_ext
-			scipy.misc.imsave(output_image_path,result_img_postproc)
-						
-			#sess.graph.finalize() # To test if the graph is correct
-			if(args.verbose): print("sess.graph.finalize()") 
-			
-			if(args.verbose): print("loss before optimization")
-			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-			for i in range(nb_iter):
-				t3 =  time.time()
-				optimizer.minimize(sess)
-				t4 = time.time()
-				if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
+				#sess.graph.finalize() # To test if the graph is correct
+				if(args.verbose): print("sess.graph.finalize()") 
+				
+				if(args.verbose): print("loss before optimization")
 				if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
+				for i in range(nb_iter):
+					optimizer.minimize(sess)
+					if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
+					result_img = sess.run(net['input'])
 				result_img = sess.run(net['input'])
-				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
+				if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
 				result_img_postproc = postprocess(result_img)
-				output_image_path = args.img_output_folder + args.output_img_name +"_" +str(i) + args.img_ext
-				scipy.misc.imsave(output_image_path,result_img_postproc)
-				
-				
-				#if(i%10==0): 
-					## do A COPY !!!!! 
-					#loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding) # Change the input image in the net ! 
-					#loss_total *= 10.0
-					#print("increase gradient")
-					#optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
-						#method='L-BFGS-B',options=optimizer_kwargs)
-					#sess.run(tf.global_variables_initializer())
-					#sess.run(assign_op, {placeholder: result_img})
-				# Random shifts are applied to the image to blur tile boundaries over multiple iterations
-				#sz = 250
-				#h, w = result_img.shape[:2]
-				#sx, sy = np.random.randint(sz, size=2)
-				#img_shift = np.roll(np.roll(result_img[0], sx, 1), sy, 0)
-				#img_shift = np.expand_dims(img_shift,axis=0)
-				#sess.run(assign_op, {placeholder: img_shift})
-
-		# The last iterations are not made
-		# The End : save the resulting image
-		result_img = sess.run(net['input'])
-		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
-		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path)     
+				scipy.misc.toimage(result_img_postproc).save(output_image_path)     
 		
-	except:
-		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
-		result_img = sess.run(net['input'])
-		result_img_postproc = postprocess(result_img)
-		output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
-		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
-		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
-		raise 
-	finally:
-		sess.close()
-		if(args.verbose): 
-			print("Close Sess")
-			tend = time.time()
-			print("Computation total for ",tend-tinit," s")
+			except:
+				if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
+				raise 
+			finally:
+				sess.close()
+				if(args.verbose): 
+					print("Close Sess")
 	if(args.plot): input("Press enter to end and close all")
 
 def main():
@@ -878,7 +869,7 @@ def main_with_option():
 	content_img_name  = D
 	#content_img_name  = "Louvre"
 	max_iter = 1000
-	print_iter = 1 
+	print_iter = 1000
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
