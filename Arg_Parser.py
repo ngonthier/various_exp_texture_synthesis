@@ -73,7 +73,7 @@ def get_parser_args():
         help='Clip the values of the variable after each iteration only for adam or GD method. Equal to 1 for true and 0 otherwise (default %(default)s)')  
     
     parser.add_argument('--clipping_type', type=str,choices=['ImageNet','ImageStyle','ImageStyleBGR'],
-		default='ImageStyleBGR',help='Element that we use to compute clip values : ImageNet means, the image style or each channel of the iamge style. (default %(default)s)')  
+		default='ImageNet',help='Element that we use to compute clip values : ImageNet means, the image style or each channel of the iamge style. (default %(default)s)')  
     
     # Profiling Tensorflow
     parser.add_argument('--tf_profiler',action='store_true',
@@ -103,8 +103,8 @@ def get_parser_args():
         default='SAME',help='Type of padding in the network. (default: %(default)s)')
         
     parser.add_argument('--vgg_name', type=str,
-        choices=['texturesyn_normalizedvgg.mat','imagenet-vgg-verydeep-19.mat'],
-        default='texturesyn_normalizedvgg.mat',
+        choices=['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat'],
+        default='normalizedvgg.mat',
         help='Name of the network to use, it must be in the same place that the Style_Transfer script. (default: %(default)s)')
     
     # Info on the loss function 
