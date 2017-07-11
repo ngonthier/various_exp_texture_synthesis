@@ -62,7 +62,7 @@ def plot_image(path_to_image):
 	img = Image.open(path_to_image)
 	plt.imshow(img)
 	
-def get_vgg_layers(VGG19_mat='texturesyn_normalizedvgg.mat'):
+def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
 	"""
 	Load the VGG 19 layers
 	"""
@@ -1251,9 +1251,9 @@ def get_init_noise_img_gaussian(image_content):
 	"""
 	b,image_h, image_w, number_of_channels = image_content.shape 
 	noise_img = np.random.randn(b,image_h, image_w, number_of_channels) 
-	#bgr_mean = np.mean(image_content,axis=(0,1,2)) # This mean have been recentered by the ImageNet mean
-	#for i in range(number_of_channels):
-		#noise_img[:,:,:,i] += bgr_mean[i]
+	bgr_mean = np.mean(image_content,axis=(0,1,2)) # This mean have been recentered by the ImageNet mean
+	for i in range(number_of_channels):
+		noise_img[:,:,:,i] += bgr_mean[i]
 	# random floats sampled from a univariate “normal” (Gaussian) distribution of mean 0 and variance 1 
 	# Doesn't need preprocess because already arond 0 with a small range
 	return(noise_img)
@@ -1690,11 +1690,12 @@ def main_with_option():
 	peddle = "pebbles"
 	brick = "BrickSmallBrown0293_1_S"
 	D ="D20_01"
+	orange = "orange"
 	#img_output_folder = "images/"
-	image_style_name = marbre
-	content_img_name  = marbre
+	image_style_name = orange
+	content_img_name  = orange
 	max_iter = 1000
-	print_iter = 100
+	print_iter = 200
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
