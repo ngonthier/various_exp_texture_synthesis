@@ -1296,7 +1296,14 @@ def get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR=False):
 
 def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding='SAME'):
 	_,image_h_art, image_w_art, _ = image_style.shape
-	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
+	vgg_name = args.vgg_name
+	if(vgg_name=='normalizedvgg.mat'):
+		stringAdd = '_n'
+	elif(vgg_name=='imagenet-vgg-verydeep-19.mat'):
+		stringAdd = 'r' # Regular one
+	elif(vgg_name is None):
+		stringAdd = ''
+	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd+".pkl"
 	try:
 		if(args.verbose): print("Load Data ",data_style_path)
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
@@ -1404,7 +1411,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		list_loss +=  [content_loss]
 		list_loss_name +=  ['content_loss']
 	if('Gatys' in args.loss) or ('texture'  in args.loss) or ('full' in args.loss):
-		style_loss = sum_style_losses(sess,net,dict_gram,M_dict)
+		style_loss =  sum_style_losses(sess, net, dict_gram,M_dict)
 		list_loss +=  [style_loss]
 		list_loss_name +=  ['style_loss']
 	if('4moments' in args.loss):
