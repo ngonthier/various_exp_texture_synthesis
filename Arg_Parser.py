@@ -86,7 +86,7 @@ def get_parser_args():
     parser.add_argument('--init_noise_ratio',type=float,default=0.1,
         help='Propostion of the initialization image that is noise. (default %(default)s)')
         
-    parser.add_argument('--init',type=str,default='Uniform',choices=['Uniform','smooth_grad','Gaussian','Cst'],
+    parser.add_argument('--init',type=str,default='Gaussian',choices=['Uniform','smooth_grad','Gaussian','Cst'],
         help='Type of initialization for the image variable.')
         
     parser.add_argument('--init_range',type=float,default=127.5,
@@ -109,7 +109,7 @@ def get_parser_args():
     
     # Info on the loss function 
     parser.add_argument('--loss',nargs='+',type=str,default='full',
-        choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr','bizarre','HF','variance','fftVect','current'],
+        choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','autocorr_rfft','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr','bizarre','HF','variance','fftVect','current'],
         help='Choice the term of the loss function. (default %(default)s)') # TODO need to be allow to get list of str loss
     
     parser.add_argument('--tv',  action='store_true',

@@ -45,7 +45,7 @@ VGG19_LAYERS = (
 
 # TODO segment the vgg loader, and the restfautoco
 content_layers = [('conv4_2',1)]
-style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
+#style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
 #style_layers = [('conv1_1',1)]
 #style_layers = [('relu1_1',1),('relu2_1',1),('relu3_1',1)]
 #style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1),('conv4_1',1),('conv5_1',1)]
@@ -513,6 +513,45 @@ def loss_autocorr(sess,net,image_style,M_dict):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
+def loss_autocorr_rfft(sess,net,image_style,M_dict):
+	"""
+	Computation of the autocorrelation of the filters
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	weight_help_convergence = (10**9)
+	total_style_loss = 0.
+	
+	_, h_a, w_a, N = image_style.shape      
+	sess.run(net['input'].assign(image_style))
+		
+	for layer, weight in style_layers:
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		x = net[layer]
+		x = tf.transpose(x, [0,3,1,2])
+		a = tf.transpose(a, [0,3,1,2])
+		F_x = tf.spectral.rfft2d(x)
+		F_a = tf.spectral.rfft2d(a)
+		
+		#R_x = tf.abs(F_x) # Module de la transformee de Fourrier : produit terme a terme
+		#R_x /= tf.to_float(M) # Normalisation du module de la TF
+		#R_a = tf.abs(F_a) # Module de la transformee de Fourrier
+		#R_a /= tf.to_float(M)
+		
+		R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
+		R_x /= tf.to_float(M**2) # Normalisation du module de la TF
+		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
+		R_a /= tf.to_float(M**2)
+		
+		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
 def loss_fft_vect(sess,net,image_style,M_dict):
 	"""
 	Computation of the autocorrelation of the filters consider as vector
@@ -554,34 +593,16 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict):
 	layer in the network
 	"""
 	sess.run(net['input'].assign(image_style))
-	image_style_Phase = {}
+	image_style_PhaseAlea = {}
 	layer, weight = style_layers[-1]
 	a = sess.run(net[layer])
 	b, h_a, w_a, N = a.shape
-	#zeros = np.zeros((h_a,w_a))
-	##zeros = np.zeros(1)
-	#imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(h_a,w_a))
-	##imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(1))
-	#angle = tf.complex(zeros,imag)
-	#exp = tf.exp(angle)
-	##print(sess.run(exp))
-	##exptile = tf.tile(exp,tf.to_int32([N])) # TODO : verifier la multiplication par une phase aleatoire des features certainement tres mal applique !!! 
-	##exptile = tf.tile(exp,tf.to_int32([h_a*w_a*N]))
-	##exptile = tf.reshape( exptile,a.shape)
-	##exptile_t = tf.transpose(exptile, [0,3,1,2])
-	##exptile_t = tf.cast(exptile_t,tf.complex64)
-	#exptile_t = tf.cast(exp,tf.complex64)
-	#print(sess.run(exptile_t))
 	at = tf.transpose(a, [0,3,1,2])
 	F_a = tf.fft2d(tf.complex(at,0.))
-	white_noise = np.random.randn(h_a, w_a).astype('float32')
+	white_noise = np.random.normal(loc=0.0, scale=1.0, size=(h_a, w_a)).astype('float32')  # Le bruit blanc doit etre gaussien 
 	F_white_noise = tf.fft2d(tf.complex(white_noise,0.))
 	F_white_noise_modulus = tf.pow(tf.multiply(F_white_noise,tf.conj(F_white_noise)),-0.5)
 	F_white_noise_phase = tf.multiply(F_white_noise,F_white_noise_modulus) # Respect Hermitian Symetry
-	
-	
-	#F_a_new_phase = tf.multiply(F_a,F_white_noise_phase)
-	
 	
 	output_list = []
 
@@ -589,33 +610,28 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict):
 		output_list.append(tf.multiply(F_a[0,i,:,:],F_white_noise_phase))
 
 	F_a_new_phase = tf.stack(output_list)
-	#imF = tf.ifft2d(F_a_new_phase)
-	#imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
-	image_style_Phase[layer] = F_a_new_phase
+	F_a_new_phase = tf.expand_dims(F_a_new_phase,axis=0)
+	imF = tf.ifft2d(F_a_new_phase)
+	imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
+	image_style_PhaseAlea[layer] = sess.run(imF)
 	
-	#for layer, weight in style_layers:
-		#a = sess.run(net[layer])
-		#b, h_a, w_a, N = a.shape
-		##zeros = np.zeros(h_a*w_a)
-		#zeros = np.zeros(1)
-		##imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(h_a*w_a))
-		#imag = np.random.uniform(low=0.0, high=2.0*np.pi, size=(1))
-		#angle = tf.complex(zeros,imag)
-		#exp = tf.exp(angle)
-		##exptile = tf.tile(exp,tf.to_int32([N]))
-		#exptile = tf.tile(exp,tf.to_int32([h_a*w_a*N]))
-		#exptile = tf.reshape( exptile,a.shape)
-		#exptile_t = tf.transpose(exptile, [0,3,1,2])
-		#exptile_t = tf.cast(exptile_t,tf.complex64)
-		#at = tf.transpose(a, [0,3,1,2])
-		#F_a = tf.fft2d(tf.complex(at,0.))
-		#F_a_new_phase = tf.multiply(F_a,exptile_t)
-		##imF = tf.ifft2d(F_a_new_phase)
-		##imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
-		#image_style_Phase[layer] = F_a_new_phase
-	return(image_style_Phase)
+	# Test pour verifier que le module de l image de style est bien respecter
+	imF_t = tf.transpose(imF, [0,3,1,2])
+	F_imF_t  = tf.fft2d(tf.complex(imF_t,0.))
+	F_a_modulus = tf.real(tf.multiply(F_a,tf.conj(F_a)))
+	F_a_modulus_num = sess.run(F_a_modulus)
+	F_a_modulus_max = np.max(F_a_modulus_num)
+	imF_modulus = tf.real(tf.multiply(F_imF_t,tf.conj(F_imF_t)))
+	diff = tf.subtract(F_a_modulus,imF_modulus)
+	diff = sess.run(diff)
+	max_diff = np.max(diff)/F_a_modulus_max
+	if(max_diff > 10**(-4)):
+		print("The modulus of the image style features at the last layer is not preserved ! max_diff =",max_diff)
+		raise Exception
+
+	return(image_style_PhaseAlea)
 	
-def loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict):
+def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict):
 	"""
 	In this loss function we impose the TF transform to the last layer 
 	with a random phase imposed and only the spectrum of the 
@@ -626,21 +642,17 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict):
 	weight_help_convergence = 10**9
 	total_style_loss = 0.
 	last_style_layers,_ = style_layers[-1]
+	alpha = 1
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
 			M = M_dict[layer[:5]]
 			x = net[layer]
-			xt = tf.transpose(x, [0,3,1,2])
-			F_x = tf.fft2d(tf.complex(xt,0.))
-			F_a = image_style_Phase[layer]
-			diff_F = tf.subtract(F_x,F_a)
-			diff_F /= M*N
-			module  = tf.real(tf.multiply(diff_F,tf.conj(diff_F)))
-			loss = tf.reduce_sum(module) 
-			loss *=  weight * weight_help_convergence /(length_style_layers)
+			a_phase_alea = image_style_PhaseAlea[layer]
+			loss = tf.nn.l2_loss(tf.subtract(x,a_phase_alea))
+			loss *= alpha *  weight * weight_help_convergence /(2.*(N**2)*tf.to_float(M**2)*length_style_layers)
 			total_style_loss += loss
-		elif False:
+		else:
 			sess.run(net['input'].assign(image_style))
 			N = style_layers_size[layer[:5]]
 			M = M_dict[layer[:5]]
@@ -1046,7 +1058,8 @@ def sum_total_variation_losses(sess, net):
 	https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
 	"""
 	x = net['input']
-	weight_help_convergence = 10**9
+	weight_help_convergence = 1.
+	alpha = 10**(-6) # In order to not destroy the image to a constance 
 	[b, h, w, d] = x.get_shape()
 	b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
 	tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
@@ -1055,9 +1068,32 @@ def sum_total_variation_losses(sess, net):
 	loss_y /= tv_y_size
 	loss_x = tf.nn.l2_loss(x[:,:,1:,:] - x[:,:,:-1,:]) 
 	loss_x /= tv_x_size
-	loss = 2 * weight_help_convergence * (loss_y + loss_x)
+	loss = 2 *alpha * weight_help_convergence * (loss_y + loss_x)
 	loss = tf.cast(loss, tf.float32)
 	return(loss)
+
+	
+#def sum_total_variation_losses(sess, net):
+	#"""
+	#denoising loss function, this function come from : 
+	#https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
+	#"""
+	#x = net['input']
+	#weight_help_convergence = 10**9 
+	#[b, h, w, d] = x.get_shape()
+	#b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
+	#tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
+	#tv_x_size = tf.to_float(b * h * (w-1) * d)
+	#alpha = 1. # In order to not destroy the image to a constance 
+	#diff_x = tf.pow(x[:,2:,1:-1,:] - x[:,:-2,1:-1,:],2)
+	##diff_x = tf.pow(x[:,102:,1:-100,:] - x[:,:-2,1:-100,:],2)
+	#diff_y = tf.pow(x[:,1:-1,2:,:] - x[:,1:-1,:-2,:],2)
+	##diff_y = tf.pow(x[:,1:-100,2:,:] - x[:,1:-100,:-2,:],2)
+	#grad_norm = tf.sqrt(tf.add(diff_x,diff_y))
+	#loss = 2. *alpha * weight_help_convergence * (tf.reduce_mean(grad_norm))
+	##loss = tf.cast(loss, tf.float32)
+	##loss = tf.constant(1.0*10**9)
+	#return(loss)
 		
 def gram_matrix(x,N,M):
   """
@@ -1200,7 +1236,7 @@ def print_loss_tab(sess,list_loss,list_loss_name):
 	strToPrint = ''
 	for loss,loss_name in zip(list_loss,list_loss_name):
 		loss_tmp = sess.run(loss)
-		strToPrint +=  loss_name + ' = {:.2e}, '.format(loss_tmp)
+		strToPrint +=  loss_name + ' = {:.9e}, '.format(loss_tmp)
 	print(strToPrint)
 	
 def print_loss(sess,loss_total,content_loss,style_loss):
@@ -1300,7 +1336,7 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
 	if(vgg_name=='normalizedvgg.mat'):
 		stringAdd = '_n'
 	elif(vgg_name=='imagenet-vgg-verydeep-19.mat'):
-		stringAdd = 'r' # Regular one
+		stringAdd = '_r' # Regular one
 	elif(vgg_name is None):
 		stringAdd = ''
 	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd+".pkl"
@@ -1396,6 +1432,7 @@ def load_img(args,img_name):
 			if(args.verbose): print("Exception when we try to open the image, we already test the 2 differents extension.")
 			raise
 	if(len(img.shape)==2):
+		if(args.verbose): print("Convert Grey Scale to RGB")
 		img = gray2rgb(img) # Convertion greyscale to RGB
 	img = preprocess(img.astype('float32'))
 	return(img)
@@ -1438,10 +1475,14 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 autocorrbizarre_loss = loss_autocorrbizarre(sess,net,image_style,M_dict)
 		 list_loss +=  [autocorrbizarre_loss]
 		 list_loss_name +=  ['autocorrbizarre_loss']   
-	if('autocorr'  in args.loss) or ('full' in args.loss):
+	if('autocorr'  in args.loss) or ('full' in args.loss): 
 		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
 		 list_loss +=  [autocorr_loss]
-		 list_loss_name +=  ['autocorr_loss'] 
+		 list_loss_name +=  ['autocorr_loss']
+	if('autocorr_rfft'  in args.loss) or ('full' in args.loss):
+		 autocorr_rfft_loss =  loss_autocorr_rfft(sess,net,image_style,M_dict)
+		 list_loss +=  [autocorr_rfft_loss]
+		 list_loss_name +=  ['autocorr_rfft_loss']
 	if('fft3D'  in args.loss) or ('full' in args.loss): 
 		 fft3D_loss = loss_fft3D(sess,net,image_style,M_dict)
 		 list_loss +=  [fft3D_loss]
@@ -1662,7 +1703,7 @@ def style_transfer(args):
 		result_img = sess.run(net['input'])
 		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
 		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path)     
+		scipy.misc.toimage(result_img_postproc).save(output_image_path)   
 		
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
@@ -1698,10 +1739,11 @@ def main_with_option():
 	brick = "BrickSmallBrown0293_1_S"
 	D ="D20_01"
 	orange = "orange"
+	damier ='DamierBig'
 	#img_output_folder = "images/"
-	image_style_name = orange
-	content_img_name  = orange
-	max_iter = 1000
+	image_style_name = damier
+	content_img_name  = damier
+	max_iter = 2000
 	print_iter = 200
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one

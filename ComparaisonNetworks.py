@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on  Wed 28 June
 
-This script have the goal to generate texture with different initialization 
+This script have the goal to generate texture with different loss function
 
 @author: nicolas
 """
@@ -23,38 +21,47 @@ def do_mkdir(path):
 		os.mkdir(path)
 	return(0)
 
-def generation_Texture_init():
+def generation_Texture_LossFct():
 	path_origin = '/home/nicolas/Style-Transfer/dataImages/'
-	path_output = '/home/nicolas/Style-Transfer/InitializationTest/resultsVGGnormalized//'
+	path_output = '/home/nicolas/Style-Transfer/LossFct/resultsComp/'
 	do_mkdir(path_output)
 		
 	parser = get_parser_args()
 	max_iter = 2000
-	print_iter = 100
+	print_iter = 200
 	start_from_noise = 1
 	init_noise_ratio = 1.0
 	optimizer = 'lbfgs'
-	init_list = [('Gaussian',0.),('Cst',0.),('Uniform',127.5),('Uniform',20.)]
+	init = 'Gaussian'
+	init_range = 0.0
+	clipping_type = 'ImageStyleBGR'
+	n = 4
+	p = 4
+	net_to_test = ['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat']
+	net_to_test = ['imagenet-vgg-verydeep-19.mat']
 	loss = 'texture'
 	
 	list_img = get_list_of_images(path_origin)
-	print(list_img)
 	
-	for init,init_range in init_list:
+	for net in net_to_test:
 		for name_img in list_img:
 			tf.reset_default_graph() # Necessity to use a new graph !! 
 			name_img_wt_ext,_ = name_img.split('.')
-			print("New Synthesis",init,name_img_wt_ext)
 			img_folder = path_origin
 			img_output_folder = path_origin
-			output_img_name = name_img_wt_ext + '_' + init + '_' + str(init_range)
+			if(net=='normalizedvgg.mat'):
+				extention = 'normNet'
+			elif(net=='imagenet-vgg-verydeep-19.mat'):
+				extention = 'regularNet'
+			output_img_name = name_img_wt_ext + '_' + extention + '_' + str(max_iter)
 			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
 				img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
 				init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
-				optimizer=optimizer,loss=loss,init=init,init_range=init_range)
+				optimizer=optimizer,loss=loss,init=init,init_range=init_range,p=p,n=n,clipping_type=clipping_type,
+				vgg_name=net)
 			args = parser.parse_args()
 			st.style_transfer(args)
 
 if __name__ == '__main__':
-	generation_Texture_init()
-	# python Init_Test_Gen.py >> /home/nicolas/Style-Transfer/InitializationTest/results/output.txt
+	generation_Texture_LossFct()
+	# python LossFct_Test_Gen.py >> /home/nicolas/Style-Transfer/LossFct/results/output.txt
