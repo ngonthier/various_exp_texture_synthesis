@@ -22,7 +22,7 @@ def do_mkdir(path):
 	return(0)
 
 def generation_Texture_LossFct():
-	path_origin = '/home/nicolas/Style-Transfer/dataImagesTest/'
+	path_origin = '/home/nicolas/Style-Transfer/dataImages/'
 	path_output = '/home/nicolas/Style-Transfer/LossFct/resultsDiff_loss_function/'
 	do_mkdir(path_output)
 		
