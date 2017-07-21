@@ -256,17 +256,20 @@ def compute_4_moments(x):
 def compute_n_moments(x,n,axis=[0,1,2]):
 	"""
 	Compute the n first moments of the features (response of the kernel)
+	Only the centered moments and not the centered reduced ones ! otherwise risk to have a nan number because of sig_x
 	"""
 	assert(n > 0)
 	mean_x = tf.reduce_mean(x,axis=axis)
 	list_of_moments = [mean_x]
 	if(n>1):
-		variance_x = tf.subtract(tf.reduce_mean(tf.pow(x,2), axis=axis),mean_x)
-		sig_x =  tf.sqrt(variance_x)
-		list_of_moments += [sig_x]
+		variance_x =   tf.reduce_mean(tf.pow(tf.subtract(x,mean_x),2),axis=axis)
+		list_of_moments += [variance_x]
 	if(n>2):
 		for r in range(3,n+1,1):
+			#sig_x =  tf.sqrt(variance_x)
+			sig_x = 1.
 			moment_r = tf.reduce_mean(tf.pow(tf.divide(tf.subtract(x,mean_x),sig_x),r), axis=axis) # Centré/réduit
+			tf.where(tf.is_nan(moment_r), tf.zeros_like(moment_r), moment_r  )
 			# TODO : change that to some thing more optimal : pb computation of the power several times
 			list_of_moments += [moment_r]
 	return(list_of_moments)
@@ -1868,8 +1871,8 @@ def main_with_option():
 	orange = "orange"
 	damier ='DamierBig_Proces'
 	#img_output_folder = "images/"
-	image_style_name = peddle
-	content_img_name  = peddle
+	image_style_name = brick
+	content_img_name  = brick
 	max_iter = 1000
 	print_iter = 200
 	start_from_noise = 1 # True

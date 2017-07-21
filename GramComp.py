@@ -502,25 +502,23 @@ def do_pdf_comparison_GramOnly_autreratio(args):
 		
 		# Plot the ratio
 		
-		#diff_ref_x = np.power(list_diff[0],2)
-		#inds_diff_ref_x_0 = np.where(diff_ref_x==0)
-		#inds_diff_ref_x_not_0 = np.where(diff_ref_x>0)
-		#diff_ref_x[inds_diff_ref_x_0] = np.min(diff_ref_x[inds_diff_ref_x_not_0])
-		#diff_png_jpg = np.power(list_diff[2],2)
-		ratio = np.divide(list_of_Gram[1],list_of_Gram[2])
-		#for j in range(len(inds_diff_ref_x_0[0])):
-			#indice1 = inds_diff_ref_x_0[0][j]
-			#indice2 = inds_diff_ref_x_0[1][j]
-			#if not(diff_png_jpg[indice1,indice2]==0):
-				#ratio[indice1,indice2] = np.max(ratio)
+		inds_zero = np.where(list_of_Gram[2]==0)
+		inds_no_zero = np.where(list_of_Gram[2]>0)
+		list_of_Gram[2][inds_zero] = np.min(np.abs(list_of_Gram[2][inds_no_zero]))
+		ratio = np.divide(np.power(list_of_Gram[1],2),np.power(list_of_Gram[2],2))
+		for j in range(len(inds_zero[0])):
+			indice1 = inds_zero[0][j]
+			indice2 = inds_zero[1][j]
+			if not(list_of_Gram[1][indice1,indice2]==0):
+				ratio[indice1,indice2] = np.max(ratio)
 				
 		f, ax = plt.subplots(1,2)
 		im = ax[0].imshow(ratio,cmap= 'jet')
 		plt.colorbar(im)
-		ax[0].set_title("Ratio Gram Matrix Optim Minus Flou On Ref Minus Optim")
+		ax[0].set_title("Ratio Gram Matrix Optim  On Optim Flou")
 		
 		print(np.mean(ratio),np.median(ratio),np.min(ratio),np.max(ratio))
-		mask = np.where(ratio < np.mean(ratio),1,0)
+		mask = np.where(ratio < np.mean(ratio) + np.std(ratio),1,0)
 		print("np.sum(mask)",np.sum(mask))
 		mask_dict[layer] = mask
 		im = ax[1].imshow(mask,cmap= 'jet')

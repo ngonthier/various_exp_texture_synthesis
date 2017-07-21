@@ -27,8 +27,8 @@ def generation_Texture_LossFct():
 	do_mkdir(path_output)
 		
 	parser = get_parser_args()
-	max_iter = 10
-	print_iter = 10
+	max_iter = 2000
+	print_iter = 500
 	start_from_noise = 1
 	init_noise_ratio = 1.0
 	optimizer = 'lbfgs'
@@ -40,7 +40,7 @@ def generation_Texture_LossFct():
 	p = 4
 	losses_to_test = [['autocorr'],['Lp'],['fft3D'],['bizarre']]
 	#losses_to_test = [['texture','HF'],['texture'],['texture','TV'],['texture','HFmany']]
-	losses_to_test = [['nmoments'],['Lp'],['autocorr_rfft'],['autocorr'],['texture'],['PhaseAlea']]
+	losses_to_test = [['autocorr_rfft'],['nmoments'],['Lp'],['autocorr'],['texture'],['PhaseAlea']]
 	
 	list_img = get_list_of_images(path_origin)
 	
