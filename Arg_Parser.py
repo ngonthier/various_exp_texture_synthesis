@@ -92,7 +92,7 @@ def get_parser_args():
     parser.add_argument('--init_range',type=float,default=127.5,
         help='Range for the initialialisation value')
         
-    parser.add_argument('--start_from_noise',type=int,default=0,choices=[0,1],
+    parser.add_argument('--start_from_noise',type=int,default=1,choices=[0,1],
         help='Start compulsory from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
     
     # VGG 19 info
@@ -109,8 +109,8 @@ def get_parser_args():
     
     # Info on the loss function 
     parser.add_argument('--loss',nargs='+',type=str,default='full',
-        choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','autocorr_rfft','Lp','TV','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','intercorr','bizarre','HF','variance','fftVect','current'],
-        help='Choice the term of the loss function. (default %(default)s)') # TODO need to be allow to get list of str loss
+        choices=['full','Gatys','texture','content','4moments','nmoments','InterScale','autocorr','autocorr_rfft','Lp','TV','TV1','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','texMask','intercorr','bizarre','HF','HFmany','variance','fftVect','current'],
+        help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
         help='Add a Total variation term for regularisation of the noise')  # TODO need to be change 
@@ -129,21 +129,24 @@ def get_parser_args():
         help='Type of map on the sub loss. (default %(default)s)')
         
     # Info about the Gatys loss function and layer used in the different function
-    #parser.add_argument('--content_layers', nargs='+', type=str, 
-        #default=['conv4_2'],
-        #help='VGG19 layers used for the content image. (default: %(default)s)')
+    parser.add_argument('--content_layers', nargs='+', type=str, 
+        default=['conv4_2'],
+        help='VGG19 layers used for the content image. (default: %(default)s)')
   
-    #parser.add_argument('--style_layers', nargs='+', type=str,
-        #default=['conv1_1','conv2_1','conv3_1'],
-        #help='VGG19 layers used for the style image. (default: %(default)s)')
+    parser.add_argument('--style_layers', nargs='+', type=str,
+        default=['conv1_1','pool1','pool2','pool3','pool4'],
+        help='VGG19 layers used for the style image. (default: %(default)s)')
   
-    #parser.add_argument('--content_layer_weights', nargs='+', type=float, 
-        #default=[1.0], 
-        #help='Contributions (weights) of each content layer to loss. (default: %(default)s)')
+    parser.add_argument('--content_layer_weights', nargs='+', type=float, 
+        default=[1.0], 
+        help='Contributions (weights) of each content layer to loss. (default: %(default)s)')
   
-    #parser.add_argument('--style_layer_weights', nargs='+', type=float, 
-        #default=[1.,1.,1.],
-        #help='Contributions (weights) of each style layer to loss. (default: %(default)s)')
+    parser.add_argument('--style_layer_weights', nargs='+', type=float, 
+        default=[1.,1.,1.,1.,1.],
+        help='Contributions (weights) of each style layer to loss. (default: %(default)s)') # TODO change that to be able to choose only one number, the same weight for all
+        
+    parser.add_argument('--config_layers',type=str,default='PoolConfig',choices=['PoolConfig','FirstConvs','Custom'],
+        help='Configuration already saved for the choice of the content and style layers and weights choosen, need to be None to allow user to change. (default: %(default)s)') 
         
     # GPU Config :
     parser.add_argument('--gpu_frac',  type=float,default=0.,

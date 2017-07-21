@@ -1,7 +1,7 @@
 # Style-Transfer
 
 This project implement with Tensorflow the Gatys Style Transfer algorithm.
-This code can also be used for Texture generation.
+This code can also be used for Texture generation in order to test new kind of loss function.
 It is the projet for my master degree internship.
 
 This code is inspired from :

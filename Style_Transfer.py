@@ -42,16 +42,6 @@ VGG19_LAYERS = (
 	'relu5_3', 'conv5_4', 'relu5_4'
 )
 #layers   = [2 5 10 19 28]; for texture generation
-
-# TODO segment the vgg loader, and the restfautoco
-content_layers = [('conv4_2',1)]
-#style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
-#style_layers = [('conv1_1',1)]
-#style_layers = [('relu1_1',1),('relu2_1',1),('relu3_1',1)]
-#style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1),('conv4_1',1),('conv5_1',1)]
-style_layers = [('conv1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
-#style_layers = [('conv1_1',1)]
-
 style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
 # TODO : check if the N value are right for the poolx
 
@@ -171,7 +161,7 @@ def _pool_layer(input,name,pooling_type='avg',padding='SAME'):
 				padding=padding,name=name) 
 	return(pool)
 
-def sum_content_losses(sess, net, dict_features_repr,M_dict):
+def sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers):
 	"""
 	Compute the content term of the loss function
 	Input : 
@@ -190,7 +180,7 @@ def sum_content_losses(sess, net, dict_features_repr,M_dict):
 			weight*weight_help_convergence/(length_content_layers*(tf.to_float(M)**2)))
 	return(content_loss)
 
-def sum_style_losses(sess, net, dict_gram,M_dict):
+def sum_style_losses(sess, net, dict_gram,M_dict,style_layers):
 	"""
 	Compute the style term of the loss function with Gram Matrix from the
 	Gatys Paper
@@ -218,6 +208,36 @@ def sum_style_losses(sess, net, dict_gram,M_dict):
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	return(total_style_loss)
+
+def texture_loss_wt_mask(sess, net, dict_gram,M_dict,mask_dict,style_layers):
+	"""
+	Multiply the first layer 
+	"""
+	# Info for the vgg19
+	length_style_layers = float(len(style_layers))
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	for layer, weight in style_layers:
+		# For one layer
+		N = style_layers_size[layer[:5]]
+		NN = N**2
+		A = dict_gram[layer]
+		A = tf.constant(A)
+		# Get the value of this layer with the generated image
+		M = M_dict[layer[:5]]
+		x = net[layer]
+		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
+		diff = tf.subtract(G,A)
+		mask = mask_dict[layer]
+		diff = tf.multiply(diff,mask)
+		NN = np.sum(mask)
+		print("Number of non null element in mask ",NN)
+		style_loss = tf.nn.l2_loss(diff)  # output = sum(t ** 2) / 2
+		style_loss *=  weight * weight_help_convergence  / (2.*(NN)*length_style_layers)
+		total_style_loss += style_loss
+	return(total_style_loss)
+
 
 def compute_4_moments(x):
 	"""
@@ -265,7 +285,7 @@ def compute_Lp_norm(x,p):
 		list_of_Lp += [L_r_x]
 	return(list_of_Lp)
 		
-def sum_style_stats_loss(sess,net,image_style,M_dict):
+def sum_style_stats_loss(sess,net,image_style,M_dict,style_layers):
 	"""
 	Compute a loss that is the l2 norm of the 4th moment of the optimization
 	"""
@@ -287,7 +307,7 @@ def sum_style_stats_loss(sess,net,image_style,M_dict):
 		total_style_loss += style_loss
 	return(total_style_loss)
 
-def loss_n_moments(sess,net,image_style,M_dict,n):
+def loss_n_moments(sess,net,image_style,M_dict,n,style_layers):
 	"""
 	Compute a loss that is the l2 norm of the nth moment of the optimization
 	"""
@@ -309,7 +329,7 @@ def loss_n_moments(sess,net,image_style,M_dict,n):
 		total_style_loss += style_loss
 	return(total_style_loss)
 
-def loss_n_stats(sess,net,image_style,M_dict,n,TypeOfComputation='moments'):
+def loss_n_stats(sess,net,image_style,M_dict,n,style_layers,TypeOfComputation='moments'):
 	"""
 	Compute a loss that is the l2 norm of the n element of a statistic on 
 	the features maps : moments or norm
@@ -338,7 +358,7 @@ def loss_n_stats(sess,net,image_style,M_dict,n,TypeOfComputation='moments'):
 		total_style_loss += style_loss
 	return(total_style_loss)
 	
-def loss_variance(sess,net,image_style,M_dict):
+def loss_variance(sess,net,image_style,M_dict,style_layers):
 	"""
 	Compute a loss that is the l2 norm of the variance between the two 
 	image (reference and the one we are optimizing)
@@ -363,7 +383,7 @@ def loss_variance(sess,net,image_style,M_dict):
 	return(total_style_loss)
 	
 
-def loss_p_norm(sess,net,image_style,M_dict,p): # Faire une fonction génértique qui prend en entree le type de norme !!! 
+def loss_p_norm(sess,net,image_style,M_dict,p,style_layers): # Faire une fonction génértique qui prend en entree le type de norme !!! 
 	length_style_layers = float(len(style_layers))
 	weight_help_convergence = 10**9 # This wight come from a paper of Gatys
 	# Because the function is pretty flat 
@@ -383,7 +403,7 @@ def loss_p_norm(sess,net,image_style,M_dict,p): # Faire une fonction génértiqu
 	return(total_style_loss)
 	
 
-def loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling='down',pooling_type='avg'):
+def loss_crosscor_inter_scale(sess,net,image_style,M_dict,style_layers,sampling='down',pooling_type='avg'):
 	"""
 	Compute a loss that is the l2 norm of the cross correlation of the previous band
 	The sampling argument is down for downsampling and up for up sampling
@@ -452,7 +472,7 @@ def pgcd(a,b) :
 		a, b = b, a%b 
 	return b
 
-def loss_autocorrbizarre(sess,net,image_style,M_dict):
+def loss_autocorrbizarre(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the autocorrelation of the filters
 	"""
@@ -481,7 +501,7 @@ def loss_autocorrbizarre(sess,net,image_style,M_dict):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 
-def loss_autocorr(sess,net,image_style,M_dict):
+def loss_autocorr(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the autocorrelation of the filters
 	"""
@@ -513,7 +533,7 @@ def loss_autocorr(sess,net,image_style,M_dict):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
-def loss_autocorr_rfft(sess,net,image_style,M_dict):
+def loss_autocorr_rfft(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the autocorrelation of the filters
 	"""
@@ -552,7 +572,7 @@ def loss_autocorr_rfft(sess,net,image_style,M_dict):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
-def loss_fft_vect(sess,net,image_style,M_dict):
+def loss_fft_vect(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the autocorrelation of the filters consider as vector
 	kind of vectorized FFT
@@ -587,7 +607,7 @@ def loss_fft_vect(sess,net,image_style,M_dict):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
-def compute_ImagePhaseAlea(sess,net,image_style,M_dict): 
+def compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers): 
 	"""
 	Add a random phase to the features of the image style at the last
 	layer in the network
@@ -631,7 +651,7 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict):
 
 	return(image_style_PhaseAlea)
 	
-def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict):
+def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_layers):
 	"""
 	In this loss function we impose the TF transform to the last layer 
 	with a random phase imposed and only the spectrum of the 
@@ -672,7 +692,7 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
-def loss_PhaseImpose(sess,net,image_style,M_dict):
+def loss_PhaseImpose(sess,net,image_style,M_dict,style_layers):
 	"""
 	TODO !!!
 	"""
@@ -785,7 +805,7 @@ def angle(z):
 	return tf.atan(y / x) + offset
 
 	
-def loss_intercorr(sess,net,image_style,M_dict):
+def loss_intercorr(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the correlation of the filter and the interaction 
 	long distance of the features : intercorrelation
@@ -850,7 +870,7 @@ def loss_intercorr(sess,net,image_style,M_dict):
 			
 	return(total_style_loss)
 	
-def loss_SpectrumOnFeatures(sess,net,image_style,M_dict):
+def loss_SpectrumOnFeatures(sess,net,image_style,M_dict,style_layers):
 	"""
 	In this loss function we impose the spectrum on each features 
 	"""
@@ -882,7 +902,7 @@ def loss_SpectrumOnFeatures(sess,net,image_style,M_dict):
 	return(total_style_loss)
 	
 	
-def loss_fft3D(sess,net,image_style,M_dict):
+def loss_fft3D(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the 3-dimensional discrete Fourier Transform over the 
 	inner-most 3 dimensions of input i.e. height,width,channel :) 
@@ -942,92 +962,29 @@ def loss_spectrum(sess,net,image_style,M_dict):
 
 def loss__HF_filter(sess, net, image_style,M_dict):
 	"""
-	
+	With the function we add a kind of HF Filter to some layer in order 
+	to remove some artefacts
 	"""
-	
-	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
-	weight = 10**3
-	# Because the function is pretty flat 
-	total_style_loss = 0
-	# Ajout d'un terme HF   
-	layer = 'input'
-	
-	# Definition of the kernels : 
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys 
+	sizeKernel = 3
+	zeros = np.zeros(shape=(sizeKernel,sizeKernel)).astype('float32')
 	k = np.array([[ 1, -1,  1],
 	   [-1,  1, -1],
 	   [ 1, -1,  1]]).astype('float32')
-	k = k/9.
-	k = k/3.
-	kernels = np.stack([k,k,k],axis=2)
-	kernels = np.expand_dims(kernels,axis=3)
+	k /= 9.
+	# imshow(abs(fftshift(fft2(a,256,256))),[]) pour connaitre le spectre sous matlab
+	total_style_loss = 0.
 	
-	k2 = np.array([[ -1, -1,  -1],
-	   [-1,  8, -1],
-	   [ -1, -1,  -1]]).astype('float32')
-	k2 = k2/9.
-	k2 = k2/3.
-	kernels2 = np.stack([k2,k2,k2],axis=2)
-	kernels2 = np.expand_dims(kernels2,axis=3)
-	
-	# Laplacian Filtering 
-	kl = np.array([[ 0, -1,  0],
-	   [-1,  4, -1],
-	   [ 0, -1,  0]]).astype('float32')
-	kl = kl/3.
-	kernelsl = np.stack([kl,kl,kl],axis=2)
-	kernelsl = np.expand_dims(kernelsl,axis=3)
-	
-	# Gradient : filtre de Sobel
-	k = np.array([[ 1, 0,  -1],
-	   [2,  0, -2],
-	   [ 1, 0,  -1]]).astype('float32')
-	k = k/3.
-	kernels3 = np.expand_dims(np.stack([k,k,k],axis=2),axis=3)
-	k = np.array([[ 1, 2,  1],
-	   [0,  0, 0],
-	   [ -1, -2,  -1]]).astype('float32')
-	k = k/3.
-	kernels4 = np.expand_dims(np.stack([k,k,k],axis=2),axis=3)
-	kernels = np.concatenate((kernels,kernels2,kernels3,kernels4,kernelsl),axis=3)
-	
-	
-	zeros = np.zeros(shape=(3,3)).astype('float32')
-	k = np.array([[ 1, -1,  1],
-	   [-1,  1, -1],
-	   [ 1, -1,  1]]).astype('float32')
-	k = k/9.
-	#k = kl 
-	kernels = np.stack([k,zeros,zeros],axis=2)
-	kernels = np.expand_dims(kernels,axis=3)
-	
-	kernels2 = np.stack([zeros,k,zeros],axis=2)
-	kernels2 = np.expand_dims(kernels2,axis=3)
-   
-	kernels3 = np.stack([zeros,zeros,k],axis=2)
-	kernels3 = np.expand_dims(kernels3,axis=3)
-	
-	kernels = np.concatenate((kernels,kernels2,kernels3),axis=3)
-
-	#kernels = np.array([[[[1,-1,1],[-1,1,-1],[1,-1,1]],[[1,-1,1],[-1,1,-1],[1,-1,1]],[[1,-1,1],[-1,1,-1],[1,-1,1]]]]).astype('float32')
-	_,_,_,N = kernels.shape
-	print("kernels.shape",kernels.shape)
-	kernels = tf.constant(kernels)
-	
-	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
-	# Because the function is pretty flat 
-	total_style_loss = 0
-	
-	style_layers_local = [('input',1),('pool1',1),('pool2',1)]
-	style_layers_local_size = {'input' : 3,'pool1' : 64,'pool2' : 128}
+	style_layers_local = [('input',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
+	length_style_layers = len(style_layers_local)
+	style_layers_local_size = {'input' : 3,'pool1' : 64,'pool2' : 128,'pool3' : 256,'pool4' : 512}
 	for layer, weight in style_layers_local:
-		weight = 10**3
+		weight =1.0
 		input_x  = net[layer]
 		kernels = None
 		for j in range(style_layers_local_size[layer]):
-			kernels_tmp = np.zeros(shape=(3,3,style_layers_local_size[layer])).astype('float32')
-			kernels_tmp[:,:,j] = k
+			kernels_tmp = np.zeros(shape=(sizeKernel,sizeKernel,style_layers_local_size[layer])).astype('float32')
+			kernels_tmp[:,:,j] = k #/math.sqrt(sizeKernel*sizeKernel*style_layers_local_size[layer])
 			kernels_tmp = np.expand_dims(kernels_tmp,axis=3)
 			if(kernels is None):
 				kernels = kernels_tmp 
@@ -1042,14 +999,160 @@ def loss__HF_filter(sess, net, image_style,M_dict):
 		input_a = sess.run(net[layer])
 		conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
 				padding='SAME',name='conv')
-		print(conv_x.get_shape())
 		M = M_dict[layer[:5]]
 		G_x = gram_matrix(conv_x,N,M)
 		G_a = gram_matrix(conv_a,N,M)
 		style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
-
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
+		
+	return(total_style_loss)
+
+def loss__HF_many_filters2(sess, net, image_style,M_dict):
+	"""
+	test avec d'autres filtres passe haut
+	"""
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	zeros = np.zeros(shape=(3,3)).astype('float32')
+	
+	#Filter en X
+	list_kernel = []
+	k = np.array([[ 1, -1,  1],
+	   [-1,  1, -1],
+	   [ 1, -1,  1]]).astype('float32')
+	k = k/9.
+	list_kernel += [k]
+	# Filtre selon x
+	k = np.array([[ -1, 1,  0],
+	   [-1,  1, 0],
+	   [ -1, 1,  0]]).astype('float32')
+	k = k/9.
+	list_kernel += [k]
+	# Filtre selon y
+	k = np.array([[ 0, 0,  0],
+	   [1,  1, 1],
+	   [ -1, -1,  -1]]).astype('float32')
+	k = k/9.
+	list_kernel += [k]
+	# Filtre Laplacien
+	k = np.array([[ 0, -1/4,  0],
+	   [-1./4.,  1, -1./4.],
+	   [ 0, -1./4.,  0]]).astype('float32')
+	k = k/9.
+	list_kernel += [k]
+	#k = np.array([[ 0, -1./4.,  0],
+		#[-1./4,  2, -1./4],
+	   #[ 0, -1./4,  0]]).astype('float32')
+	#k = k/9.
+	ratio = 1./len(list_kernel)
+	weight = 10**(-2)
+	style_layers_local = [('input',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
+	length_style_layers = len(style_layers_local)
+	style_layers_local_size = {'input' : 3,'pool1' : 64,'pool2' : 128,'pool3' : 256,'pool4' : 512}
+	for layer, weight in style_layers_local:
+		for kernel in list_kernel:
+			k = kernel
+			input_x  = net[layer]
+			kernels = None
+			for j in range(style_layers_local_size[layer]):
+				kernels_tmp = np.zeros(shape=(3,3,style_layers_local_size[layer])).astype('float32')
+				kernels_tmp[:,:,j] = k
+				kernels_tmp = np.expand_dims(kernels_tmp,axis=3)
+				if(kernels is None):
+					kernels = kernels_tmp 
+				else:
+					kernels = np.concatenate((kernels,kernels_tmp),axis=3)
+			_,_,_,N = kernels.shape  
+			kernels = tf.constant(kernels)
+
+			conv_x = tf.nn.conv2d(input_x, kernels, strides=(1, 1, 1, 1),
+					padding='SAME',name='conv')
+			sess.run(net['input'].assign(image_style)) 
+			input_a = sess.run(net[layer])
+			conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
+					padding='SAME',name='conv')
+			M = M_dict[layer[:5]]
+			G_x = gram_matrix(conv_x,N,M)
+			G_a = gram_matrix(conv_a,N,M)
+			style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
+			style_loss *= ratio* weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+			total_style_loss += style_loss
+	return(total_style_loss)
+	
+	
+def loss__HF_many_filters(sess, net, image_style,M_dict):
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	sizeKernel = 3
+	zeros = np.zeros(shape=(sizeKernel,sizeKernel)).astype('float32')
+	k = np.array([[ 1, -1,  1],
+	   [-1,  1, -1],
+	   [ 1, -1,  1]]).astype('float32')
+	#k /= 9.
+	
+	style_layers_local = [('input',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
+	length_style_layers = len(style_layers_local)
+	style_layers_local_size = {'input' : 3,'pool1' : 64,'pool2' : 128,'pool3' : 256,'pool4' : 512}
+	for layer, weight in style_layers_local:
+		weight =1.0
+		input_x  = net[layer]
+		kernels = None
+		for j in range(style_layers_local_size[layer]):
+			kernels_tmp = np.zeros(shape=(sizeKernel,sizeKernel,style_layers_local_size[layer])).astype('float32')
+			kernels_tmp[:,:,j] = k/math.sqrt(sizeKernel*sizeKernel*style_layers_local_size[layer])
+			kernels_tmp = np.expand_dims(kernels_tmp,axis=3)
+			if(kernels is None):
+				kernels = kernels_tmp 
+			else:
+				kernels = np.concatenate((kernels,kernels_tmp),axis=3)
+		_,_,_,N = kernels.shape  
+		kernels = tf.constant(kernels)
+
+		conv_x = tf.nn.conv2d(input_x, kernels, strides=(1, 1, 1, 1),
+				padding='SAME',name='conv')
+		sess.run(net['input'].assign(image_style)) 
+		input_a = sess.run(net[layer])
+		conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
+				padding='SAME',name='conv')
+		M = M_dict[layer[:5]]
+		G_x = gram_matrix(conv_x,N,M)
+		G_a = gram_matrix(conv_a,N,M)
+		style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+		
+		if(layer=='input'):
+			weight2 = 10**(-5)
+			k2 = np.ones(shape=(sizeKernel,sizeKernel)).astype('float32')
+			k2 /= 9.
+			kernels = None
+			for j in range(style_layers_local_size[layer]):
+				kernels_tmp = np.zeros(shape=(sizeKernel,sizeKernel,style_layers_local_size[layer])).astype('float32')
+				kernels_tmp[:,:,j] = k2
+				kernels_tmp[:,:,(j+1)%(style_layers_local_size[layer])] = -k2
+				kernels_tmp = np.expand_dims(kernels_tmp,axis=3)
+				if(kernels is None):
+					kernels = kernels_tmp 
+				else:
+					kernels = np.concatenate((kernels,kernels_tmp),axis=3)
+			_,_,_,N = kernels.shape
+			kernels = tf.constant(kernels)
+
+			conv_x = tf.nn.conv2d(input_x, kernels, strides=(1, 1, 1, 1),
+					padding='SAME',name='conv')
+			sess.run(net['input'].assign(image_style)) 
+			input_a = sess.run(net[layer])
+			conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
+					padding='SAME',name='conv')
+			M = M_dict[layer[:5]]
+			G_x = gram_matrix(conv_x,N,M)
+			G_a = gram_matrix(conv_a,N,M)
+			style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
+			style_loss *=  weight2 * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+			total_style_loss += style_loss
 	return(total_style_loss)
 
 def sum_total_variation_losses(sess, net):
@@ -1073,27 +1176,25 @@ def sum_total_variation_losses(sess, net):
 	return(loss)
 
 	
-#def sum_total_variation_losses(sess, net):
-	#"""
-	#denoising loss function, this function come from : 
-	#https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
-	#"""
-	#x = net['input']
-	#weight_help_convergence = 10**9 
-	#[b, h, w, d] = x.get_shape()
-	#b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
-	#tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
-	#tv_x_size = tf.to_float(b * h * (w-1) * d)
-	#alpha = 1. # In order to not destroy the image to a constance 
-	#diff_x = tf.pow(x[:,2:,1:-1,:] - x[:,:-2,1:-1,:],2)
-	##diff_x = tf.pow(x[:,102:,1:-100,:] - x[:,:-2,1:-100,:],2)
-	#diff_y = tf.pow(x[:,1:-1,2:,:] - x[:,1:-1,:-2,:],2)
-	##diff_y = tf.pow(x[:,1:-100,2:,:] - x[:,1:-100,:-2,:],2)
-	#grad_norm = tf.sqrt(tf.add(diff_x,diff_y))
-	#loss = 2. *alpha * weight_help_convergence * (tf.reduce_mean(grad_norm))
-	##loss = tf.cast(loss, tf.float32)
-	##loss = tf.constant(1.0*10**9)
-	#return(loss)
+def sum_total_variation_losses_norm1(sess, net):
+	"""
+	denoising loss function, this function come from : 
+	https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
+	"""
+	x = net['input']
+	weight_help_convergence = 1.
+	alpha = 10**(-6) # In order to not destroy the image to a constance 
+	[b, h, w, d] = x.get_shape()
+	b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
+	tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
+	tv_x_size = tf.to_float(b * h * (w-1) * d)
+	loss_y = tf.reduce_sum(tf.abs(x[:,1:,:,:] - x[:,:-1,:,:]))
+	loss_y /= tv_y_size
+	loss_x = tf.reduce_sum(tf.abs(x[:,:,1:,:] - x[:,:,:-1,:]))
+	loss_x /= tv_x_size
+	loss = 2 *alpha * weight_help_convergence * (loss_y + loss_x)
+	loss = tf.cast(loss, tf.float32)
+	return(loss)
 		
 def gram_matrix(x,N,M):
   """
@@ -1439,56 +1540,78 @@ def load_img(args,img_name):
 
 def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding):
 	""" Compute the total loss map of the sub loss """
+	#Get the layer used for style and other
+	if(args.config_layers=='PoolConfig'):
+		content_layers = [('conv4_2',1)]
+		style_layers = [('conv1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
+	elif(args.config_layers=='FirstConvs'):
+		content_layers = [('conv4_2',1)]
+		style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
+	elif(args.config_layers=='Custom'):
+		content_layers =  list(zip(args.content_layers, args.content_layer_weights))
+		style_layers = list(zip(args.style_layers,args.style_layer_weights))
+	if(args.verbose): print('content_layers',content_layers)
+	if(args.verbose): print('style_layers',style_layers)
+	
 	loss_total = tf.constant(0.)
 	list_loss =  []
 	list_loss_name =  []
 	assert len(args.loss)
 	if('Gatys' in args.loss) or ('content'  in args.loss) or ('full' in args.loss):
-		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict) # alpha/Beta ratio 
+		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers) # alpha/Beta ratio 
 		list_loss +=  [content_loss]
 		list_loss_name +=  ['content_loss']
 	if('Gatys' in args.loss) or ('texture'  in args.loss) or ('full' in args.loss):
-		style_loss =  sum_style_losses(sess, net, dict_gram,M_dict)
+		style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,style_layers)
 		list_loss +=  [style_loss]
 		list_loss_name +=  ['style_loss']
+	if('texMask'  in args.loss):
+		mask_dict = pickle.load(open('mask_dict.pkl', 'rb'))
+		texture_mask_loss = texture_loss_wt_mask(sess, net, dict_gram,M_dict,mask_dict,style_layers)
+		list_loss +=  [texture_mask_loss]
+		list_loss_name +=  ['texture_mask_loss']
 	if('4moments' in args.loss):
-		style_stats_loss = sum_style_stats_loss(sess,net,image_style,M_dict)
+		style_stats_loss = sum_style_stats_loss(sess,net,image_style,M_dict,style_layers)
 		list_loss +=  [style_stats_loss]
 		list_loss_name +=  ['style_stats_loss']
 	if('InterScale'  in args.loss) or ('full' in args.loss):
-		 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,sampling=args.sampling,pooling_type=pooling_type)
+		 inter_scale_loss = loss_crosscor_inter_scale(sess,net,image_style,M_dict,style_layers,sampling=args.sampling,pooling_type=pooling_type)
 		 list_loss +=  [inter_scale_loss]
 		 list_loss_name +=  ['inter_scale_loss']
 	if('nmoments'  in args.loss) or ('full' in args.loss):
-		loss_n_moments_val = loss_n_stats(sess,net,image_style,M_dict,args.n,TypeOfComputation='moments')
+		loss_n_moments_val = loss_n_stats(sess,net,image_style,M_dict,args.n,style_layers,TypeOfComputation='moments')
 		list_loss +=  [loss_n_moments_val]
 		list_loss_name +=  ['loss_n_moments_val with (n = '+str(args.n)+')']     
 	if('Lp'  in args.loss) or ('full' in args.loss):
-		loss_L_p_val =  loss_n_stats(sess,net,image_style,M_dict,args.p,TypeOfComputation='Lp')
+		loss_L_p_val =  loss_n_stats(sess,net,image_style,M_dict,args.p,style_layers,TypeOfComputation='Lp')
 		list_loss +=  [loss_L_p_val]
 		list_loss_name +=  ['loss_L_p_val with (p = '+str(args.p)+')']  
 	if('TV'  in args.loss) or ('full' in args.loss):
 		tv_loss =  sum_total_variation_losses(sess, net)
 		list_loss +=  [tv_loss]
 		list_loss_name +=  ['tv_loss']
+	if('TV1'  in args.loss) :
+		tv_norm1_loss =  sum_total_variation_losses_norm1(sess, net)
+		list_loss +=  [tv_norm1_loss]
+		list_loss_name +=  ['tv_norm1_loss']
 	if('bizarre'  in args.loss) or ('full' in args.loss):
-		 autocorrbizarre_loss = loss_autocorrbizarre(sess,net,image_style,M_dict)
+		 autocorrbizarre_loss = loss_autocorrbizarre(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [autocorrbizarre_loss]
 		 list_loss_name +=  ['autocorrbizarre_loss']   
 	if('autocorr'  in args.loss) or ('full' in args.loss): 
-		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict)
+		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [autocorr_loss]
 		 list_loss_name +=  ['autocorr_loss']
 	if('autocorr_rfft'  in args.loss) or ('full' in args.loss):
-		 autocorr_rfft_loss =  loss_autocorr_rfft(sess,net,image_style,M_dict)
+		 autocorr_rfft_loss =  loss_autocorr_rfft(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [autocorr_rfft_loss]
 		 list_loss_name +=  ['autocorr_rfft_loss']
 	if('fft3D'  in args.loss) or ('full' in args.loss): 
-		 fft3D_loss = loss_fft3D(sess,net,image_style,M_dict)
+		 fft3D_loss = loss_fft3D(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [fft3D_loss]
 		 list_loss_name +=  ['fft3D_loss']  
 	if('fftVect'  in args.loss) or ('full' in args.loss):
-		 fftVect_loss = loss_fft_vect(sess,net,image_style,M_dict)
+		 fftVect_loss = loss_fft_vect(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [fftVect_loss]
 		 list_loss_name +=  ['fftVect_loss'] 
 	if('spectrum'  in args.loss) or ('full' in args.loss):
@@ -1496,31 +1619,35 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 list_loss +=  [spectrum_loss]
 		 list_loss_name +=  ['spectrum_loss']  
 	if('variance'  in args.loss) or ('full' in args.loss):
-		 variance_loss = loss_variance(sess,net,image_style,M_dict)
+		 variance_loss = loss_variance(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [variance_loss]
 		 list_loss_name +=  ['variance_loss']  
 	if('SpectrumOnFeatures'  in args.loss) or ('full' in args.loss):
-		 SpectrumOnFeatures_loss = loss_SpectrumOnFeatures(sess,net,image_style,M_dict)
+		 SpectrumOnFeatures_loss = loss_SpectrumOnFeatures(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [SpectrumOnFeatures_loss]
 		 list_loss_name +=  ['SpectrumOnFeatures_loss'] 
 	if('phaseAlea' in args.loss) or ('full' in args.loss):
-		 image_style_Phase = compute_ImagePhaseAlea(sess,net,image_style,M_dict)
-		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict)
+		 image_style_Phase = compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers)
+		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict,style_layers)
 		 list_loss +=  [phaseAlea_loss]
 		 list_loss_name +=  ['phaseAlea_loss']  
 	if('intercorr' in args.loss) or ('full' in args.loss):
 		 print("Risk to do a Ressource Exhausted error :) ")
-		 intercorr_loss = loss_intercorr(sess,net,image_style,M_dict)
+		 intercorr_loss = loss_intercorr(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [intercorr_loss]
 		 list_loss_name +=  ['intercorr_loss']  
 	if('current' in args.loss) or ('full' in args.loss): 
-		 PhaseImpose_loss = loss_PhaseImpose(sess,net,image_style,M_dict)   
+		 PhaseImpose_loss = loss_PhaseImpose(sess,net,image_style,M_dict,style_layers)   
 		 list_loss +=  [PhaseImpose_loss]
 		 list_loss_name +=  ['PhaseImpose_loss']    
 	if('HF' in args.loss) or ('full' in args.loss):
 		 HF_loss = loss__HF_filter(sess, net, image_style,M_dict)   
 		 list_loss +=  [HF_loss]
-		 list_loss_name +=  ['HF_loss'] 
+		 list_loss_name +=  ['HF_loss']
+	if('HFmany' in args.loss):
+		 HFmany_loss = loss__HF_many_filters(sess, net, image_style,M_dict)   
+		 list_loss +=  [HFmany_loss]
+		 list_loss_name +=  ['HFmany_loss'] 
 	if(args.type_of_loss=='add'):
 		loss_total = tf.reduce_sum(list_loss)
 	elif(args.type_of_loss=='max'):
@@ -1739,11 +1866,11 @@ def main_with_option():
 	brick = "BrickSmallBrown0293_1_S"
 	D ="D20_01"
 	orange = "orange"
-	damier ='DamierBig'
+	damier ='DamierBig_Proces'
 	#img_output_folder = "images/"
-	image_style_name = damier
-	content_img_name  = damier
-	max_iter = 2000
+	image_style_name = peddle
+	content_img_name  = peddle
+	max_iter = 1000
 	print_iter = 200
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one

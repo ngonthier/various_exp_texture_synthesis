@@ -79,10 +79,11 @@ def do_pdf_comparison(args):
 	list_img += [image_png]
 	list_img_name += ['image_png']
 	image_jpg_path = folder_path + 'Pastiche_BRICK_JPG.jpg' 
+	image_jpg_path = folder_path + 'Pastiche_BRICK_Flou.png' 
 	#	image_jpg_path = folder_path + 'Pastiche_BRICK_JPG_Apres2000IterDePlus.png' 
 	image_jpg = st.preprocess(scipy.misc.imread(image_jpg_path).astype('float32')) 
 	list_img += [image_jpg]
-	list_img_name += ['image_jpg']
+	list_img_name += ['image_Modified']
 	
 	vgg_layers = st.get_vgg_layers()
 	net = st.net_preloaded(vgg_layers, image_reference) # net for the style image
@@ -91,6 +92,17 @@ def do_pdf_comparison(args):
 
 	sess = tf.Session()
 	sess.run(tf.global_variables_initializer())
+
+	f, ax = plt.subplots(1,3)
+	for j,name in enumerate(list_img_name):
+		ax[j].set_title(name)
+		img = st.postprocess(list_img[j])
+		ax[j].imshow(img)
+		ax[j].axis('off')
+	titre = 'Images Depart'
+	plt.suptitle(titre)
+	plt.savefig(pp, format='pdf',dpi=600)
+	plt.close()
 
 	# Plot the Gram Matrix
 	layer = 'conv1_1'
@@ -158,11 +170,42 @@ def do_pdf_comparison(args):
 	plt.savefig(pp, format='pdf')
 	plt.close()
 	
+	# Plot the ratio
+	
+	diff_ref_x = np.power(list_diff[0],2)
+	diff_png_jpg = np.power(list_diff[2],2)
+	ratio = diff_png_jpg / diff_ref_x
+	im = plt.imshow(ratio,cmap= 'jet')
+	plt.colorbar(im)
+	plt.suptitle("Ratio Gram Matrix Optim Minus Flou On Ref Minus Optim")
+	plt.savefig(pp, format='pdf')
+	plt.close()
+	print(np.mean(ratio),np.median(ratio),np.min(ratio),np.max(ratio))
+	mask = np.where(ratio < np.median(ratio),1,0)
+	print("np.sum(mask)",np.sum(mask))
+	np.save("mask",mask)
+	im = plt.imshow(mask,cmap= 'jet')
+	plt.colorbar(im)
+	plt.suptitle("Masque")
+	plt.savefig(pp, format='pdf')
+	plt.close()
+	
+	
+	
+	diff_ref_x = np.power(list_diff[0],2)
+	diff_ref_jpg = np.power(list_diff[1],2)
+	ratio = diff_ref_jpg / diff_ref_x
+	im = plt.imshow(ratio,cmap= 'jet')
+	plt.colorbar(im)
+	plt.suptitle("Ratio Gram Matrix  Ref Minus Flou On Ref Minus Optim")
+	plt.savefig(pp, format='pdf')
+	plt.close()
+	
 	diff_ref_jpg =  np.power(list_diff[1],2)
 	diagonal = diff_ref_jpg.diagonal()
 	diagonal_mean = np.mean(diagonal)
 	diagonal_std = np.std(diagonal)
-	kernel_big_energy_index = np.where(diagonal > diagonal_mean + 2*diagonal_std)
+	kernel_big_energy_index = np.where(diagonal > diagonal_mean + diagonal_std)
 	kernel_big_energy_index = kernel_big_energy_index[0]
 	
 	print('kernel_big_energy_index',kernel_big_energy_index)
@@ -193,6 +236,301 @@ def do_pdf_comparison(args):
 		plt.savefig(pp, format='pdf')
 		plt.close()
 	
+	# Close the PDF
+	pp.close()
+	plt.clf()
+
+def do_pdf_comparison_GramOnly(args):
+	VGG19_LAYERS_INTEREST = (
+    'conv1_1','pool1', 'pool2','pool3','pool4'
+	)
+	sns.set_style("white")
+	folder_path ='/home/nicolas/Style-Transfer/Results/ArtifactsComp/'
+	pltname = folder_path+'Artifacts_Gram.pdf'
+	pp = PdfPages(pltname)
+	
+	image_style_path = folder_path + 'BrickSmallBrown0293_1_S.png' 
+	image_reference = st.preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
+	_,image_h_art, image_w_art, _ = image_reference.shape 
+	list_img = [image_reference]
+	list_img_name = ['image_reference']
+	
+	image_png_path = folder_path + 'Pastiche_BRICK_PNG.png' 
+	image_png = st.preprocess(scipy.misc.imread(image_png_path).astype('float32')) 
+	list_img += [image_png]
+	list_img_name += ['image_png']
+	image_jpg_path = folder_path + 'Pastiche_BRICK_JPG.jpg' 
+	image_jpg_path = folder_path + 'Pastiche_BRICK_Flou.png' 
+	#	image_jpg_path = folder_path + 'Pastiche_BRICK_JPG_Apres2000IterDePlus.png' 
+	image_jpg = st.preprocess(scipy.misc.imread(image_jpg_path).astype('float32')) 
+	list_img += [image_jpg]
+	list_img_name += ['image_Modified']
+	
+	vgg_layers = st.get_vgg_layers()
+	net = st.net_preloaded(vgg_layers, image_reference) # net for the style image
+	placeholder = tf.placeholder(tf.float32, shape=image_reference.shape)
+	assign_op = net['input'].assign(placeholder)
+
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+
+	f, ax = plt.subplots(1,3)
+	for j,name in enumerate(list_img_name):
+		ax[j].set_title(name)
+		img = st.postprocess(list_img[j])
+		ax[j].imshow(img)
+		ax[j].axis('off')
+	titre = 'Images Depart'
+	plt.suptitle(titre)
+	plt.savefig(pp, format='pdf',dpi=600)
+	plt.close()
+	mask_dict = {}
+	# Plot the Gram Matrix
+	for layer in VGG19_LAYERS_INTEREST:
+		print(layer)
+		f, ax = plt.subplots(2,3)
+		list_of_Gram = []
+		list_reponse = []
+		for i in range(3):
+			sess.run(assign_op, {placeholder: list_img[i]})
+			a = net[layer].eval(session=sess)
+			_,h,w,N = a.shape
+			M = h*w
+			list_reponse += [a[0]]
+			G_a = sess.run(st.gram_matrix(a,N,M))
+			list_of_Gram += [G_a]
+			
+		vmax= np.max(list_of_Gram)
+		vmin= np.min(list_of_Gram)
+		vmax2= np.max((vmax**2,vmin**2))
+		vmin2= np.min((vmax**2,vmin**2,0))
+		for i in range(3):
+			G_a = list_of_Gram[i]
+			G_a = np.triu(G_a)
+			ax[0,i].set_title(list_img_name[i])
+			ax[0,i].imshow(G_a,vmin=vmin, vmax=vmax,cmap= 'jet')
+			ax[0,i].axis('off')
+			G_a_Square = np.power(G_a,2)
+			ax[1,i].imshow(G_a_Square,vmin=vmin2, vmax=vmax2,cmap= 'jet')
+			ax[1,i].axis('off')	
+		titre = 'Comparison of the Gram Matrix and the squared ones'
+		plt.suptitle(titre)
+		plt.savefig(pp, format='pdf')
+		plt.close()
+		
+		# Plot the difference between the Gram Matrix
+		f, ax = plt.subplots(2,3)
+		list_title = ['Ref Minus png','Ref Minus jpg','jpg Minus png']
+		list_diff = []
+		for i in range(3):	
+			if(i==0):
+				diff = list_of_Gram[0] - list_of_Gram[1]
+			elif(i==1):
+				diff = list_of_Gram[0] - list_of_Gram[2]
+			else:
+				diff = list_of_Gram[2] - list_of_Gram[1]
+			list_diff += [diff] # = np.triu(diff)
+		
+		vmax= np.max(list_diff)
+		vmin= np.min(list_diff)
+		vmax2= np.max((vmax**2,vmin**2))
+		vmin2= np.min((vmax**2,vmin**2,0))
+		for i in range(3):	
+			diff = list_diff[i]
+			diff = np.triu(diff) # triangular upper
+			titre_sub1 = list_title[i]
+			ax[0,i].set_title(titre_sub1)
+			ax[0,i].imshow(diff,vmin=vmin, vmax=vmax,cmap= 'jet')
+			ax[0,i].axis('off')
+			diff = np.power(diff,2)
+			title_sub2 = 'max diff : ' + str(np.max(diff)) + ' min :' + str(np.min(diff))
+			ax[1,i].set_title(title_sub2)
+			ax[1,i].imshow(diff,vmin=vmin2, vmax=vmax2,cmap= 'jet')
+			ax[1,i].axis('off')	
+		titre = 'Difference of the Gram Matrixes and the squared difference ' + layer 
+		plt.suptitle(titre)
+		plt.savefig(pp, format='pdf')
+		plt.close()
+		
+		# Plot the ratio
+		
+		diff_ref_x = np.power(list_diff[0],2)
+		inds_diff_ref_x_0 = np.where(diff_ref_x==0)
+		inds_diff_ref_x_not_0 = np.where(diff_ref_x>0)
+		diff_ref_x[inds_diff_ref_x_0] = np.min(diff_ref_x[inds_diff_ref_x_not_0])
+		diff_png_jpg = np.power(list_diff[2],2)
+		ratio = np.divide(diff_png_jpg,diff_ref_x)
+		for j in range(len(inds_diff_ref_x_0[0])):
+			indice1 = inds_diff_ref_x_0[0][j]
+			indice2 = inds_diff_ref_x_0[1][j]
+			if not(diff_png_jpg[indice1,indice2]==0):
+				ratio[indice1,indice2] = np.max(ratio)
+				
+		f, ax = plt.subplots(1,2)
+		im = ax[0].imshow(ratio,cmap= 'jet')
+		plt.colorbar(im)
+		ax[0].set_title("Ratio Gram Matrix Optim Minus Flou On Ref Minus Optim")
+		
+		print(np.mean(ratio),np.median(ratio),np.min(ratio),np.max(ratio))
+		mask = np.where(ratio < np.median(ratio),1,0)
+		print("np.sum(mask)",np.sum(mask))
+		mask_dict[layer] = mask
+		im = ax[1].imshow(mask,cmap= 'jet')
+		ax[1].set_title("Masque 0 1")
+		plt.savefig(pp, format='pdf')
+		plt.close()
+		
+	
+	with open('mask_dict.pkl', 'wb') as output_pkl:
+		pickle.dump(mask_dict,output_pkl)
+	# Close the PDF
+	pp.close()
+	plt.clf()
+	
+	
+def do_pdf_comparison_GramOnly_autreratio(args):
+	VGG19_LAYERS_INTEREST = (
+    'conv1_1','pool1', 'pool2','pool3','pool4'
+	)
+	sns.set_style("white")
+	folder_path ='/home/nicolas/Style-Transfer/Results/ArtifactsComp/'
+	pltname = folder_path+'Artifacts_Gram_autreratio.pdf'
+	pp = PdfPages(pltname)
+	
+	image_style_path = folder_path + 'BrickSmallBrown0293_1_S.png' 
+	image_reference = st.preprocess(scipy.misc.imread(image_style_path).astype('float32')) 
+	_,image_h_art, image_w_art, _ = image_reference.shape 
+	list_img = [image_reference]
+	list_img_name = ['image_reference']
+	
+	image_png_path = folder_path + 'Pastiche_BRICK_PNG.png' 
+	image_png = st.preprocess(scipy.misc.imread(image_png_path).astype('float32')) 
+	list_img += [image_png]
+	list_img_name += ['image_png']
+	image_jpg_path = folder_path + 'Pastiche_BRICK_JPG.jpg' 
+	image_jpg_path = folder_path + 'Pastiche_BRICK_Flou.png' 
+	#	image_jpg_path = folder_path + 'Pastiche_BRICK_JPG_Apres2000IterDePlus.png' 
+	image_jpg = st.preprocess(scipy.misc.imread(image_jpg_path).astype('float32')) 
+	list_img += [image_jpg]
+	list_img_name += ['image_Modified']
+	
+	vgg_layers = st.get_vgg_layers()
+	net = st.net_preloaded(vgg_layers, image_reference) # net for the style image
+	placeholder = tf.placeholder(tf.float32, shape=image_reference.shape)
+	assign_op = net['input'].assign(placeholder)
+
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+
+	f, ax = plt.subplots(1,3)
+	for j,name in enumerate(list_img_name):
+		ax[j].set_title(name)
+		img = st.postprocess(list_img[j])
+		ax[j].imshow(img)
+		ax[j].axis('off')
+	titre = 'Images Depart'
+	plt.suptitle(titre)
+	plt.savefig(pp, format='pdf',dpi=600)
+	plt.close()
+	mask_dict = {}
+	# Plot the Gram Matrix
+	for layer in VGG19_LAYERS_INTEREST:
+		print(layer)
+		f, ax = plt.subplots(2,3)
+		list_of_Gram = []
+		list_reponse = []
+		for i in range(3):
+			sess.run(assign_op, {placeholder: list_img[i]})
+			a = net[layer].eval(session=sess)
+			_,h,w,N = a.shape
+			M = h*w
+			list_reponse += [a[0]]
+			G_a = sess.run(st.gram_matrix(a,N,M))
+			list_of_Gram += [G_a]
+			
+		vmax= np.max(list_of_Gram)
+		vmin= np.min(list_of_Gram)
+		vmax2= np.max((vmax**2,vmin**2))
+		vmin2= np.min((vmax**2,vmin**2,0))
+		for i in range(3):
+			G_a = list_of_Gram[i]
+			G_a = np.triu(G_a)
+			ax[0,i].set_title(list_img_name[i])
+			ax[0,i].imshow(G_a,vmin=vmin, vmax=vmax,cmap= 'jet')
+			ax[0,i].axis('off')
+			G_a_Square = np.power(G_a,2)
+			ax[1,i].imshow(G_a_Square,vmin=vmin2, vmax=vmax2,cmap= 'jet')
+			ax[1,i].axis('off')	
+		titre = 'Comparison of the Gram Matrix and the squared ones'
+		plt.suptitle(titre)
+		plt.savefig(pp, format='pdf')
+		plt.close()
+		
+		# Plot the difference between the Gram Matrix
+		f, ax = plt.subplots(2,3)
+		list_title = ['Ref Minus png','Ref Minus jpg','jpg Minus png']
+		list_diff = []
+		for i in range(3):	
+			if(i==0):
+				diff = list_of_Gram[0] - list_of_Gram[1]
+			elif(i==1):
+				diff = list_of_Gram[0] - list_of_Gram[2]
+			else:
+				diff = list_of_Gram[2] - list_of_Gram[1]
+			list_diff += [diff] # = np.triu(diff)
+		
+		vmax= np.max(list_diff)
+		vmin= np.min(list_diff)
+		vmax2= np.max((vmax**2,vmin**2))
+		vmin2= np.min((vmax**2,vmin**2,0))
+		for i in range(3):	
+			diff = list_diff[i]
+			diff = np.triu(diff) # triangular upper
+			titre_sub1 = list_title[i]
+			ax[0,i].set_title(titre_sub1)
+			ax[0,i].imshow(diff,vmin=vmin, vmax=vmax,cmap= 'jet')
+			ax[0,i].axis('off')
+			diff = np.power(diff,2)
+			title_sub2 = 'max diff : ' + str(np.max(diff)) + ' min :' + str(np.min(diff))
+			ax[1,i].set_title(title_sub2)
+			ax[1,i].imshow(diff,vmin=vmin2, vmax=vmax2,cmap= 'jet')
+			ax[1,i].axis('off')	
+		titre = 'Difference of the Gram Matrixes and the squared difference ' + layer 
+		plt.suptitle(titre)
+		plt.savefig(pp, format='pdf')
+		plt.close()
+		
+		# Plot the ratio
+		
+		#diff_ref_x = np.power(list_diff[0],2)
+		#inds_diff_ref_x_0 = np.where(diff_ref_x==0)
+		#inds_diff_ref_x_not_0 = np.where(diff_ref_x>0)
+		#diff_ref_x[inds_diff_ref_x_0] = np.min(diff_ref_x[inds_diff_ref_x_not_0])
+		#diff_png_jpg = np.power(list_diff[2],2)
+		ratio = np.divide(list_of_Gram[1],list_of_Gram[2])
+		#for j in range(len(inds_diff_ref_x_0[0])):
+			#indice1 = inds_diff_ref_x_0[0][j]
+			#indice2 = inds_diff_ref_x_0[1][j]
+			#if not(diff_png_jpg[indice1,indice2]==0):
+				#ratio[indice1,indice2] = np.max(ratio)
+				
+		f, ax = plt.subplots(1,2)
+		im = ax[0].imshow(ratio,cmap= 'jet')
+		plt.colorbar(im)
+		ax[0].set_title("Ratio Gram Matrix Optim Minus Flou On Ref Minus Optim")
+		
+		print(np.mean(ratio),np.median(ratio),np.min(ratio),np.max(ratio))
+		mask = np.where(ratio < np.mean(ratio),1,0)
+		print("np.sum(mask)",np.sum(mask))
+		mask_dict[layer] = mask
+		im = ax[1].imshow(mask,cmap= 'jet')
+		ax[1].set_title("Masque 0 1")
+		plt.savefig(pp, format='pdf')
+		plt.close()
+		
+	
+	with open('mask_dict.pkl', 'wb') as output_pkl:
+		pickle.dump(mask_dict,output_pkl)
 	# Close the PDF
 	pp.close()
 	plt.clf()
@@ -298,6 +636,17 @@ def pattern_comp_img(args):
 				image =  img[:,:,i]
 				scipy.misc.toimage(image).save(name_img)	
 	  
+def generation_Damier(output_name = 'DamierBig_Proces.png',size=256):
+	damier = np.zeros((size,size,3)).astype('uint8')
+	for i in range(size):
+		for j in range(size):
+			if ((i%2==0) and (j%2==0)) or ((i%2==1) and (j%2==1)):
+				for k in range(3):
+					damier[i,j,k] = 255
+	damier = damier.astype('uint8')
+	scipy.misc.toimage(damier).save(output_name)
+	return(0)
+	
 	
 	
 def main():
@@ -307,8 +656,9 @@ def main():
 	parser = get_parser_args()
 	parser.set_defaults(verbose=True)
 	args = parser.parse_args()
-	#do_pdf_comparison(args)
-	pattern_comp_pdf(args)
+	#do_pdf_comparison_GramOnly(args)
+	do_pdf_comparison_GramOnly_autreratio(args)
+	#pattern_comp_pdf(args)
 	#pattern_comp_img(args)
 if __name__ == '__main__':
 	main()
