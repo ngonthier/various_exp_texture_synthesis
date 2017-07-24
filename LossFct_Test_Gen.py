@@ -40,7 +40,7 @@ def generation_Texture_LossFct():
 	p = 4
 	losses_to_test = [['autocorr'],['Lp'],['fft3D'],['bizarre']]
 	#losses_to_test = [['texture','HF'],['texture'],['texture','TV'],['texture','HFmany']]
-	losses_to_test = [['autocorr_rfft'],['nmoments'],['Lp'],['autocorr'],['texture'],['PhaseAlea']]
+	losses_to_test = [['nmoments'],['Lp'],['texture'],['PhaseAlea'],['autocorr_rfft'],['autocorr']]
 	
 	list_img = get_list_of_images(path_origin)
 	
