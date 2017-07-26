@@ -73,12 +73,13 @@ def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
 			vgg_layers = vgg_rawnet['net'][0]['layers'][0][0]
 		except(FileNotFoundError):
 			print("The path to the VGG19_mat is not right or the .mat is not here")
+			print("You have to  get the weight from https://github.com/leongatys/DeepTextures and convert them to .mat format.")
 			raise
 	else:
 		print("The path to the VGG19_mat is unknown.")
 	return(vgg_layers)
 
-def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME',VGG19_mat='texturesyn_normalizedvgg.mat'):
+def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 	"""
 	This function read the vgg layers and create the net architecture
 	We need the input image to know the dimension of the input layer of the net
@@ -94,24 +95,24 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME',VGG1
 			# Only way to get the weight of the kernel of convolution
 			# Inspired by http://programtalk.com/vs2/python/2964/facenet/tmp/vggverydeep19.py/
 			kernels = vgg_layers[i][0][0][2][0][0] 
-			#if(i==0): kernels = kernels[:,:,[2,1,0],:]
 			bias = vgg_layers[i][0][0][2][0][1]
 			# matconvnet: weights are [width, height, in_channels, out_channels]
 			# tensorflow: weights are [height, width, in_channels, out_channels]
 			kernels = tf.constant(np.transpose(kernels, (1,0 ,2, 3)))
 			bias = tf.constant(bias.reshape(-1))
-			current = _conv_layer(current, kernels, bias,name,padding) 
+			current = conv_layer(current, kernels, bias,name,padding) 
 			# Update the  variable named current to have the right size
 		elif(kind == 'relu'):
 			current = tf.nn.relu(current,name=name)
 		elif(kind == 'pool'):
-			current = _pool_layer(current,name,pooling_type,padding)
+			current = pool_layer(current,name,pooling_type,padding)
 
 		net[name] = current
+
 	assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right 
 	return(net)
 
-def _conv_layer(input, weights, bias,name,padding='SAME'):
+def conv_layer(input, weights, bias,name,padding='SAME'):
 	"""
 	This function create a conv2d with the already known weight and bias
 	
@@ -139,7 +140,7 @@ def get_img_2pixels_more(input):
 	new_input = tf.concat([new_input,new_input[:,:,0:2,:]],axis=2)
 	return(new_input)
 
-def _pool_layer(input,name,pooling_type='avg',padding='SAME'):
+def pool_layer(input,name,pooling_type='avg',padding='SAME'):
 	"""
 	Average pooling on windows 2*2 with stride of 2
 	input is a 4D Tensor of shape [batch, height, width, channels]
@@ -170,7 +171,7 @@ def sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers):
 	- the dictionnary of the content image representation thanks to the net
 	"""
 	length_content_layers = float(len(content_layers))
-	weight_help_convergence = 10**10 # Need to multiply by 120000 ?
+	weight_help_convergence = 10**9 # Need to multiply by 120000 ?
 	content_loss = 0
 	for layer, weight in content_layers:
 		M = M_dict[layer[:5]]
