@@ -23,7 +23,9 @@ def do_mkdir(path):
 
 def generation_Texture_LossFct():
 	path_origin = '/home/nicolas/Style-Transfer/dataImages/'
+	path_origin = '/home/nicolas/random_phase_noise_v1.3/im/'
 	path_output = '/home/nicolas/Style-Transfer/LossFct/resultsDiff_loss_function/'
+	path_output = '/home/nicolas/Style-Transfer/LossFct/random_phase_noise_v1.3/'
 	#path_output = '/home/nicolas/Style-Transfer/LossFct/tmp/'
 	do_mkdir(path_output)
 		
@@ -43,7 +45,9 @@ def generation_Texture_LossFct():
 	#losses_to_test = [['texture','HF'],['texture'],['texture','TV'],['texture','HFmany']]
 	losses_to_test = [['nmoments'],['Lp'],['texture'],['PhaseAlea']]
 	losses_to_test = [['autocorr_rfft'],['autocorr']]
+	losses_to_test = [['texture']]
 	config_layers_tab = ['PoolConfig','FirstConvs']
+	config_layers_tab = ['PoolConfig']
 	
 	list_img = get_list_of_images(path_origin)
 	

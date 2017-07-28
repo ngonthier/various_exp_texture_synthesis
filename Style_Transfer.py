@@ -57,12 +57,11 @@ def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
 	Load the VGG 19 layers
 	"""
 	VGG19_mat
-	if(VGG19_mat=='imagenet-vgg-verydeep-19.mat'):
+	if(VGG19_mat=='imagenet-vgg-verydeep-19.mat') or (VGG19_mat=='random_net.mat'):
 		# The vgg19 network from http://www.vlfeat.org/matconvnet/pretrained/
 		try:
 			vgg_rawnet = scipy.io.loadmat(VGG19_mat)
 			vgg_layers = vgg_rawnet['layers'][0]
-			print(len(vgg_layers),vgg_layers)
 		except(FileNotFoundError):
 			print("The path to the VGG19_mat is not right or the .mat is not here")
 			print("You can download it here : http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat")
@@ -1462,10 +1461,17 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
 	if(vgg_name=='normalizedvgg.mat'):
 		stringAdd = '_n'
 	elif(vgg_name=='imagenet-vgg-verydeep-19.mat'):
-		stringAdd = '_r' # Regular one
+		stringAdd = '_v' # Regular one
+	elif(vgg_name=='random_net.mat'):
+		stringAdd = '_r' # random
 	elif(vgg_name is None):
 		stringAdd = ''
 	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd+".pkl"
+	if(vgg_name=='random_net.mat'):
+		try:
+			os.remove(data_style_path)
+		except:
+			pass
 	try:
 		if(args.verbose): print("Load Data ",data_style_path)
 		dict_gram = pickle.load(open(data_style_path, 'rb'))
@@ -1901,10 +1907,11 @@ def main_with_option():
 	D ="D20_01"
 	orange = "orange"
 	damier ='DamierBig_Proces'
+	camouflage = 'Camouflage0003_S'
 	#img_output_folder = "images/"
-	image_style_name = brick
-	content_img_name  = brick
-	max_iter = 1000
+	image_style_name = camouflage
+	content_img_name  = camouflage
+	max_iter = 2000
 	print_iter = 200
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one

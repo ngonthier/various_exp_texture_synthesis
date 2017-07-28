@@ -31,10 +31,10 @@ def get_parser_args():
     parser.add_argument('--output_img_name', type=str, 
         default='Pastiche',help='Filename of the output image.')
         
-    parser.add_argument('--style_img_name',  type=str,default='StarryNight',
+    parser.add_argument('--style_img_name',  type=str,default='StarryNight_Big',
         help='Filename of the style image (example: StarryNight). It must be a .jpg image otherwise change the img_ext.')
   
-    parser.add_argument('--content_img_name', type=str,default='Louvre',
+    parser.add_argument('--content_img_name', type=str,default='Louvre_Big',
         help='Filename of the content image (example: Louvre). It must be a .jpg image otherwise change the img_ext.')
         
     # Name of the folders 
@@ -103,12 +103,12 @@ def get_parser_args():
         default='SAME',help='Type of padding in the network. (default: %(default)s)')
         
     parser.add_argument('--vgg_name', type=str,
-        choices=['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat'],
+        choices=['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat','random_net.mat'],
         default='normalizedvgg.mat',
         help='Name of the network to use, it must be in the same place that the Style_Transfer script. (default: %(default)s)')
     
     # Info on the loss function 
-    parser.add_argument('--loss',nargs='+',type=str,default='full',
+    parser.add_argument('--loss',nargs='+',type=str,default='texture',
         choices=['full','Gatys','texture','content','4moments','nmoments','nmoments_reduce','InterScale','autocorr','autocorr_rfft','Lp','TV','TV1','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','texMask','intercorr','bizarre','HF','HFmany','variance','fftVect','current'],
         help='Choice the term of the loss function. (default %(default)s)')
     

@@ -190,7 +190,7 @@ def net_inversed_loaded(vgg_layers,last_layer_image,style_layers,shapes,relu_kin
 				height, width, in_channels, out_channels = kernels.shape
 				#_,h,w,_ = current.get_shape()
 				#current_bis = tf.zeros([1,h,w,in_channels])
-				##kernels_fftn = np.zeros((height, width,out_channels, in_channels))
+				#kernels_fftn = np.zeros((height, width,out_channels, in_channels))
 				#for k in range(out_channels):
 					#kernels_fftn = np.fft.fftn(kernels[:,:,:,k],axes=(0,1))
 					#kernels_fftn_abs2 = np.power(np.absolute(kernels_fftn),2)
@@ -202,7 +202,6 @@ def net_inversed_loaded(vgg_layers,last_layer_image,style_layers,shapes,relu_kin
 					#conv = tf.divide(conv,tf.to_float(out_channels))
 					#current_bis = tf.add(current_bis,conv)
 				#current = current_bis
-				#kernels = np.lib.pad(kernels, (height_image-3, width_image-3), 'constant', constant_values=0)
 				
 				print('kernels',kernels.shape)
 				kernels_fftn = np.fft.fftn(kernels,axes=(0,1,2))
