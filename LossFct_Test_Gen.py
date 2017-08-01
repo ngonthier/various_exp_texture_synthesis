@@ -23,9 +23,9 @@ def do_mkdir(path):
 
 def generation_Texture_LossFct():
 	path_origin = '/home/nicolas/Style-Transfer/dataImages/'
-	path_origin = '/home/nicolas/random_phase_noise_v1.3/im/'
+	#path_origin = '/home/nicolas/random_phase_noise_v1.3/im/'
 	path_output = '/home/nicolas/Style-Transfer/LossFct/resultsDiff_loss_function/'
-	path_output = '/home/nicolas/Style-Transfer/LossFct/random_phase_noise_v1.3/'
+	#path_output = '/home/nicolas/Style-Transfer/LossFct/random_phase_noise_v1.3/'
 	#path_output = '/home/nicolas/Style-Transfer/LossFct/tmp/'
 	do_mkdir(path_output)
 		

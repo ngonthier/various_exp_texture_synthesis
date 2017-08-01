@@ -40,7 +40,7 @@ def generation_Texture_():
 	loss = ['texture']
 	config_layers_tab = [['conv1_1'],['conv1_1','pool1'],['conv1_1','pool1','pool2'],['conv1_1','pool1','pool2','pool3'],['conv1_1','pool1','pool2','pool3','pool4'],['conv1_1','conv2_1','conv3_1']]
 	list_img = ['pebbles.png','glass.png','AbstractVarious0013_S.png','FoodVarious0033_1_S.png']
-	
+	config_layers = 'Custom'
 
 	for style_layers in config_layers_tab:
 		style_layer_weights = [1]*len(style_layers)
@@ -54,7 +54,7 @@ def generation_Texture_():
 				output_img_name += '_' + layer
 			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
 				img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
-				init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+				init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,config_layers=config_layers,
 				optimizer=optimizer,loss=loss,clipping_type=clipping_type,style_layers=style_layers,style_layer_weights=style_layer_weights,
 				vgg_name=vgg_name)
 			args = parser.parse_args()

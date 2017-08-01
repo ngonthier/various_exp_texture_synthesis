@@ -187,7 +187,27 @@ def draw_random_weightGlorot(filename='random_net.mat'):
 		vgg_rawnet['layers'][0][index_in_vgg][0][0][2][0][0] = kernels_random
 		vgg_rawnet['layers'][0][index_in_vgg][0][0][2][0][1] = bias_random
 	scipy.io.savemat(filename,vgg_rawnet)       
-		
+	
+
+def draw_random_weightHE(filename='random_net.mat'):
+	"""
+	Inspired from https://github.com/Lasagne/Lasagne/blob/master/lasagne/init.py
+	"""
+	VGG19_mat='imagenet-vgg-verydeep-19.mat'
+	vgg_rawnet = scipy.io.loadmat(VGG19_mat)
+	vgg_layers = vgg_rawnet['layers'][0]
+	for name in VGG19_LAYERS_INDICES.keys():
+		index_in_vgg = VGG19_LAYERS_INDICES[name]
+		kernels = vgg_layers[index_in_vgg][0][0][2][0][0]
+		bias = vgg_layers[index_in_vgg][0][0][2][0][1]
+		width, height, in_channels, out_channels =  kernels.shape
+		kernels_random = (np.random.randn(width, height, in_channels, out_channels) * np.sqrt(2.0/in_channels)).astype('float32')
+		bias_random = np.zeros(bias.shape).astype('float32')
+		vgg_rawnet['layers'][0][index_in_vgg][0][0][2][0][0] = kernels_random
+		vgg_rawnet['layers'][0][index_in_vgg][0][0][2][0][1] = bias_random
+	scipy.io.savemat(filename,vgg_rawnet)
+	
+
 		
 if __name__ == '__main__':
 	draw_random_weight()   
@@ -195,4 +215,5 @@ if __name__ == '__main__':
 	#normalization_of_weight()
 	#draw_random_weight_unif()
 	#draw_random_weight_fromkernels()
+	#draw_random_weightHE()
 

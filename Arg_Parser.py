@@ -109,7 +109,7 @@ def get_parser_args():
     
     # Info on the loss function 
     parser.add_argument('--loss',nargs='+',type=str,default='texture',
-        choices=['full','Gatys','texture','content','4moments','nmoments','nmoments_reduce','InterScale','autocorr','autocorr_rfft','Lp','TV','TV1','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','texMask','intercorr','bizarre','HF','HFmany','variance','fftVect','current'],
+        choices=['full','Gatys','texture','content','4moments','nmoments','nmoments_reduce','InterScale','autocorr','autocorr_rfft','Lp','TV','TV1','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','texMask','intercorr','bizarre','HF','HFmany','variance','fftVect','current','phaseAleaList'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
@@ -135,7 +135,7 @@ def get_parser_args():
   
     parser.add_argument('--style_layers', nargs='+', type=str,
         default=['conv1_1','pool1','pool2','pool3','pool4'],
-        help='VGG19 layers used for the style image. (default: %(default)s)')
+        help='VGG19 layers used for the style image. (default: %(default)s)') # Need to have config_layers = Custom to change that
   
     parser.add_argument('--content_layer_weights', nargs='+', type=float, 
         default=[1.0], 

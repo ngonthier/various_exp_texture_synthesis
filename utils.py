@@ -123,3 +123,12 @@ if __name__ == '__main__':
 	upsampled_img_tf = upsample_tf(factor=3, input_img=img)
 	io.imshow(upsampled_img_tf)
 
+def get_list_of_images(path_origin):
+	dirs = os.listdir(path_origin)
+	dirs = sorted(dirs, key=str.lower)
+	return(dirs)
+
+def do_mkdir(path):
+	if not(os.path.isdir(path)):
+		os.mkdir(path)
+	return(0)

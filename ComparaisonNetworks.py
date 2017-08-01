@@ -23,7 +23,7 @@ def do_mkdir(path):
 
 def generation_Texture_LossFct():
 	path_origin = '/home/nicolas/Style-Transfer/dataImages/'
-	path_output = '/home/nicolas/Style-Transfer/LossFct/resultsComp/'
+	path_output = '/home/nicolas/Style-Transfer/LossFct/resultsCompNets/'
 	do_mkdir(path_output)
 		
 	parser = get_parser_args()
@@ -35,10 +35,7 @@ def generation_Texture_LossFct():
 	init = 'Gaussian'
 	init_range = 0.0
 	clipping_type = 'ImageStyleBGR'
-	n = 4
-	p = 4
-	net_to_test = ['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat']
-	net_to_test = ['imagenet-vgg-verydeep-19.mat']
+	net_to_test = ['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat','random_net.mat']
 	loss = 'texture'
 	
 	list_img = get_list_of_images(path_origin)
@@ -53,11 +50,13 @@ def generation_Texture_LossFct():
 				extention = 'normNet'
 			elif(net=='imagenet-vgg-verydeep-19.mat'):
 				extention = 'regularNet'
+			elif(net=='random_net.mat'):
+				extension = 'RandNet'
 			output_img_name = name_img_wt_ext + '_' + extention + '_' + str(max_iter)
 			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
 				img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
 				init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
-				optimizer=optimizer,loss=loss,init=init,init_range=init_range,p=p,n=n,clipping_type=clipping_type,
+				optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
 				vgg_name=net)
 			args = parser.parse_args()
 			st.style_transfer(args)

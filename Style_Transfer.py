@@ -645,9 +645,9 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers):
 	F_a = tf.fft2d(tf.complex(at,0.))
 	white_noise = np.random.normal(loc=0.0, scale=1.0, size=(h_a, w_a)).astype('float32')  # Le bruit blanc doit etre gaussien 
 	F_white_noise = tf.fft2d(tf.complex(white_noise,0.))
-	F_white_noise_modulus = tf.pow(tf.multiply(F_white_noise,tf.conj(F_white_noise)),-0.5)
-	F_white_noise_phase = tf.multiply(F_white_noise,F_white_noise_modulus) # Respect Hermitian Symetry
-	
+	F_white_noise_modulus_inverse = tf.pow(tf.multiply(F_white_noise,tf.conj(F_white_noise)),-0.5)
+	F_white_noise_phase = tf.multiply(F_white_noise,F_white_noise_modulus_inverse) # Respect Hermitian Symetry
+	#F_white_noise_phase = np.ones((h_a, w_a))
 	output_list = []
 
 	for i in range(N):
@@ -687,6 +687,7 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 	total_style_loss = 0.
 	last_style_layers,_ = style_layers[-1]
 	alpha = 1
+	print("Phase aleatoire !!!")
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
@@ -713,6 +714,64 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 			style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
 			style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 			total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
+def compute_ImagePhaseAlea_list(sess,net,image_style,M_dict,style_layers): 
+	"""
+	Add a random phase to the features of the image style at the last
+	layer in the network
+	"""
+	b, h, w, N = image_style.shape
+	white_noise_img_bgr = np.random.normal(loc=0.0, scale=1.0, size=(h, w)).astype('float32')
+	white_noise_img_bgr = np.stack((white_noise_img_bgr,white_noise_img_bgr,white_noise_img_bgr),axis=2)
+	white_noise_img_bgr_tf = preprocess(white_noise_img_bgr)
+	
+	sess.run(net['input'].assign(white_noise_img_bgr_tf))
+	
+	dict = {}
+	for layer,_ in style_layers:
+		white_noise = sess.run(net[layer])
+		white_noise = tf.transpose(white_noise, [0,3,1,2])
+		F_white_noise = tf.fft2d(tf.complex(white_noise,0.))
+		F_white_noise_modulus_inverse = tf.pow(tf.multiply(F_white_noise,tf.conj(F_white_noise)),-0.5)
+		F_white_noise_phase = tf.multiply(F_white_noise,F_white_noise_modulus_inverse) # Respect Hermitian Symetry
+		dict[layer] = F_white_noise_phase
+		
+	sess.run(net['input'].assign(image_style))
+	
+	image_style_PhaseAlea = {}
+	for layer,_ in style_layers:
+		a = sess.run(net[layer])
+		at = tf.transpose(a, [0,3,1,2])
+		F_a = tf.fft2d(tf.complex(at,0.))
+		F_a_new_phase = tf.multiply(F_a,dict[layer])
+		imF = tf.ifft2d(F_a_new_phase)
+		imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
+		image_style_PhaseAlea[layer] = sess.run(imF)
+
+	return(image_style_PhaseAlea)
+	
+def loss_PhaseAleatoirelist(sess,net,image_style,image_style_PhaseAlea,M_dict,style_layers):
+	"""
+	In this loss function we impose the TF transform to the last layer 
+	with a random phase imposed and only the spectrum of the 
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	weight_help_convergence = 10**9
+	total_style_loss = 0.
+	alpha = 1
+	print("Phase aleatoire List !")
+	for layer, weight in style_layers:
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		x = net[layer]
+		a_phase_alea = image_style_PhaseAlea[layer]
+		loss = tf.nn.l2_loss(tf.subtract(x,a_phase_alea))
+		loss *= alpha *  weight * weight_help_convergence /(2.*(N**2)*tf.to_float(M**2)*length_style_layers)
+		total_style_loss += loss
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
@@ -1358,6 +1417,9 @@ def get_M_dict(image_h,image_w):
 	return(M_dict)  
 	
 def print_loss_tab(sess,list_loss,list_loss_name):
+	"""
+	Fonction pour afficher la valeur des différentes loss
+	"""
 	strToPrint = ''
 	for loss,loss_name in zip(list_loss,list_loss_name):
 		loss_tmp = sess.run(loss)
@@ -1666,6 +1728,11 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict,style_layers)
 		 list_loss +=  [phaseAlea_loss]
 		 list_loss_name +=  ['phaseAlea_loss']  
+	if('phaseAleaList' in args.loss) or ('full' in args.loss):
+		 image_style_Phase = compute_ImagePhaseAlea_list(sess,net,image_style,M_dict,style_layers)
+		 phaseAleaList_loss = loss_PhaseAleatoirelist(sess,net,image_style,image_style_Phase,M_dict,style_layers)
+		 list_loss +=  [phaseAleaList_loss]
+		 list_loss_name +=  ['phaseAleaList_loss']  	 	 
 	if('intercorr' in args.loss) or ('full' in args.loss):
 		 print("Risk to do a Ressource Exhausted error :) ")
 		 intercorr_loss = loss_intercorr(sess,net,image_style,M_dict,style_layers)
