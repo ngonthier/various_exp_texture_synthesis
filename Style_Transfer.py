@@ -557,6 +557,41 @@ def loss_autocorr(sess,net,image_style,M_dict,style_layers):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
+def loss_autocorrLog(sess,net,image_style,M_dict,style_layers):
+	"""
+	Computation of the autocorrelation of the filters normalise en passant
+	par le log
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	weight_help_convergence = (10**9)
+	total_style_loss = 0.
+	
+	_, h_a, w_a, N = image_style.shape      
+	sess.run(net['input'].assign(image_style))
+		
+	for layer, weight in style_layers:
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		x = net[layer]
+		x = tf.transpose(x, [0,3,1,2])
+		a = tf.transpose(a, [0,3,1,2])
+		F_x = tf.fft2d(tf.complex(x,0.))
+		R_x = tf.pow(tf.real(tf.multiply(F_x,tf.conj(F_x))),0.5) # Module de la transformee de Fourrier : produit terme a terme
+		R_x /= tf.to_float(M) # Normalisation du module de la TF
+		R_x = tf.log(1+R_x)
+		F_a = tf.fft2d(tf.complex(a,0.))
+		R_a = tf.pow(tf.real(tf.multiply(F_a,tf.conj(F_a))),0.5) # Module de la transformee de Fourrier
+		R_a /= tf.to_float(M)
+		R_a = tf.log(1+R_a)
+		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
 def loss_autocorr_rfft(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the autocorrelation of the filters
@@ -631,6 +666,37 @@ def loss_fft_vect(sess,net,image_style,M_dict,style_layers):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
+def loss_entropy(sess,net,image_style,M_dict,style_layers):
+	"""
+	Computation of the entropy of the filters
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	weight_help_convergence = (10**9)
+	total_style_loss = 0.
+	
+	_, h_a, w_a, N = image_style.shape      
+	sess.run(net['input'].assign(image_style))
+		
+	for layer, weight in style_layers:
+		N = style_layers_size[layer[:5]]
+		M = M_dict[layer[:5]]
+		a = sess.run(net[layer])
+		x = net[layer]
+		
+		a = tf.nn.l2_normalize(a, 3)
+		x = tf.nn.l2_normalize(x, 3)
+		
+		entropy_a = tf.reduce_mean(-tf.multiply(a,tf.log(a)),axis=(0,1,2))
+		entropy_x = tf.reduce_mean(-tf.multiply(x,tf.log(x)),axis=(0,1,2))
+				
+		style_loss = tf.nn.l2_loss(tf.subtract(entropy_x,entropy_a))  
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
 def compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers): 
 	"""
 	Add a random phase to the features of the image style at the last
@@ -678,7 +744,7 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers):
 def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_layers):
 	"""
 	In this loss function we impose the TF transform to the last layer 
-	with a random phase imposed and only the spectrum of the 
+	with a random phase imposed and only the spectrum of the others layers
 	"""
 	# TODO : change the M value attention !!! different size between a and x maybe 
 	length_style_layers_int = len(style_layers)
@@ -687,7 +753,6 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 	total_style_loss = 0.
 	last_style_layers,_ = style_layers[-1]
 	alpha = 1
-	print("Phase aleatoire !!!")
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
@@ -714,6 +779,30 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 			style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
 			style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 			total_style_loss += style_loss
+	total_style_loss =tf.to_float(total_style_loss)
+	return(total_style_loss)
+	
+def loss_PhaseAleatoireSimple(sess,net,image_style,image_style_PhaseAlea,M_dict,style_layers):
+	"""
+	In this loss function we impose the TF transform to the last layer 
+	with a random phase imposed that's all
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	length_style_layers_int = len(style_layers)
+	length_style_layers = float(length_style_layers_int)
+	weight_help_convergence = 10**9
+	total_style_loss = 0.
+	last_style_layers,_ = style_layers[-1]
+	alpha = 1
+	for layer, weight in style_layers:
+		if(last_style_layers==layer):
+			N = style_layers_size[layer[:5]]
+			M = M_dict[layer[:5]]
+			x = net[layer]
+			a_phase_alea = image_style_PhaseAlea[layer]
+			loss = tf.nn.l2_loss(tf.subtract(x,a_phase_alea))
+			loss *= alpha *  weight * weight_help_convergence /(2.*(N**2)*tf.to_float(M**2)*length_style_layers)
+			total_style_loss += loss
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
@@ -1258,6 +1347,17 @@ def sum_total_variation_losses(sess, net):
 	loss = tf.cast(loss, tf.float32)
 	return(loss)
 
+def sum_total_variation_TF(sess, net):
+	"""
+	Autre possibilité pour arriver au meme que sum_total_variation_losses
+	https://www.tensorflow.org/api_docs/python/tf/image/total_variation
+	"""
+	x = net['input']
+	weight_help_convergence = 1.
+	alpha = 10**(-6) # In order to not destroy the image to a constance 
+	loss = weight_help_convergence* alpha * tf.reduce_sum(tf.image.total_variation(x))
+	return(loss)
+	
 	
 def sum_total_variation_losses_norm1(sess, net):
 	"""
@@ -1699,6 +1799,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [autocorr_loss]
 		 list_loss_name +=  ['autocorr_loss']
+	if('autocorrLog'  in args.loss): 
+		 autocorr_lossLog = loss_autocorrLog(sess,net,image_style,M_dict,style_layers)
+		 list_loss +=  [autocorr_lossLog]
+		 list_loss_name +=  ['autocorr_lossLog']
 	if('autocorr_rfft'  in args.loss) or ('full' in args.loss):
 		 autocorr_rfft_loss =  loss_autocorr_rfft(sess,net,image_style,M_dict,style_layers)
 		 list_loss +=  [autocorr_rfft_loss]
@@ -1728,6 +1832,15 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict,style_layers)
 		 list_loss +=  [phaseAlea_loss]
 		 list_loss_name +=  ['phaseAlea_loss']  
+	if('entropy' in args.loss) or ('full' in args.loss): 
+		 loss_entropy_value = loss_entropy(sess,net,image_style,M_dict,style_layers)
+		 list_loss +=  [loss_entropy_value]
+		 list_loss_name +=  ['loss_entropy_value'] 
+	if('phaseAleaSimple' in args.loss):
+		 image_style_Phase = compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers)
+		 phaseAlea_loss = loss_PhaseAleatoireSimple(sess,net,image_style,image_style_Phase,M_dict,style_layers)
+		 list_loss +=  [phaseAlea_loss]
+		 list_loss_name +=  ['phaseAlea_loss_simple']  
 	if('phaseAleaList' in args.loss) or ('full' in args.loss):
 		 image_style_Phase = compute_ImagePhaseAlea_list(sess,net,image_style,M_dict,style_layers)
 		 phaseAleaList_loss = loss_PhaseAleatoirelist(sess,net,image_style,image_style_Phase,M_dict,style_layers)

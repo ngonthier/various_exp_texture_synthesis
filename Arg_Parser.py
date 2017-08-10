@@ -109,7 +109,7 @@ def get_parser_args():
     
     # Info on the loss function 
     parser.add_argument('--loss',nargs='+',type=str,default='texture',
-        choices=['full','Gatys','texture','content','4moments','nmoments','nmoments_reduce','InterScale','autocorr','autocorr_rfft','Lp','TV','TV1','fft3D','spectrum','phaseAlea','SpectrumOnFeatures','texMask','intercorr','bizarre','HF','HFmany','variance','fftVect','current','phaseAleaList'],
+        choices=['full','Gatys','texture','content','4moments','nmoments','nmoments_reduce','InterScale','autocorr','autocorrLog','autocorr_rfft','Lp','TV','TV1','fft3D','entropy','spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures','texMask','intercorr','bizarre','HF','HFmany','variance','fftVect','current','phaseAleaList'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
