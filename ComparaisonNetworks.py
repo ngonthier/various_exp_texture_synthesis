@@ -22,7 +22,7 @@ def do_mkdir(path):
 	return(0)
 
 def generation_Texture_LossFct():
-	path_origin = '/home/nicolas/Style-Transfer/dataImages/'
+	path_origin = '/home/nicolas/Style-Transfer/dataImagesTest/'
 	path_output = '/home/nicolas/Style-Transfer/LossFct/resultsCompNets/'
 	do_mkdir(path_output)
 		
@@ -51,7 +51,7 @@ def generation_Texture_LossFct():
 			elif(net=='imagenet-vgg-verydeep-19.mat'):
 				extention = 'regularNet'
 			elif(net=='random_net.mat'):
-				extension = 'RandNet'
+				extention = 'RandNet'
 			output_img_name = name_img_wt_ext + '_' + extention + '_' + str(max_iter)
 			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
 				img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
