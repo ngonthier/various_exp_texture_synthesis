@@ -32,7 +32,7 @@ def generation_Texture_LossFct():
 	
 	n_list = [1,2,4]
 	p = 4
-	losses_to_test = [['autocorr_rfft'],['autocorr'],['Lp'],['texture'],['PhaseAlea'],['nmoments'],['texture','HF'],['texture','TV'],['autocorr_rfft','texture'],['texture','spectrum'],['autocorr_rfft','spectrum'],]
+	losses_to_test = [['autocorr_rfft'],['autocorr'],['Lp'],['texture'],['PhaseAlea'],['phaseAleaSimple'],['texture','HF'],['texture','TV'],['autocorr_rfft','texture'],['texture','spectrum'],['autocorr_rfft','spectrum'],['autocorrLog']]
 	config_layers_tab = ['PoolConfig','FirstConvs']
 	
 	list_img = get_list_of_images(path_origin)
@@ -48,7 +48,6 @@ def generation_Texture_LossFct():
 					for name_img in list_img:
 						name_img_wt_ext,_ = name_img.split('.')
 						img_folder = path_origin
-						img_output_folder = path_origin
 						output_img_name = name_img_wt_ext + '_' + config_layers
 						loss_str = ''
 						for loss_item in loss:
@@ -68,20 +67,19 @@ def generation_Texture_LossFct():
 				for name_img in list_img:
 					name_img_wt_ext,_ = name_img.split('.')
 					img_folder = path_origin
-					img_output_folder = path_origin
 					output_img_name = name_img_wt_ext + '_' + config_layers
 					loss_str = ''
 					for loss_item in loss:
 						output_img_name += '_' + loss_item
 						loss_str += loss_item + ' '
-				main_command = 'python Main_Style_Transfer.py --verbose --max_iter ' + str(max_iter) +' --print_iter ' + str(print_iter) + ' --start_from_noise ' + str(start_from_noise) + ' --init_noise_ratio ' + str(init_noise_ratio) +  ' --img_folder ' + path_origin + ' --output_img_name ' + output_img_name+ ' --img_output_folder ' + path_output + ' --style_img_name ' + name_img_wt_ext + ' --content_img_name ' + name_img_wt_ext+ ' --loss ' + loss_str + ' --init ' + str(init) + ' --init_range ' + str(init_range) + ' --n ' + str(n) + ' --p ' + str(p) +  ' --clipping_type ' + clipping_type + ' --vgg_name ' + vgg_name
-				print(main_command)
-				try:
-					if not(Stop): os.system(main_command)
-				except:
-					raise
-					Stop = True
-					sys.exit(0)
+					main_command = 'python Main_Style_Transfer.py --verbose --max_iter ' + str(max_iter) +' --print_iter ' + str(print_iter) + ' --start_from_noise ' + str(start_from_noise) + ' --init_noise_ratio ' + str(init_noise_ratio) +  ' --img_folder ' + path_origin + ' --output_img_name ' + output_img_name+ ' --img_output_folder ' + path_output + ' --style_img_name ' + name_img_wt_ext + ' --content_img_name ' + name_img_wt_ext+ ' --loss ' + loss_str + ' --init ' + str(init) + ' --init_range ' + str(init_range) + ' --n ' + str(n) + ' --p ' + str(p) +  ' --clipping_type ' + clipping_type + ' --vgg_name ' + vgg_name
+					print(main_command)
+					try:
+						if not(Stop): os.system(main_command)
+					except:
+						raise
+						Stop = True
+						sys.exit(0)
 
 if __name__ == '__main__':
 	generation_Texture_LossFct()
