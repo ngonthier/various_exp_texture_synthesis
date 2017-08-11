@@ -1680,6 +1680,7 @@ def get_init_img_wrap(args,output_image_path,image_content):
 	if(not(args.start_from_noise)):
 		try:
 			init_img = preprocess(scipy.misc.imread(output_image_path).astype('float32'))
+			if(args.verbose):  print("Use the former image")
 		except(FileNotFoundError):
 			if(args.verbose): print("Former image not found, use of white noise mixed with the content image as initialization image")
 			# White noise that we use at the beginning of the optimization
