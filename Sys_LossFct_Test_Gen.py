@@ -33,8 +33,9 @@ def generation_Texture_LossFct():
 	n_list = [1,2,4]
 	p = 4
 	losses_to_test = [['autocorr_rfft'],['autocorr'],['Lp'],['texture'],['phaseAlea'],['phaseAleaSimple'],['autocorr_rfft','texture'],['texture','spectrum'],['autocorr_rfft','spectrum'],['autocorrLog'],['variance']]
-	losses_to_test = [['variance'],['phaseAlea']]
+	losses_to_test = [['phaseAlea']]
 	config_layers_tab = ['FirstConvs','PoolConfig']
+
 	config_layers_tab = ['PoolConfig']
 	# Il manque les phaseAlea pour PoolConfig mais aussi variance
 	list_img = get_list_of_images(path_origin)

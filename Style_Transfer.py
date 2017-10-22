@@ -2087,13 +2087,14 @@ def main_with_option():
 	brick = "BrickSmallBrown0293_1_S"
 	D ="D20_01"
 	orange = "orange"
+	glass = "glass"
 	damier ='DamierBig_Proces'
 	camouflage = 'Camouflage0003_S'
 	#img_output_folder = "images/"
-	image_style_name = camouflage
-	content_img_name  = camouflage
+	image_style_name = glass
+	content_img_name  = glass
 	max_iter = 2000
-	print_iter = 200
+	print_iter = 400
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
