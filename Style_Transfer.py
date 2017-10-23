@@ -2025,7 +2025,7 @@ def style_transfer(args):
 			# Also be aware that once the update is rolled out, supplying the bounds keyword explicitly as I suggested above will raise an exception...
 			# TODO change that when you will update tensorflow
 			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
-			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
+			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,var_to_bounds=bnds,
 				method='L-BFGS-B',options=optimizer_kwargs)         
 			sess.run(tf.global_variables_initializer())
 			sess.run(assign_op, {placeholder: init_img})
@@ -2093,8 +2093,8 @@ def main_with_option():
 	#img_output_folder = "images/"
 	image_style_name = glass
 	content_img_name  = glass
-	max_iter = 2000
-	print_iter = 400
+	max_iter = 200
+	print_iter = 40
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
