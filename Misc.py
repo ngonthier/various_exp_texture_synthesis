@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-
 Utility function for image processing
-
-@author: Gatys
 """
 
 
@@ -21,6 +18,8 @@ def histogram_matching(org_image, match_image, grey=False, n_bins=100):
     :param grey: True if images are greyscale
     :param n_bins: number of bins used for histogram calculation
     :return: org_image with same histogram as match_image
+    
+    @author: Gatys
     '''
 
     if grey:
@@ -44,6 +43,20 @@ def histogram_matching(org_image, match_image, grey=False, n_bins=100):
         
     return matched_image
     
+def histogram_matching_gradient(org_image, match_image, grey=False, n_bins=100):
+	'''
+	This function realize an histogram matching on the gradient of the image 
+	TODO
+	'''
+
+	[b, h, w, d] = x.get_shape()
+	b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
+	tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
+	tv_x_size = tf.to_float(b * h * (w-1) * d)
+	loss_y = tf.nn.l2_loss(x[:,1:,:,:] - x[:,:-1,:,:]) 
+	loss_y /= tv_y_size
+	loss_x = tf.nn.l2_loss(x[:,:,1:,:] - x[:,:,:-1,:]) 
+	loss_x /= tv_x_size
 
 def histogram_matching_for_tf(org_image, match_image, n_bins=100):
     '''

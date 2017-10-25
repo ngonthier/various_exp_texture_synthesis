@@ -25,6 +25,7 @@ from Arg_Parser import get_parser_args
 import utils
 from numpy.fft import fft2, ifft2
 from skimage.color import gray2rgb
+import Misc
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -1581,11 +1582,12 @@ def get_init_noise_img_gaussian(image_content):
 	# Doesn't need preprocess because already arond 0 with a small range
 	return(noise_img)
 	
-
-def get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR=False):
+def get_lbfgs_bnds_tf_1_2(intt_img,clip_value_min,clip_value_max,BGR=False):
 	"""
 	This function create the bounds for the LBFGS scipy wrappper, for a 
 	image centered according to the ImageNet mean
+	
+	This version is for tensorflow 1.2
 	"""
 	dim1,height,width,N = init_img.shape
 	if(BGR==False):
@@ -1615,6 +1617,38 @@ def get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR=False):
 	n, = x0.shape
 	if len(bnds) != n:
 		print("Erreur a venir car n",n,"len(bnds)",len(bnds))
+	return(bnds)
+
+def get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR=False):
+	"""
+	This function create the bounds for the LBFGS scipy wrappper, for a 
+	image centered according to the ImageNet mean
+	
+	init_img is only used for the dimension of the image
+	clip_value_min,clip_value_max compute on the style image before normally
+	
+	This function return bounds for tensorflow >= 1.3 to be used with the scipy 
+	optimizer
+	
+	"""
+	dim1,height,width,N = init_img.shape
+	if(BGR==False):
+		# Bounds from [0,255] - [124,103] if ImageNet 
+		bnd_inf = clip_value_min*np.ones((dim1,height,width,N)).flatten() 
+		# We need to flatten the array in order to use it in the LBFGS algo
+		bnd_sup = clip_value_max*np.ones((dim1,height,width,N)).flatten()
+		bnds = np.stack((bnd_inf, bnd_sup),axis=-1)
+	else:
+		# To bound this variable :  tf.Variable(np.zeros((1, height, width, numberChannels), dtype=np.float32)) by pair (min,max)
+		bnd_inf_B = clip_value_min[0]*np.ones((dim1,height,width))
+		bnd_inf_G = clip_value_min[1]*np.ones((dim1,height,width))
+		bnd_inf_R = clip_value_min[2]*np.ones((dim1,height,width))
+		bnd_inf = np.stack((bnd_inf_B, bnd_inf_G,bnd_inf_R),axis=-1)
+		bnd_sup_B = clip_value_max[0]*np.ones((dim1,height,width))
+		bnd_sup_G = clip_value_max[1]*np.ones((dim1,height,width))
+		bnd_sup_R = clip_value_max[2]*np.ones((dim1,height,width))
+		bnd_sup = np.stack((bnd_sup_B, bnd_sup_G,bnd_sup_R),axis=-1)
+		bnds = (bnd_inf, bnd_sup)
 	return(bnds)
 
 def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding='SAME'):
@@ -2015,7 +2049,7 @@ def style_transfer(args):
 						sess.run(assign_op, {placeholder: cliptensor}) 
 		elif(args.optimizer=='lbfgs'):
 			# LBFGS seem to require more memory than Adam optimizer
-			bnds = get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
+			
 			# TODO : be able to detect of print_iter > max_iter and deal with it
 			nb_iter = args.max_iter  // args.print_iter
 			max_iterations_local = args.max_iter // nb_iter
@@ -2025,8 +2059,20 @@ def style_transfer(args):
 			# Also be aware that once the update is rolled out, supplying the bounds keyword explicitly as I suggested above will raise an exception...
 			# TODO change that when you will update tensorflow
 			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
-			optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,var_to_bounds=bnds,
-				method='L-BFGS-B',options=optimizer_kwargs)         
+			#,var_to_bounds=bnds
+			#bnds = (np.min(clip_value_min),np.max(clip_value_max))
+			#print(bnds.shape)
+			
+			if(tf.__version__ >= '1.3'):
+				bnds = get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
+				trainable_variables = tf.trainable_variables()[0]
+				var_to_bounds = {trainable_variables: bnds}
+				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,var_to_bounds=var_to_bounds,
+					method='L-BFGS-B',options=optimizer_kwargs)   
+			else:
+				bnds = get_lbfgs_bnds_tf_1_2(init_img,clip_value_min,clip_value_max,BGR)
+				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
+					method='L-BFGS-B',options=optimizer_kwargs)    
 			sess.run(tf.global_variables_initializer())
 			sess.run(assign_op, {placeholder: init_img})
 						
@@ -2051,7 +2097,13 @@ def style_transfer(args):
 		result_img = sess.run(net['input'])
 		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
 		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path)   
+		scipy.misc.toimage(result_img_postproc).save(output_image_path) 
+		if args.HistoMatching:
+			# Histogram Matching
+			if(args.verbose): print("Histogram Matching before saving")
+			result_img_postproc = Misc.histogram_matching(result_img_postproc, postprocess(image_style))
+			output_image_path_hist = args.img_output_folder + args.output_img_name+'_hist' +args.img_ext
+			scipy.misc.toimage(result_img_postproc).save(output_image_path_hist)   
 		
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
@@ -2091,10 +2143,10 @@ def main_with_option():
 	damier ='DamierBig_Proces'
 	camouflage = 'Camouflage0003_S'
 	#img_output_folder = "images/"
-	image_style_name = glass
-	content_img_name  = glass
-	max_iter = 200
-	print_iter = 40
+	image_style_name = brick
+	content_img_name  = brick
+	max_iter = 2000
+	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001

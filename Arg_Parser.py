@@ -152,4 +152,8 @@ def get_parser_args():
     parser.add_argument('--gpu_frac',  type=float,default=0.,
         help='Fraction of the memory for the GPU process, if <=0. then memoryground = True. And if > 1. then normal behaviour ie 0.95%% of the memory is allocated without error. (default %(default)s)')
     
+    # PostProcessing of the output
+    parser.add_argument('--HistoMatching',action="store_true",
+        help='Apply an histogram matching between the output image and the style one.')
+    
     return(parser)
