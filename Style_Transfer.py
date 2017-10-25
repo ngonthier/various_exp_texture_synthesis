@@ -1582,7 +1582,7 @@ def get_init_noise_img_gaussian(image_content):
 	# Doesn't need preprocess because already arond 0 with a small range
 	return(noise_img)
 	
-def get_lbfgs_bnds_tf_1_2(intt_img,clip_value_min,clip_value_max,BGR=False):
+def get_lbfgs_bnds_tf_1_2(init_img,clip_value_min,clip_value_max,BGR=False):
 	"""
 	This function create the bounds for the LBFGS scipy wrappper, for a 
 	image centered according to the ImageNet mean
@@ -2048,21 +2048,12 @@ def style_transfer(args):
 						cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
 						sess.run(assign_op, {placeholder: cliptensor}) 
 		elif(args.optimizer=='lbfgs'):
-			# LBFGS seem to require more memory than Adam optimizer
-			
 			# TODO : be able to detect of print_iter > max_iter and deal with it
 			nb_iter = args.max_iter  // args.print_iter
 			max_iterations_local = args.max_iter // nb_iter
 			if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
-			## FYI that we've now added a var_to_bounds argument to ScipyOptimizerInterface that allows specifying per-Variable bounds. 
-			# It's submitted in the internal Google repository so should be available in GitHub/PyPi soon. 
-			# Also be aware that once the update is rolled out, supplying the bounds keyword explicitly as I suggested above will raise an exception...
-			# TODO change that when you will update tensorflow
 			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
-			#,var_to_bounds=bnds
-			#bnds = (np.min(clip_value_min),np.max(clip_value_max))
-			#print(bnds.shape)
-			
+			# To solve the non retro compatibility of Tensorflow !
 			if(tf.__version__ >= '1.3'):
 				bnds = get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
 				trainable_variables = tf.trainable_variables()[0]
@@ -2146,7 +2137,7 @@ def main_with_option():
 	image_style_name = brick
 	content_img_name  = brick
 	max_iter = 2000
-	print_iter = 100
+	print_iter = 200
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
