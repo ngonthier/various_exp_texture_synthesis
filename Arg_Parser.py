@@ -103,7 +103,7 @@ def get_parser_args():
         default='SAME',help='Type of padding in the network. (default: %(default)s)')
         
     parser.add_argument('--vgg_name', type=str,
-        choices=['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat','random_net.mat'],
+        choices=['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat','random_net.mat','zero_net.mat'],
         default='normalizedvgg.mat',
         help='Name of the network to use, it must be in the same place that the Style_Transfer script. (default: %(default)s)')
     
