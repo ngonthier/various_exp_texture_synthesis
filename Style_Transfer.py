@@ -91,7 +91,6 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 	for i, name in enumerate(VGG19_LAYERS):
 		kind = name[:4]
 		if(kind == 'conv'):
-			#if(VGG19_mat=='texturesyn_normalizedvgg.mat'):
 			# Only way to get the weight of the kernel of convolution
 			# Inspired by http://programtalk.com/vs2/python/2964/facenet/tmp/vggverydeep19.py/
 			kernels = vgg_layers[i][0][0][2][0][0] 
@@ -1456,7 +1455,10 @@ def get_clip_values(image_style=None,BGR=False):
 		clip_value_min = np.min(image_style)
 	elif(BGR==True):
 		clip_value_min = np.min(image_style,axis=(0,1,2)) # along the BGR axis
+		#print(clip_value_min)
 		clip_value_max = np.max(image_style,axis=(0,1,2)) # along the BGR axis
+		#print(clip_value_max)
+		#print(np.max(image_style[:,:,:,0]),np.max(image_style[:,:,:,1]),np.max(image_style[:,:,:,2]))
 	return(clip_value_min,clip_value_max)
 	
 def preprocess(img):
