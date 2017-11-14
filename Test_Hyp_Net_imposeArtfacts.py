@@ -63,12 +63,13 @@ def print_bnds(result_img,image_style,clip_value_max,clip_value_min):
 	print("RefImage",maxB,maxG,maxR,minB,minG,minR)
 	print("Clip",clip_value_max,clip_value_min)
 	
-def style_transfer_test_hyp(args):
+def style_transfer_test_hyp(args,test_bnds = False):
 	"""
 	This function is the main core of the program it need args in order to
 	set up all the things and run an optimization in order to produce an 
 	image 
 	"""
+	
 	if args.verbose:
 		tinit = time.time()
 		print("verbosity turned on")
@@ -234,7 +235,7 @@ def style_transfer_test_hyp(args):
 				result_img = sess.run(net['input'])
 				
 				# To test the bounds with the algo interface with scipy lbfgs
-				if(args.verbose): print_bnds(result_img,image_style,clip_value_max,clip_value_min)
+				if(args.verbose) and test_bnds: print_bnds(result_img,image_style,clip_value_max,clip_value_min)
 				
 				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
 				result_img_postproc = postprocess(result_img)
