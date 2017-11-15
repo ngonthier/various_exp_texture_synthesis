@@ -13,5 +13,6 @@ This code is inspired from :
 
 Tensorflow >= 1.2
 
-VGG19 CNN weight (It can be downloaded here : http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat)
+VGG19 CNN weights (It can be downloaded here : http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat)
+VGG19 normalized weights (can be download here : https://partage.mines-telecom.fr/index.php/s/DVw31LQ1UC0EoUM)
 

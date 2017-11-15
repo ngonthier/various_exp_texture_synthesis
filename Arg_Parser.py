@@ -99,8 +99,8 @@ def get_parser_args():
     parser.add_argument('--pooling_type', type=str,default='avg',
         choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
     
-    parser.add_argument('--padding', type=str,choices=['SAME','VALID'],
-        default='SAME',help='Type of padding in the network. (default: %(default)s)')
+    parser.add_argument('--padding', type=str,choices=['SAME','VALID','VALIDTRUE'],
+        default='SAME',help='Type of padding in the network. (default: %(default)s)') # VALIDTRUE is for the true use of TF VALID otherwise VALID use a circular image
         
     parser.add_argument('--vgg_name', type=str,
         choices=['normalizedvgg.mat','imagenet-vgg-verydeep-19.mat','random_net.mat','zero_net.mat'],

@@ -40,8 +40,7 @@ VGG19_LAYERS = (
 	'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
 
 	'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
-	'relu5_3', 'conv5_4', 'relu5_4'
-)
+	'relu5_3', 'conv5_4', 'relu5_4')
 #layers   = [2 5 10 19 28]; for texture generation
 style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
 # TODO : check if the N value are right for the poolx
@@ -57,7 +56,6 @@ def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
 	"""
 	Load the VGG 19 layers
 	"""
-	VGG19_mat
 	if(VGG19_mat=='imagenet-vgg-verydeep-19.mat') or (VGG19_mat=='random_net.mat'):
 		# The vgg19 network from http://www.vlfeat.org/matconvnet/pretrained/
 		try:
@@ -84,10 +82,17 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 	This function read the vgg layers and create the net architecture
 	We need the input image to know the dimension of the input layer of the net
 	"""
+	
 	net = {}
 	_,height, width, numberChannels = input_image.shape # In order to have the right shape of the input
 	current = tf.Variable(np.zeros((1, height, width, numberChannels), dtype=np.float32))
 	net['input'] = current
+
+	if(padding=='VALIDTRUE') and ((height < 225) or (width < 225)):
+		VGG19_LAYERS = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1','conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2','conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
+			'relu3_3', 'conv3_4', 'relu3_4', 'pool3','conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3','relu4_3', 'conv4_4', 'relu4_4', 'pool4')
+		print("Ceci est une solution de fortune et necessite d etre modifiee a l avenir !!!!!") # TODO changer cela !!!
+	
 	for i, name in enumerate(VGG19_LAYERS):
 		kind = name[:4]
 		if(kind == 'conv'):
@@ -130,6 +135,9 @@ def conv_layer(input, weights, bias,name,padding='SAME'):
 		input = get_img_2pixels_more(input)
 		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
 			padding='VALID',name=name)
+	elif(padding=='VALIDTRUE'):
+		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
+			padding='VALID',name=name)
 	# We need to impose the weights as constant in order to avoid their modification
 	# when we will perform the optimization
 	return(tf.nn.bias_add(conv, bias))
@@ -153,6 +161,8 @@ def pool_layer(input,name,pooling_type='avg',padding='SAME'):
 			input = tf.concat([input,input[:,0:2,:,:]],axis=1)
 		if not(w%2==0):
 			input = tf.concat([input,input[:,:,0:2,:]],axis=2)
+	if(padding=='VALIDTRUE'):
+		padding='VALID'
 	if pooling_type == 'avg':
 		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, stride_pool, stride_pool, 1),
 				padding=padding,name=name) 
@@ -208,6 +218,39 @@ def sum_style_losses(sess, net, dict_gram,M_dict,style_layers):
 		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	return(total_style_loss)
+
+def style_losses(sess, net, dict_gram,M_dict,style_layers):
+	"""
+	Compute the style term of the loss function with Gram Matrix from the
+	Gatys Paper
+	Input : 
+	- the tensforflow session sess
+	- the vgg19 net
+	- the dictionnary of Gram Matrices
+	- the dictionnary of the size of the image content through the net
+	Return an array of the style losses for the diferents layers and the total_style_loss
+	"""
+	# Info for the vgg19
+	length_style_layers = float(len(style_layers))
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	style_losses_tab = []
+	for i, couple in enumerate(style_layers):
+		layer, weight = couple
+		# For one layer
+		N = style_layers_size[layer[:5]]
+		A = dict_gram[layer]
+		A = tf.constant(A)
+		# Get the value of this layer with the generated image
+		M = M_dict[layer[:5]]
+		x = net[layer]
+		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
+		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		style_losses_tab += [style_loss]
+		total_style_loss += style_loss
+	return(total_style_loss,style_losses_tab)
 
 def texture_loss_wt_mask(sess, net, dict_gram,M_dict,mask_dict,style_layers):
 	"""
@@ -1414,6 +1457,11 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
 	M = height*width
 	A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
 	dict_gram['input'] = sess.run(A)
+	if(padding=='VALIDTRUE') and ((height < 225) or (width < 225)):
+		VGG19_LAYERS = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1','conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2','conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
+			'relu3_3', 'conv3_4', 'relu3_4', 'pool3','conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3','relu4_3', 'conv4_4', 'relu4_4', 'pool4')
+		print("Ceci est une solution de fortune et necessite d etre modifiee a l avenir !!!!!") # TODO changer cela !!!
+		
 	for layer in VGG19_LAYERS:
 		a = net[layer]
 		_,height,width,N = a.shape
@@ -1433,6 +1481,11 @@ def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_content))
 	dict_features_repr = {}
+	if(padding=='VALIDTRUE'):
+		VGG19_LAYERS = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1','conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2','conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
+			'relu3_3', 'conv3_4', 'relu3_4', 'pool3','conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3','relu4_3', 'conv4_4', 'relu4_4', 'pool4')
+		print("Ceci est une solution de fortune et necessite d etre modifiee a l avenir !!!!!") # TODO changer cela !!!
+	
 	for layer in VGG19_LAYERS:
 		P = sess.run(net[layer])
 		dict_features_repr[layer] = P # Computation
@@ -1788,7 +1841,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
 	elif(args.config_layers=='Custom'):
 		content_layers =  list(zip(args.content_layers, args.content_layer_weights))
-		style_layers = list(zip(args.style_layers,args.style_layer_weights))
+		style_layers = slist(zip(args.style_layers,args.style_layer_weights))
 	if(args.verbose): print('content_layers',content_layers)
 	if(args.verbose): print('style_layers',style_layers)
 	
