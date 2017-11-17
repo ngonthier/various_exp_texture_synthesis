@@ -87,12 +87,6 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 	_,height, width, numberChannels = input_image.shape # In order to have the right shape of the input
 	current = tf.Variable(np.zeros((1, height, width, numberChannels), dtype=np.float32))
 	net['input'] = current
-
-	if(padding=='VALIDTRUE') and ((height < 225) or (width < 225)):
-		VGG19_LAYERS = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1','conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2','conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
-			'relu3_3', 'conv3_4', 'relu3_4', 'pool3','conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3','relu4_3', 'conv4_4', 'relu4_4', 'pool4')
-		print("Ceci est une solution de fortune et necessite d etre modifiee a l avenir !!!!!") # TODO changer cela !!!
-	
 	for i, name in enumerate(VGG19_LAYERS):
 		kind = name[:4]
 		if(kind == 'conv'):
@@ -135,9 +129,6 @@ def conv_layer(input, weights, bias,name,padding='SAME'):
 		input = get_img_2pixels_more(input)
 		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
 			padding='VALID',name=name)
-	elif(padding=='VALIDTRUE'):
-		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
-			padding='VALID',name=name)
 	# We need to impose the weights as constant in order to avoid their modification
 	# when we will perform the optimization
 	return(tf.nn.bias_add(conv, bias))
@@ -161,8 +152,6 @@ def pool_layer(input,name,pooling_type='avg',padding='SAME'):
 			input = tf.concat([input,input[:,0:2,:,:]],axis=1)
 		if not(w%2==0):
 			input = tf.concat([input,input[:,:,0:2,:]],axis=2)
-	if(padding=='VALIDTRUE'):
-		padding='VALID'
 	if pooling_type == 'avg':
 		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, stride_pool, stride_pool, 1),
 				padding=padding,name=name) 
@@ -1456,12 +1445,7 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
 	_,height,width,N = a.shape
 	M = height*width
 	A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
-	dict_gram['input'] = sess.run(A)
-	if(padding=='VALIDTRUE') and ((height < 225) or (width < 225)):
-		VGG19_LAYERS = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1','conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2','conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
-			'relu3_3', 'conv3_4', 'relu3_4', 'pool3','conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3','relu4_3', 'conv4_4', 'relu4_4', 'pool4')
-		print("Ceci est une solution de fortune et necessite d etre modifiee a l avenir !!!!!") # TODO changer cela !!!
-		
+	dict_gram['input'] = sess.run(A)	
 	for layer in VGG19_LAYERS:
 		a = net[layer]
 		_,height,width,N = a.shape
@@ -1480,12 +1464,6 @@ def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # net for the content image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_content))
-	dict_features_repr = {}
-	if(padding=='VALIDTRUE'):
-		VGG19_LAYERS = ('conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1','conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2','conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
-			'relu3_3', 'conv3_4', 'relu3_4', 'pool3','conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3','relu4_3', 'conv4_4', 'relu4_4', 'pool4')
-		print("Ceci est une solution de fortune et necessite d etre modifiee a l avenir !!!!!") # TODO changer cela !!!
-	
 	for layer in VGG19_LAYERS:
 		P = sess.run(net[layer])
 		dict_features_repr[layer] = P # Computation

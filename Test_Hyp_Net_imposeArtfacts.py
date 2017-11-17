@@ -3,8 +3,8 @@
 """
 Created on Fri Nov 10 2017
 
-The goal of this script is to test an hypothesis : 
-Does the algo create the artefacts in the images ? 
+The goal of this script is to test an hypothesis :
+Does the algo create the artefacts in the images ?
 
 @author: nicolas
 """
@@ -19,32 +19,174 @@ import time
 import pickle
 import math
 from tensorflow.python.client import timeline
-from Arg_Parser import get_parser_args 
+from Arg_Parser import get_parser_args
 import utils
 from numpy.fft import fft2, ifft2
 from skimage.color import gray2rgb
 import Misc
-from Style_Transfer import *
+import Style_Transfer as st
 from numpy import linalg as LA
 
 # Name of the 19 first layers of the VGG19
-VGG19_LAYERS = (
-	'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
-
-	'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
-
-	'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
-	'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
-
-	'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3',
-	'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
-
-	'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
-	'relu5_3', 'conv5_4', 'relu5_4'
-)
+VGG19_LAYERS = ('conv1_1', 'pool1', 'pool2','pool3', 'pool4')
 #layers   = [2 5 10 19 28]; for texture generation
 style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
 # TODO : check if the N value are right for the poolx
+
+def style_layer_loss(a, x):
+	z, h, w, d = a.get_shape()
+	M = h.value * w.value
+	N = d.value
+	A = gram_matrix(a, M, N)
+	G = gram_matrix(x, M, N)
+	loss = (1./(4 * N**2 * M**2)) * tf.reduce_sum(tf.pow((G - A), 2))
+	return loss
+
+def gram_matrix(x, area, depth):
+	F = tf.reshape(x, (area, depth))
+	G = tf.matmul(tf.transpose(F), F)
+	return G
+
+def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
+	"""
+	This function read the vgg layers and create the net architecture
+	We need the input image to know the dimension of the input layer of the net
+	"""
+
+	net = {}
+	_,height, width, numberChannels = input_image.shape # In order to have the right shape of the input
+	current = tf.Variable(np.zeros((1, height, width, numberChannels), dtype=np.float32))
+	net['input'] = current
+	for i, name in enumerate(VGG19_LAYERS):
+		kind = name[:4]
+		if(kind == 'conv'):
+			# Only way to get the weight of the kernel of convolution
+			# Inspired by http://programtalk.com/vs2/python/2964/facenet/tmp/vggverydeep19.py/
+			kernels = vgg_layers[i][0][0][2][0][0]
+			bias = vgg_layers[i][0][0][2][0][1]
+			# matconvnet: weights are [width, height, in_channels, out_channels]
+			# tensorflow: weights are [height, width, in_channels, out_channels]
+			kernels = tf.constant(np.transpose(kernels, (1,0 ,2, 3)))
+			bias = tf.constant(bias.reshape(-1))
+			current = conv_layer(current, kernels, bias,name,padding)
+			# Update the  variable named current to have the right size
+		elif(kind == 'relu'):
+			current = tf.nn.relu(current,name=name)
+		elif(kind == 'pool'):
+			current = pool_layer(current,name,pooling_type,padding)
+
+		net[name] = current
+
+	assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right
+	return(net)
+
+def conv_layer(input, weights, bias,name,padding='SAME'):
+	"""
+	This function create a conv2d with the already known weight and bias
+
+	conv2d :
+	Computes a 2-D convolution given 4-D input and filter tensors.
+	input: A Tensor. Must be one of the following types: half, float32, float64
+	Given an input tensor of shape [batch, in_height, in_width, in_channels] and
+	a filter / kernel tensor of shape
+	[filter_height, filter_width, in_channels, out_channels]
+	"""
+	stride = 1
+	if(padding=='SAME'):
+		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
+			padding=padding,name=name)
+	elif(padding=='VALID'):
+		#input = get_img_2pixels_more(input) # in order to have a true valid !!!
+		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
+			padding='VALID',name=name)
+	# We need to impose the weights as constant in order to avoid their modification
+	# when we will perform the optimization
+	return(tf.nn.bias_add(conv, bias))
+
+def pool_layer(input,name,pooling_type='avg',padding='SAME'):
+	"""
+	Average pooling on windows 2*2 with stride of 2
+	input is a 4D Tensor of shape [batch, height, width, channels]
+	Each pooling op uses rectangular windows of size ksize separated by offset
+	strides in the avg_pool function
+	"""
+	stride_pool = 2
+	if(padding== 'VALID'): # TODO Test if paire ou impaire !!!
+		_,h,w,_ = input.shape
+		if not(h%2==0):
+			input = tf.concat([input,input[:,0:2,:,:]],axis=1)
+		if not(w%2==0):
+			input = tf.concat([input,input[:,:,0:2,:]],axis=2)
+	if pooling_type == 'avg':
+		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, stride_pool, stride_pool, 1),
+				padding=padding,name=name)
+	elif pooling_type == 'max':
+		pool = tf.nn.max_pool(input, ksize=(1, 2, 2, 1), strides=(1, stride_pool, stride_pool, 1),
+				padding=padding,name=name)
+	return(pool)
+
+def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding='SAME'):
+	_,image_h_art, image_w_art, _ = image_style.shape
+	vgg_name = args.vgg_name
+	stringAdd = ''
+	if(vgg_name=='normalizedvgg.mat'):
+		stringAdd = '_n'
+	elif(vgg_name=='imagenet-vgg-verydeep-19.mat'):
+		stringAdd = '_v' # Regular one
+	elif(vgg_name=='random_net.mat'):
+		stringAdd = '_r' # random
+	data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd+".pkl"
+	if(vgg_name=='random_net.mat'):
+		try:
+			os.remove(data_style_path)
+		except:
+			pass
+	try:
+		if(args.verbose): print("Load Data ",data_style_path)
+		dict_gram = pickle.load(open(data_style_path, 'rb'))
+	except(FileNotFoundError):
+		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
+		dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding)
+		with open(data_style_path, 'wb') as output_gram_pkl:
+			pickle.dump(dict_gram,output_gram_pkl)
+		if(args.verbose): print("Pickle dumped")
+	return(dict_gram)
+
+def style_losses(sess, net, dict_gram,style_layers):
+	"""
+	Compute the style term of the loss function with Gram Matrix from the
+	Gatys Paper
+	Input :
+	- the tensforflow session sess
+	- the vgg19 net
+	- the dictionnary of Gram Matrices
+	- the dictionnary of the size of the image content through the net
+	Return an array of the style losses for the diferents layers and the total_style_loss
+	"""
+	# Info for the vgg19
+	length_style_layers = float(len(style_layers))
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat
+	total_style_loss = 0
+	style_losses_tab = []
+	for i, couple in enumerate(style_layers):
+		layer, weight = couple
+		# For one layer
+		N = style_layers_size[layer[:5]]
+		A = dict_gram[layer]
+		A = tf.constant(A)
+		# Get the value of this layer with the generated image
+		#M = M_dict[layer[:5]]
+		_, h, w, d = A.get_shape()
+		M = h.value * w.value
+		N = d.value
+		x = net[layer]
+		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
+		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
+		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		style_losses_tab += [style_loss]
+		total_style_loss += style_loss
+	return(total_style_loss,style_losses_tab)
 
 def compute_loss_tab(sess,list_loss):
 	loss_tab_eval = np.zeros_like(list_loss)
@@ -52,8 +194,32 @@ def compute_loss_tab(sess,list_loss):
 		loss_tab_eval[i] = sess.run(loss)
 	return(loss_tab_eval)
 
+def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
+	"""
+	Computation of all the Gram matrices from one image thanks to the
+	vgg_layers
+	"""
+	dict_gram = {}
+	net = net_preloaded(vgg_layers, image_style,pooling_type,padding) # net for the style image
+	sess = tf.Session()
+	sess.run(net['input'].assign(image_style))
+	a = net['input']
+	_,height,width,N = a.shape
+	M = height*width
+	A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
+	dict_gram['input'] = sess.run(A)
+	for layer in VGG19_LAYERS:
+		a = net[layer]
+		_,height,width,N = a.shape
+		M = height*width
+		A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
+		dict_gram[layer] = sess.run(A) # Computation
+	sess.close()
+	tf.reset_default_graph() # To clear all operation and variable
+	return(dict_gram)
+
 def print_bnds(result_img,image_style,clip_value_max,clip_value_min):
-	# Code to test the bounds problem : 
+	# Code to test the bounds problem :
 	maxB = np.max(result_img[:,:,:,0])
 	maxG = np.max(result_img[:,:,:,1])
 	maxR = np.max(result_img[:,:,:,2])
@@ -74,48 +240,48 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 	"""
 	The goal is to vizualise with part of the loss is the more important
 	"""
-	
+
 	if args.verbose:
 		tinit = time.time()
 		print("verbosity turned on")
 		print(args)
-	
+
 
 	if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
-	image_content = load_img(args,args.content_img_name)
-	image_style = load_img(args,args.style_img_name)
-	_,image_h, image_w, number_of_channels = image_content.shape 
-	M_dict = get_M_dict(image_h,image_w)
-	
+	image_content = st.load_img(args,args.content_img_name)
+	image_style = st.load_img(args,args.style_img_name)
+	_,image_h, image_w, number_of_channels = image_content.shape
+	#M_dict = get_M_dict(image_h,image_w)
+
 	if(args.clipping_type=='ImageNet'):
 		BGR=False
-		clip_value_min,clip_value_max = get_clip_values(None,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(None,BGR)
 	elif(args.clipping_type=='ImageStyle'):
 		BGR=False
-		clip_value_min,clip_value_max = get_clip_values(image_style,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(image_style,BGR)
 	elif(args.clipping_type=='ImageStyleBGR'):
 		BGR = True
-		clip_value_min,clip_value_max = get_clip_values(image_style,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(image_style,BGR)
 
 	if(args.plot):
 		plt.ion()
-		plot_image_with_postprocess(args,image_content.copy(),"Content Image")
-		plot_image_with_postprocess(args,image_style.copy(),"Style Image")
+		st.plot_image_with_st.postprocess(args,image_content.copy(),"Content Image")
+		st.plot_image_with_st.postprocess(args,image_style.copy(),"Style Image")
 		fig = None # initialization for later
-		
-	# TODO add something that reshape the image 
+
+	# TODO add something that reshape the image
 	t1 = time.time()
 	pooling_type = args.pooling_type
 	padding = args.padding
-	vgg_layers = get_vgg_layers(args.vgg_name)
-	
+	vgg_layers = st.get_vgg_layers(args.vgg_name)
+
 	# Precomputation Phase :
-	
+
 	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
+	#dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
-	
+
 	t2 = time.time()
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
@@ -137,39 +303,38 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 		image_style_name_split[-1] = 'output'
 		output_img_name = "_".join(image_style_name_split)
 		output_image_path = args.img_output_folder + output_img_name + args.img_ext
-		#init_img = load_img(args,content_img_name_perfect2)
-		
+		#init_img = st.load_img(args,content_img_name_perfect2)
+
 		init_img = get_init_img_wrap(args,output_image_path,image_content)
-		
-		#loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)
+
 		style_layers = list(zip(args.style_layers,args.style_layer_weights))
-		loss_total,style_losses_tab =  style_losses(sess, net, dict_gram,M_dict,style_layers)
+		loss_total,style_losses_tab =  style_losses(sess, net, dict_gram,style_layers)
 		list_loss = style_losses_tab
 		list_loss_name = ['conv1_1','pool1','pool2','pool3','pool4']
-			
+
 		# Preparation of the assignation operation
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
 		placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
 		assign_op = net['input'].assign(placeholder)
 		clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=np.mean(clip_value_min),clip_value_max=np.mean(clip_value_max),name="Clip") # The np.mean is a necessity in the case whe got the BGR values TODO : need to change all that
-		
+
 		if(args.verbose): print("init loss total")
 
 		if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
 			optimizer = tf.train.AdamOptimizer(args.learning_rate)
-		elif(args.optimizer=='GD'): # Gradient Descente 
+		elif(args.optimizer=='GD'): # Gradient Descente
 			if((args.learning_rate > 1) and (args.verbose)): print("We recommande you to use a smaller value of learning rate when using the GD algo")
 			optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
-			
+
 		if((args.optimizer=='GD') or (args.optimizer=='adam')):
 			print("Not implemented yet !")
 			#train = optimizer.minimize(loss_total)
 
 			#sess.run(tf.global_variables_initializer())
 			#sess.run(assign_op, {placeholder: init_img})
-						
+
 			#sess.graph.finalize() # To test if the graph is correct
-			#if(args.verbose): print("sess.graph.finalize()") 
+			#if(args.verbose): print("sess.graph.finalize()")
 
 			#t3 = time.time()
 			#if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
@@ -201,8 +366,8 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 							#sess.run(assign_op, {placeholder: cliptensor})
 						#if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
 						#if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-						#if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
-						#result_img_postproc = postprocess(result_img)
+						#if(args.plot): fig = st.plot_image_with_st.postprocess(args,result_img,"Intermediate Image",fig)
+						#result_img_postproc = st.postprocess(result_img)
 						#scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				#else:
 					## Just training
@@ -210,7 +375,7 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 					#if(args.clip_var==1): # Clipping the variable
 						#result_img = sess.run(net['input'])
 						#cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
-						#sess.run(assign_op, {placeholder: cliptensor}) 
+						#sess.run(assign_op, {placeholder: cliptensor})
 		elif(args.optimizer=='lbfgs'):
 			# TODO : be able to detect of print_iter > max_iter and deal with it
 			nb_iter = args.max_iter  // args.print_iter
@@ -223,24 +388,24 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 				trainable_variables = tf.trainable_variables()[0]
 				var_to_bounds = {trainable_variables: bnds}
 				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,var_to_bounds=var_to_bounds,
-					method='L-BFGS-B',options=optimizer_kwargs)   
+					method='L-BFGS-B',options=optimizer_kwargs)
 			else:
 				bnds = get_lbfgs_bnds_tf_1_2(init_img,clip_value_min,clip_value_max,BGR)
 				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
-					method='L-BFGS-B',options=optimizer_kwargs)    
+					method='L-BFGS-B',options=optimizer_kwargs)
 			sess.run(tf.global_variables_initializer())
 			sess.run(assign_op, {placeholder: init_img})
-						
+
 			sess.graph.finalize() # To test if the graph is correct
-			if(args.verbose): print("sess.graph.finalize()") 
-			
+			if(args.verbose): print("sess.graph.finalize()")
+
 			if(args.verbose): print("loss before optimization")
 			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 			list_loss_eval_total = np.zeros((nb_iter+1,len(list_loss)))
 			list_num_iter = np.linspace(0,args.max_iter, num=nb_iter+1,endpoint=True)
 			list_loss_eval = compute_loss_tab(sess,list_loss)
 			list_loss_eval_total[0,:] = list_loss_eval
-			
+
 			for i in range(nb_iter):
 				t3 =  time.time()
 				optimizer.minimize(sess)
@@ -252,41 +417,41 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 				list_loss_eval_total[i+1,:] = list_loss_eval
 				# To test the bounds with the algo interface with scipy lbfgs
 				if(args.verbose) and test_bnds: print_bnds(result_img,image_style,clip_value_max,clip_value_min)
-				
-				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
-				result_img_postproc = postprocess(result_img)
+
+				if(args.plot): fig = st.plot_image_with_st.postprocess(args,result_img.copy(),"Intermediate Image",fig)
+				result_img_postproc = st.postprocess(result_img)
 				scipy.misc.imsave(output_image_path,result_img_postproc)
 
 		# The last iterations are not made
 		# The End : save the resulting image
 		result_img = sess.run(net['input'])
-		
-		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
-		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path) 
+
+		if(args.plot): st.plot_image_with_st.postprocess(args,result_img.copy(),"Final Image",fig)
+		result_img_postproc = st.postprocess(result_img)
+		scipy.misc.toimage(result_img_postproc).save(output_image_path)
 		if args.HistoMatching:
 			# Histogram Matching
 			if(args.verbose): print("Histogram Matching before saving")
-			result_img_postproc = Misc.histogram_matching(result_img_postproc, postprocess(image_style))
+			result_img_postproc = Misc.histogram_matching(result_img_postproc, st.postprocess(image_style))
 			output_image_path_hist = args.img_output_folder + args.output_img_name+'_hist' +args.img_ext
-			scipy.misc.toimage(result_img_postproc).save(output_image_path_hist) 
-			 
-		
+			scipy.misc.toimage(result_img_postproc).save(output_image_path_hist)
+
+
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 		result_img = sess.run(net['input'])
-		result_img_postproc = postprocess(result_img)
+		result_img_postproc = st.postprocess(result_img)
 		output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
 		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
-		raise 
+		raise
 	finally:
 		sess.close()
-		if(args.verbose): 
+		if(args.verbose):
 			print("Close Sess")
 			tend = time.time()
 			print("Computation total for ",tend-tinit," s")
-	
+
 	plt.ion() # Interactive Mode
 	plt.figure()
 	print(style_layers)
@@ -301,28 +466,28 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 def texture_grad_originArtefacts(args):
 	""" Goal of this function is to plot the first gradient and then find the kernel that provoke those artefacts """
 	plt.ion()
-	image_content = load_img(args,args.content_img_name)
-	image_style = load_img(args,args.style_img_name)
-	_,image_h, image_w, number_of_channels = image_content.shape 
-	M_dict = get_M_dict(image_h,image_w)
-	
+	image_content = st.load_img(args,args.content_img_name)
+	image_style = st.load_img(args,args.style_img_name)
+	_,image_h, image_w, number_of_channels = image_content.shape
+	#M_dict = get_M_dict(image_h,image_w)
+
 	if(args.clipping_type=='ImageNet'):
 		BGR=False
-		clip_value_min,clip_value_max = get_clip_values(None,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(None,BGR)
 	elif(args.clipping_type=='ImageStyle'):
 		BGR=False
-		clip_value_min,clip_value_max = get_clip_values(image_style,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(image_style,BGR)
 	elif(args.clipping_type=='ImageStyleBGR'):
 		BGR = True
-		clip_value_min,clip_value_max = get_clip_values(image_style,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(image_style,BGR)
 	pooling_type = args.pooling_type
 	padding = args.padding
-	vgg_layers = get_vgg_layers(args.vgg_name)
-	
+	vgg_layers = st.get_vgg_layers(args.vgg_name)
+
 	# Precomputation Phase :
-	
+
 	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
+	#dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
 	try:
 		config = tf.ConfigProto()
@@ -342,23 +507,26 @@ def texture_grad_originArtefacts(args):
 		image_style_name_split[-1] = 'output'
 		output_img_name = "_".join(image_style_name_split)
 		output_image_path = args.img_output_folder + output_img_name + args.img_ext
-		
-		init_img = load_img(args,content_img_name_perfect2)
-		
-		plot_image_with_postprocess(args,image_style.copy(),"Style Image")
-		plot_image_with_postprocess(args,init_img.copy(),"Initialisation Image")
-		
-		loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)
-			
+
+		init_img = st.load_img(args,content_img_name_perfect2)
+
+		st.plot_image_with_st.postprocess(args,image_style.copy(),"Style Image")
+		st.plot_image_with_st.postprocess(args,init_img.copy(),"Initialisation Image")
+
+		style_layers = list(zip(args.style_layers,args.style_layer_weights))
+		loss_total,style_losses_tab =  style_losses(sess, net, dict_gram,style_layers)
+		list_loss = style_losses_tab
+		list_loss_name = ['conv1_1','pool1','pool2','pool3','pool4']
+
 		# Preparation of the assignation operation
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
 		assign_op = net['input'].assign(placeholder)
-	
+
 		# Gradients
-		variable = tf.trainable_variables() 
+		variable = tf.trainable_variables()
 		grad_style_loss = tf.gradients(loss_total,variable)
-		
-		if(args.optimizer=='GD'): # Gradient Descente		
+
+		if(args.optimizer=='GD'): # Gradient Descente
 			learning_rate = 10**(-10)
 			optimizer = tf.train.GradientDescentOptimizer(learning_rate) # Gradient Descent
 			train = optimizer.minimize(loss_total)
@@ -368,18 +536,18 @@ def texture_grad_originArtefacts(args):
 			optimizer = tf.train.AdamOptimizer(args.learning_rate)
 			grads_and_vars =  list(zip(grad_style_loss,variable))
 			train = optimizer.apply_gradients(grads_and_vars)
-		
+
 		sess.run(tf.global_variables_initializer())
 		sess.run(assign_op, {placeholder: init_img})
-		
+
 		grad_style_loss_eval = sess.run(grad_style_loss)
-		
+
 		sess.run(train)
 		result_img = sess.run(net['input'])
-		plot_image_with_postprocess(args,result_img.copy(),"First Step Image")
-		result_img_postproc = postprocess(result_img.copy())
+		st.plot_image_with_st.postprocess(args,result_img.copy(),"First Step Image")
+		result_img_postproc = st.postprocess(result_img.copy())
 		scipy.misc.toimage(result_img_postproc).save(output_image_path)
-		
+
 		grad = grad_style_loss_eval[0]
 		print(np.max(grad),np.min(grad),np.std(grad))
 		plt.figure()
@@ -393,59 +561,59 @@ def texture_grad_originArtefacts(args):
 		input("Press enter to end")
 	except:
 		print("Error")
-		raise 
+		raise
 	finally:
 		print("Close Sess")
-		
-	
+
+
 def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 	"""
 	This function is the main core of the program it need args in order to
-	set up all the things and run an optimization in order to produce an 
-	image 
+	set up all the things and run an optimization in order to produce an
+	image
 	"""
-	
+
 	if args.verbose:
 		tinit = time.time()
 		print("verbosity turned on")
 		print(args)
-	
+
 
 	if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
-	image_content = load_img(args,args.content_img_name)
-	image_style = load_img(args,args.style_img_name)
-	_,image_h, image_w, number_of_channels = image_content.shape 
-	M_dict = get_M_dict(image_h,image_w)
-	
+	image_content = st.load_img(args,args.content_img_name)
+	image_style = st.load_img(args,args.style_img_name)
+	_,image_h, image_w, number_of_channels = image_content.shape
+	#M_dict = get_M_dict(image_h,image_w)
+
 	if(args.clipping_type=='ImageNet'):
 		BGR=False
-		clip_value_min,clip_value_max = get_clip_values(None,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(None,BGR)
 	elif(args.clipping_type=='ImageStyle'):
 		BGR=False
-		clip_value_min,clip_value_max = get_clip_values(image_style,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(image_style,BGR)
 	elif(args.clipping_type=='ImageStyleBGR'):
 		BGR = True
-		clip_value_min,clip_value_max = get_clip_values(image_style,BGR)
+		clip_value_min,clip_value_max = st.get_clip_values(image_style,BGR)
 
 	if(args.plot):
 		plt.ion()
-		plot_image_with_postprocess(args,image_content.copy(),"Content Image")
-		plot_image_with_postprocess(args,image_style.copy(),"Style Image")
+		st.plot_image_with_st.postprocess(args,image_content.copy(),"Content Image")
+		st.plot_image_with_st.postprocess(args,image_style.copy(),"Style Image")
 		fig = None # initialization for later
-		
-	# TODO add something that reshape the image 
+
+	# TODO add something that reshape the image
 	t1 = time.time()
 	pooling_type = args.pooling_type
 	padding = args.padding
-	vgg_layers = get_vgg_layers(args.vgg_name)
-	
+	vgg_layers = st.get_vgg_layers(args.vgg_name)
+
 	# Precomputation Phase :
-	
+
 	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
+	#dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
 
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
-	
+
 	t2 = time.time()
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
 
@@ -467,34 +635,37 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 		image_style_name_split[-1] = 'output'
 		output_img_name = "_".join(image_style_name_split)
 		output_image_path = args.img_output_folder + output_img_name + args.img_ext
-		init_img = load_img(args,content_img_name_perfect2)
-		
+		init_img = st.load_img(args,content_img_name_perfect2)
+
 		#init_img = get_init_img_wrap(args,output_image_path,image_content)
-		
-		loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)
-			
+
+		style_layers = list(zip(args.style_layers,args.style_layer_weights))
+		loss_total,style_losses_tab =  style_losses(sess, net, dict_gram,style_layers)
+		list_loss = style_losses_tab
+		list_loss_name = ['conv1_1','pool1','pool2','pool3','pool4']
+
 		# Preparation of the assignation operation
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
 		placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
 		assign_op = net['input'].assign(placeholder)
 		clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=np.mean(clip_value_min),clip_value_max=np.mean(clip_value_max),name="Clip") # The np.mean is a necessity in the case whe got the BGR values TODO : need to change all that
-		
+
 		if(args.verbose): print("init loss total")
 
 		if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
 			optimizer = tf.train.AdamOptimizer(args.learning_rate)
-		elif(args.optimizer=='GD'): # Gradient Descente 
+		elif(args.optimizer=='GD'): # Gradient Descente
 			if((args.learning_rate > 1) and (args.verbose)): print("We recommande you to use a smaller value of learning rate when using the GD algo")
 			optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
-			
+
 		if((args.optimizer=='GD') or (args.optimizer=='adam')):
 			train = optimizer.minimize(loss_total)
 
 			sess.run(tf.global_variables_initializer())
 			sess.run(assign_op, {placeholder: init_img})
-						
+
 			sess.graph.finalize() # To test if the graph is correct
-			if(args.verbose): print("sess.graph.finalize()") 
+			if(args.verbose): print("sess.graph.finalize()")
 
 			t3 = time.time()
 			if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
@@ -526,8 +697,8 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 							sess.run(assign_op, {placeholder: cliptensor})
 						if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
 						if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-						if(args.plot): fig = plot_image_with_postprocess(args,result_img,"Intermediate Image",fig)
-						result_img_postproc = postprocess(result_img)
+						if(args.plot): fig = st.plot_image_with_st.postprocess(args,result_img,"Intermediate Image",fig)
+						result_img_postproc = st.postprocess(result_img)
 						scipy.misc.toimage(result_img_postproc).save(output_image_path)
 				else:
 					# Just training
@@ -535,7 +706,7 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 					if(args.clip_var==1): # Clipping the variable
 						result_img = sess.run(net['input'])
 						cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
-						sess.run(assign_op, {placeholder: cliptensor}) 
+						sess.run(assign_op, {placeholder: cliptensor})
 		elif(args.optimizer=='lbfgs'):
 			# TODO : be able to detect of print_iter > max_iter and deal with it
 			nb_iter = args.max_iter  // args.print_iter
@@ -548,17 +719,17 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 				trainable_variables = tf.trainable_variables()[0]
 				var_to_bounds = {trainable_variables: bnds}
 				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,var_to_bounds=var_to_bounds,
-					method='L-BFGS-B',options=optimizer_kwargs)   
+					method='L-BFGS-B',options=optimizer_kwargs)
 			else:
 				bnds = get_lbfgs_bnds_tf_1_2(init_img,clip_value_min,clip_value_max,BGR)
 				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
-					method='L-BFGS-B',options=optimizer_kwargs)    
+					method='L-BFGS-B',options=optimizer_kwargs)
 			sess.run(tf.global_variables_initializer())
 			sess.run(assign_op, {placeholder: init_img})
-						
+
 			sess.graph.finalize() # To test if the graph is correct
-			if(args.verbose): print("sess.graph.finalize()") 
-			
+			if(args.verbose): print("sess.graph.finalize()")
+
 			if(args.verbose): print("loss before optimization")
 			if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 			for i in range(nb_iter):
@@ -568,49 +739,43 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 				if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
 				if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 				result_img = sess.run(net['input'])
-				
+
 				# To test the bounds with the algo interface with scipy lbfgs
 				if(args.verbose) and test_bnds: print_bnds(result_img,image_style,clip_value_max,clip_value_min)
-				
-				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
-				result_img_postproc = postprocess(result_img)
+
+				if(args.plot): fig = st.plot_image_with_st.postprocess(args,result_img.copy(),"Intermediate Image",fig)
+				result_img_postproc = st.postprocess(result_img)
 				scipy.misc.imsave(output_image_path,result_img_postproc)
 
 		# The last iterations are not made
 		# The End : save the resulting image
 		result_img = sess.run(net['input'])
-		
-		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
-		result_img_postproc = postprocess(result_img)
-		scipy.misc.toimage(result_img_postproc).save(output_image_path) 
+
+		if(args.plot): st.plot_image_with_st.postprocess(args,result_img.copy(),"Final Image",fig)
+		result_img_postproc = st.postprocess(result_img)
+		scipy.misc.toimage(result_img_postproc).save(output_image_path)
 		if args.HistoMatching:
 			# Histogram Matching
 			if(args.verbose): print("Histogram Matching before saving")
-			result_img_postproc = Misc.histogram_matching(result_img_postproc, postprocess(image_style))
+			result_img_postproc = Misc.histogram_matching(result_img_postproc, st.postprocess(image_style))
 			output_image_path_hist = args.img_output_folder + args.output_img_name+'_hist' +args.img_ext
-			scipy.misc.toimage(result_img_postproc).save(output_image_path_hist)   
-		
+			scipy.misc.toimage(result_img_postproc).save(output_image_path_hist)
+
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 		result_img = sess.run(net['input'])
-		result_img_postproc = postprocess(result_img)
+		result_img_postproc = st.postprocess(result_img)
 		output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
 		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
-		raise 
+		raise
 	finally:
 		sess.close()
-		if(args.verbose): 
+		if(args.verbose):
 			print("Close Sess")
 			tend = time.time()
 			print("Computation total for ",tend-tinit," s")
 	if(args.plot): input("Press enter to end and close all")
-
-def main():
-	#global args
-	parser = get_parser_args()
-	args = parser.parse_args()
-	style_transfer(args)
 
 def main_loss_decomposition():
 	parser = get_parser_args()
@@ -629,10 +794,10 @@ def main_loss_decomposition():
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
 	maxcor = 10
 	sampling = 'up'
-	padding = 'VALIDTRUE'
+	padding = 'VALID'
 	# In order to set the parameter before run the script
 	parser.set_defaults(img_folder=img_folder,style_img_name=image_style_name,max_iter=max_iter,
-		print_iter=print_iter,start_from_noise=start_from_noise,padding=paddind,
+		print_iter=print_iter,start_from_noise=start_from_noise,padding=padding,
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
 		content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,img_output_folder=img_output_folder,
 		learning_rate=learning_rate,sampling=sampling)
@@ -656,7 +821,7 @@ def main_test_hyp():
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
 	maxcor = 10
 	sampling = 'up'
-	padding = 'VALIDTRUE'
+	padding = 'VALID'
 	# In order to set the parameter before run the script
 	parser.set_defaults(img_folder=img_folder,style_img_name=image_style_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,padding=padding,
@@ -683,7 +848,7 @@ def main_artefacts_grad():
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
 	maxcor = 10
 	sampling = 'up'
-	padding = 'VALIDTRUE'
+	padding = 'VALID'
 	loss = 'texture'
 	# In order to set the parameter before run the script
 	parser.set_defaults(img_folder=img_folder,style_img_name=image_style_name,max_iter=max_iter,
@@ -695,7 +860,7 @@ def main_artefacts_grad():
 	texture_grad_originArtefacts(args)
 
 if __name__ == '__main__':
-	main_test_hyp()
-	#main_loss_decomposition()
+	#main_test_hyp()
+	main_loss_decomposition()
 	#main_artefacts_grad()
-	
+
