@@ -2177,10 +2177,10 @@ def main_with_option():
 	damier ='DamierBig_Proces'
 	camouflage = 'Camouflage0003_S'
 	#img_output_folder = "images/"
-	image_style_name = tile
-	content_img_name  = tile
-	max_iter = 2000
-	print_iter = 200
+	image_style_name = brick
+	content_img_name  = brick
+	max_iter = 1000
+	print_iter = 1000
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
