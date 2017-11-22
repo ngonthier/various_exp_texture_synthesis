@@ -552,17 +552,21 @@ def texture_grad_originArtefacts(args):
 		elif(args.optimizer=='lbfgs'):
 			nb_iter = 1
 			max_iterations_local = 1
-			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
+			#args.maxcor = 1
+			optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor} # 'fprime' : grad_style_loss
 			if(tf.__version__ >= '1.3'):
 				bnds = st.get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
 				trainable_variables = tf.trainable_variables()[0]
 				var_to_bounds = {trainable_variables: bnds}
-				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,var_to_bounds=var_to_bounds,
+				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total, var_to_bounds=var_to_bounds,
 					method='L-BFGS-B',options=optimizer_kwargs)
 			else:
 				bnds = st.get_lbfgs_bnds_tf_1_2(init_img,clip_value_min,clip_value_max,BGR)
 				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total,bounds=bnds,
 					method='L-BFGS-B',options=optimizer_kwargs)
+		 
+		 # scipy.optimize.minimize(fun, x0, args=(), method='L-BFGS-B', jac=None, bounds=None, tol=None, callback=None, options={'disp': None, 'maxls': 20, 'iprint': -1, 'gtol': 1e-05, 'eps': 1e-08, 'maxiter': 15000, 'ftol': 2.220446049250313e-09, 'maxcor': 10, 'maxfun': 15000})
+
 
 		sess.run(tf.global_variables_initializer())
 		sess.run(assign_op, {placeholder: init_img})
@@ -589,12 +593,12 @@ def texture_grad_originArtefacts(args):
 		plt.imshow(grad[0,:,:,:])
 		plt.title('Gradient computed by TF')
 		norm_grad = LA.norm(grad)
-		grad /= norm_grad
-		grad_normalized =grad[0,:,:,:]
+		grad_normalized = grad/norm_grad
+		grad_normalized =grad_normalized[0,:,:,:]
 		print(np.max(grad_normalized),np.min(grad_normalized),np.std(grad_normalized))
 		plt.figure()
 		plt.imshow(grad_normalized)
-		plt.title('Gradient computed by TF normalized')
+		plt.title('Gradient computed by TF normalized')	
 		
 		print(np.max(grad_version2),np.min(grad_version2),np.std(grad_version2))
 		plt.figure()
@@ -612,6 +616,21 @@ def texture_grad_originArtefacts(args):
 		plt.figure()
 		plt.imshow(diff_grad[0,:,:,:])
 		plt.title('Difference of the Gradient')
+		
+		ratio_grad = grad_version2[0,:,:,:]/grad[0,:,:,:]
+		plt.figure()
+		plt.imshow(ratio_grad)
+		plt.title('Ratio of the gradient')
+		print('Ratio',np.max(ratio_grad),np.min(ratio_grad),np.std(ratio_grad))
+		
+		ratio_grad_mean = np.mean(ratio_grad)
+		grad_divided_by_ratio = grad[0,:,:,:]*ratio_grad_mean
+		norm_grad = LA.norm(grad_divided_by_ratio)
+		grad_normalized = grad_divided_by_ratio/norm_grad
+		grad_normalized =grad_normalized
+		plt.figure()
+		plt.imshow(grad_normalized)
+		plt.title('Gradient computed by TF normalized after ratio')
 		
 		input("Press enter to end")
 	except:
@@ -882,6 +901,8 @@ def main_test_hyp():
 	style_transfer_test_hyp(args)
 
 def main_artefacts_grad():
+	""" Etude du gradient appliqué à la première itération
+	"""	
 	parser = get_parser_args()
 	#FabricWool0036_2_seamless_S_small_1
 	#TexturesCom_BrickSmallBrown0475_1_M_small_1
@@ -896,7 +917,7 @@ def main_artefacts_grad():
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
 	optimizer = 'lbfgs'
-	optimizer = 'adam'
+	#optimizer = 'adam'
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
 	maxcor = 10
 	sampling = 'up'
