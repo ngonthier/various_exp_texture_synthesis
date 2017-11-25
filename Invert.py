@@ -139,7 +139,7 @@ def _conv_layer(input, weights, bias,name,padding='SAME'):
 	if(padding=='SAME'):
 		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
 			padding=padding,name=name)
-	elif(padding=='VALID'):
+	elif(padding=='Circular'):
 		input = get_img_2pixels_more(input)
 		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
 			padding='VALID',name=name)
@@ -160,7 +160,7 @@ def _pool_layer(input,name,pooling_type='avg',padding='SAME'):
 	strides in the avg_pool function 
 	"""
 	stride_pool = 2
-	if(padding== 'VALID'): # Test if paire ou impaire !!! 
+	if(padding== 'Circular'): # Test if paire ou impaire !!! 
 		_,h,w,_ = input.shape
 		if not(h%2==0):
 			input = tf.concat([input,input[:,0:2,:,:]],axis=1)

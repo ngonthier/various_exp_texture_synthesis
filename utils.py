@@ -132,3 +132,7 @@ def do_mkdir(path):
 	if not(os.path.isdir(path)):
 		os.mkdir(path)
 	return(0)
+
+class MyError(Exception):
+     def __init__(self, message):
+        self.message = message

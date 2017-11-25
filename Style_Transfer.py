@@ -125,8 +125,11 @@ def conv_layer(input, weights, bias,name,padding='SAME'):
 	if(padding=='SAME'):
 		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
 			padding=padding,name=name)
-	elif(padding=='VALID'):
+	elif(padding=='Circular'):
 		input = get_img_2pixels_more(input)
+		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
+			padding='VALID',name=name)
+	elif(padding=='Davy'): # Real padding we will drop some pixel on the image
 		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
 			padding='VALID',name=name)
 	# We need to impose the weights as constant in order to avoid their modification
@@ -146,12 +149,15 @@ def pool_layer(input,name,pooling_type='avg',padding='SAME'):
 	strides in the avg_pool function 
 	"""
 	stride_pool = 2
-	if(padding== 'VALID'): # TODO Test if paire ou impaire !!! 
+	if(padding== 'Circular'): # TODO Test if paire ou impaire !!! 
 		_,h,w,_ = input.shape
 		if not(h%2==0):
 			input = tf.concat([input,input[:,0:2,:,:]],axis=1)
 		if not(w%2==0):
 			input = tf.concat([input,input[:,:,0:2,:]],axis=2)
+		padding = 'VALID'
+	if(padding=='Davy'):
+		padding = 'VALID'
 	if pooling_type == 'avg':
 		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, stride_pool, stride_pool, 1),
 				padding=padding,name=name) 
@@ -1464,6 +1470,7 @@ def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # net for the content image
 	sess = tf.Session()
 	sess.run(net['input'].assign(image_content))
+	dict_features_repr = {}
 	for layer in VGG19_LAYERS:
 		P = sess.run(net[layer])
 		dict_features_repr[layer] = P # Computation
@@ -2005,8 +2012,16 @@ def style_transfer(args):
 	# Precomputation Phase :
 	
 	dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-	dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
-
+	if ('full' in args.loss) or('Gatys' in args.loss) or ('content' in args.loss):
+		if not(padding=='Davy'):
+			dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
+		else:
+			raise(utils.MyError("It is not allowed to use Davy padding for doing Style Transfer, at least you find how to do. Good luck :)"))
+	else: 
+		dict_features_repr = None
+		# In this case the content matrice is just use for the output size
+		image_content = np.zeros(1,2*image_h, 2*image_w, number_of_channels).astype('float32')
+		
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
 	
 	t2 = time.time()
@@ -2122,14 +2137,20 @@ def style_transfer(args):
 				if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
 				result_img = sess.run(net['input'])
 				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
-				result_img_postproc = postprocess(result_img)
+				if(padding=='Davy'):
+					result_img_postproc = postprocess(result_img[:,256:768,256:768,:])
+				else:
+					result_img_postproc = postprocess(result_img)
 				scipy.misc.imsave(output_image_path,result_img_postproc)
 
 		# The last iterations are not made
 		# The End : save the resulting image
 		result_img = sess.run(net['input'])
 		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
-		result_img_postproc = postprocess(result_img)
+		if(padding=='Davy'):
+			result_img_postproc = postprocess(result_img[:,256:768,256:768,:])
+		else:
+			result_img_postproc = postprocess(result_img)
 		scipy.misc.toimage(result_img_postproc).save(output_image_path) 
 		if args.HistoMatching:
 			# Histogram Matching
@@ -2141,7 +2162,10 @@ def style_transfer(args):
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 		result_img = sess.run(net['input'])
-		result_img_postproc = postprocess(result_img)
+		if(padding=='Davy'):
+			result_img_postproc = postprocess(result_img[:,256:768,256:768,:])
+		else:
+			result_img_postproc = postprocess(result_img)
 		output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
 		scipy.misc.toimage(result_img_postproc).save(output_image_path_error)
 		# In the case of the lbfgs optimizer we only get the init_img if we did not do a check point before
@@ -2169,18 +2193,20 @@ def main_with_option():
 	tile =  "TilesOrnate0158_1_S"
 	tile2 = "TilesZellige0099_1_S"
 	peddle = "pebbles"
-	brick = "BrickSmallBrown0293_1_S"
+	brick256 = "BrickSmallBrown0293_1_S"
 	D ="D20_01"
 	orange = "orange"
 	bleu = "bleu"
 	glass = "glass"
 	damier ='DamierBig_Proces'
 	camouflage = 'Camouflage0003_S'
-	#img_output_folder = "images/"
+	brick = 'Brick_512_1'
+	img_output_folder = "images_Hyp/"
+	img_folder = img_output_folder
 	image_style_name = brick
 	content_img_name  = brick
-	max_iter = 2000
-	print_iter = 200
+	max_iter = 1
+	print_iter = 1
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
@@ -2189,8 +2215,8 @@ def main_with_option():
 	maxcor = 10
 	sampling = 'up'
 	# In order to set the parameter before run the script
-	parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,
-		print_iter=print_iter,start_from_noise=start_from_noise,
+	parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,img_folder=img_folder,
+		print_iter=print_iter,start_from_noise=start_from_noise,img_output_folder=img_output_folder,
 		content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
 		content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
 		learning_rate=learning_rate,sampling=sampling)
