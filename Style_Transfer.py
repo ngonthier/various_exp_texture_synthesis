@@ -106,7 +106,6 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 			current = pool_layer(current,name,pooling_type,padding)
 
 		net[name] = current
-		print(name,current.shape)
 
 	assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right 
 	return(net)
@@ -123,7 +122,7 @@ def conv_layer(input, weights, bias,name,padding='SAME'):
 	[filter_height, filter_width, in_channels, out_channels]
 	"""
 	stride = 1
-	if(padding=='SAME'):
+	if(padding=='SAME' or padding=='VALID'):
 		conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
 			padding=padding,name=name)
 	elif(padding=='Circular'):
@@ -1577,7 +1576,6 @@ def get_M_dict_Davy(image_h,image_w):
 	This function compute the size of the different dimension in the con
 	volutionnal net when using a VALID padding without circular extensio
 	"""
-	print('Davy')
 	M_dict = {
 	'conv1_1': 0, 'relu1_1': 0, 'conv1_2': 0, 'relu1_2': 0, 'pool1': 0,
 
@@ -1607,7 +1605,6 @@ def get_M_dict_Davy(image_h,image_w):
 			M_dict[key] = M
 		elif(key[:4]=='relu'):
 			M_dict[key] = M
-		print(key,image_h_tmp,image_w_tmp,M)
 	M_dict['input'] = M_dict['conv1_1']
 	return(M_dict)  
 	
@@ -2077,7 +2074,9 @@ def style_transfer(args):
 		# In this case the content matrice is just use for the output size
 		image_content = np.zeros((1,2*image_h, 2*image_w, number_of_channels)).astype('float32')
 		M_dict = get_M_dict_Davy(2*image_h,2*image_w)
-	else:
+	elif padding=='VALID':
+		M_dict = get_M_dict_Davy(image_h,image_w)
+	else:		
 		M_dict = get_M_dict(image_h,image_w)
 		
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
@@ -2259,12 +2258,14 @@ def main_with_option():
 	damier ='DamierBig_Proces'
 	camouflage = 'Camouflage0003_S'
 	brick = 'Brick_512_1'
+	brick = 'MarbreWhite_1'
+	brick = 'Camouflage_1'
 	img_output_folder = "images_Hyp/"
 	img_folder = img_output_folder
 	image_style_name = brick
 	content_img_name  = brick
-	max_iter = 1
-	print_iter = 1
+	max_iter = 1000
+	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001

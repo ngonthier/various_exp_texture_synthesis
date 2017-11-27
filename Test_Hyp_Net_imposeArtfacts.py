@@ -44,187 +44,12 @@ VGG19_LAYERS = (
 # Warning some layers have been removed from the VGG19 layers 	
 #layers   = [2 5 10 19 28]; for texture generation
 style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
-# TODO : check if the N value are right for the poolx
-
-#def style_layer_loss(a, x):
-	#z, h, w, d = a.get_shape()
-	#M = h.value * w.value
-	#N = d.value
-	#A = gram_matrix(a, M, N)
-	#G = gram_matrix(x, M, N)
-	#loss = (1./(4 * N**2 * M**2)) * tf.reduce_sum(tf.pow((G - A), 2))
-	#return loss
-
-def gram_matrix(x, area, depth):
-	F = tf.reshape(x, (area, depth))
-	G = tf.matmul(tf.transpose(F), F)
-	return G
-
-def net_preloaded_VALIDTRUE(vgg_layers, input_image,pooling_type='avg'):
-	"""
-	This function read the vgg layers and create the net architecture
-	We need the input image to know the dimension of the input layer of the net
-	In this case we use a true valid padding in the function
-	"""
-
-	net = {}
-	_,height, width, numberChannels = input_image.shape # In order to have the right shape of the input
-	current = tf.Variable(np.zeros((1, height, width, numberChannels), dtype=np.float32))
-	net['input'] = current
-	for i, name in enumerate(VGG19_LAYERS):
-		kind = name[:4]
-		if(kind == 'conv'):
-			# Only way to get the weight of the kernel of convolution
-			# Inspired by http://programtalk.com/vs2/python/2964/facenet/tmp/vggverydeep19.py/
-			kernels = vgg_layers[i][0][0][2][0][0]
-			bias = vgg_layers[i][0][0][2][0][1]
-			# matconvnet: weights are [width, height, in_channels, out_channels]
-			# tensorflow: weights are [height, width, in_channels, out_channels]
-			kernels = tf.constant(np.transpose(kernels, (1,0 ,2, 3)))
-			bias = tf.constant(bias.reshape(-1))
-			current = conv_layer(current, kernels, bias,name)
-			# Update the  variable named current to have the right size
-		elif(kind == 'relu'):
-			current = tf.nn.relu(current,name=name)
-		elif(kind == 'pool'):
-			current = pool_layer(current,name,pooling_type)
-
-		net[name] = current
-
-	assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right
-	return(net)
-
-def conv_layer(input, weights, bias,name):
-	"""
-	This function create a conv2d with the already known weight and bias
-
-	conv2d :
-	Computes a 2-D convolution given 4-D input and filter tensors.
-	input: A Tensor. Must be one of the following types: half, float32, float64
-	Given an input tensor of shape [batch, in_height, in_width, in_channels] and
-	a filter / kernel tensor of shape
-	[filter_height, filter_width, in_channels, out_channels]
-	
-	Padding = VALID without adding element around
-	"""
-	stride = 1
-	# in order to have a true valid !!!
-	conv = tf.nn.conv2d(input, weights, strides=(1, stride, stride, 1),
-		padding='VALID',name=name)
-	# We need to impose the weights as constant in order to avoid their modification
-	# when we will perform the optimization
-	return(tf.nn.bias_add(conv, bias))
-
-def pool_layer(input,name,pooling_type='avg',padding='SAME'):
-	"""
-	Average pooling on windows 2*2 with stride of 2
-	input is a 4D Tensor of shape [batch, height, width, channels]
-	Each pooling op uses rectangular windows of size ksize separated by offset
-	strides in the avg_pool function
-	"""
-	stride_pool = 2
-	if pooling_type == 'avg':
-		pool = tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, stride_pool, stride_pool, 1),
-				padding=padding,name=name)
-	elif pooling_type == 'max':
-		pool = tf.nn.max_pool(input, ksize=(1, 2, 2, 1), strides=(1, stride_pool, stride_pool, 1),
-				padding=padding,name=name)
-	return(pool)
-
-def get_Gram_matrix_wrap_VALIDTRUE(args,vgg_layers,image_style,pooling_type='avg',padding='SAME'):
-	_,image_h_art, image_w_art, _ = image_style.shape
-	vgg_name = args.vgg_name
-	stringAdd = ''
-	if(vgg_name=='normalizedvgg.mat'):
-		stringAdd = '_n'
-	elif(vgg_name=='imagenet-vgg-verydeep-19.mat'):
-		stringAdd = '_v' # Regular one
-	elif(vgg_name=='random_net.mat'):
-		stringAdd = '_r' # random
-	data_style_path = args.data_folder + "gramVALIDTRUE_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd+".pkl"
-	if(vgg_name=='random_net.mat'):
-		try:
-			os.remove(data_style_path)
-		except:
-			pass
-	try:
-		if(args.verbose): print("Load Data ",data_style_path)
-		dict_gram = pickle.load(open(data_style_path, 'rb'))
-	except(FileNotFoundError):
-		if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
-		dict_gram = get_Gram_matrix_VALIDTRUE(vgg_layers,image_style,pooling_type)
-		with open(data_style_path, 'wb') as output_gram_pkl:
-			pickle.dump(dict_gram,output_gram_pkl)
-		if(args.verbose): print("Pickle dumped")
-	return(dict_gram)
-
-def style_losses_VALIDTRUE(sess, net, style_image,style_layers):
-	"""
-	Compute the style term of the loss function with Gram Matrix from the
-	Gatys Paper
-	Input :
-	- the tensforflow session sess
-	- the vgg19 net
-	- the dictionnary of Gram Matrices
-	- the dictionnary of the size of the image content through the net
-	Return an array of the style losses for the diferents layers and the total_style_loss
-	"""
-	# Info for the vgg19
-	length_style_layers = float(len(style_layers))
-	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
-	# Because the function is pretty flat
-	total_style_loss = 0
-	style_losses_tab = []
-	sess.run(net['input'].assign(style_image))
-	for i, couple in enumerate(style_layers):
-		layer, weight = couple
-		print(layer)
-		#a = sess.run(net[layer])
-		a = net[layer].eval(session=sess)
-		x = net[layer]
-		a = tf.convert_to_tensor(a)
-		_, h, w, d = a.get_shape()
-		M = h.value * w.value
-		N = d.value
-		A = gram_matrix(a,N,M)
-		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
-		print("Gram done")
-		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
-		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
-		style_losses_tab += [style_loss]
-		total_style_loss += style_loss
-	return(total_style_loss,style_losses_tab)
-	return(total_style_loss,style_losses_tab)
 
 def compute_loss_tab(sess,list_loss):
 	loss_tab_eval = np.zeros_like(list_loss)
 	for i,loss in enumerate(list_loss):
 		loss_tab_eval[i] = sess.run(loss)
 	return(loss_tab_eval)
-
-def get_Gram_matrix_VALIDTRUE(vgg_layers,image_style,pooling_type='avg'):
-	"""
-	Computation of all the Gram matrices from one image thanks to the
-	vgg_layers
-	"""
-	dict_gram = {}
-	net = net_preloaded_VALIDTRUE(vgg_layers, image_style,pooling_type) # net for the style image
-	sess = tf.Session()
-	sess.run(net['input'].assign(image_style))
-	a = net['input']
-	_,height,width,N = a.shape
-	M = height*width
-	A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
-	dict_gram['input'] = sess.run(A)
-	for layer in VGG19_LAYERS:
-		a = net[layer]
-		_,height,width,N = a.shape
-		M = height*width
-		A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
-		dict_gram[layer] = sess.run(A) # Computation
-	sess.close()
-	tf.reset_default_graph() # To clear all operation and variable
-	return(dict_gram)
 
 def print_bnds(result_img,image_style,clip_value_max,clip_value_min):
 	# Code to test the bounds problem :
@@ -283,12 +108,17 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 	vgg_layers = st.get_vgg_layers(args.vgg_name)
 
 	# Precomputation Phase :
-	if padding=='VALIDTRUE':
-		net = net_preloaded_VALIDTRUE(vgg_layers,image_content,pooling_type) 
-	else:
+	if padding=='Davy':
+		# In this case the content matrice is just use for the output size
+		image_content = np.zeros((1,2*image_h, 2*image_w, number_of_channels)).astype('float32')
+		M_dict = st.get_M_dict_Davy(2*image_h,2*image_w)
+	elif padding=='VALID':
+		M_dict = st.get_M_dict_Davy(image_h,image_w)
+	else:		
 		M_dict = st.get_M_dict(image_h,image_w)
-		dict_gram = st.get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-		net = st.net_preloaded(vgg_layers, image_content,pooling_type,padding)
+	
+	dict_gram = st.get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
+	net = st.net_preloaded(vgg_layers, image_content,pooling_type,padding)
 
 	t2 = time.time()
 	if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
@@ -306,19 +136,25 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 
 		## We use a perfect result as input to your networks
 		image_style_name_split = args.style_img_name.split('_')
-		image_style_name_split[-1] = '3'
+		image_style_name_split[-1] = '2'
 		content_img_name_perfect2 = "_".join(image_style_name_split)
 		image_style_name_split[-1] = 'output_printEvery_' + str(args.print_iter)
 		output_img_name = "_".join(image_style_name_split)
 		output_image_path = args.img_output_folder + output_img_name + args.img_ext
 		init_img = st.load_img(args,content_img_name_perfect2)
 		style_layers = list(zip(args.style_layers,args.style_layer_weights))
-		if padding=='VALIDTRUE':
-			loss_total,style_losses_tab =  style_losses_VALIDTRUE(sess, net, image_style,style_layers)
-		else:
-			loss_total,style_losses_tab =  st.style_losses(sess, net, dict_gram,M_dict,style_layers)
+		
+		variable = tf.trainable_variables()
+		grad_style_loss = tf.gradients(loss_total,variable)
+		
+		loss_total,style_losses_tab =  st.style_losses(sess, net, dict_gram,M_dict,style_layers)
 		list_loss = style_losses_tab
 		list_loss_name = ['conv1_1','pool1','pool2','pool3','pool4']
+
+		grad_style_loss_tab = []
+		for loss in style_losses_tab:
+			grad_style_loss_tab += [tf.gradients(loss,variable)[0]]
+			
 
 		# Preparation of the assignation operation
 		placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
@@ -422,6 +258,7 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 				if(args.verbose): st.print_loss_tab(sess,list_loss,list_loss_name)
 				result_img = sess.run(net['input'])
 				list_loss_eval = compute_loss_tab(sess,list_loss)
+				list_grad_loss_eval = compute_loss_tab(sess,grad_style_loss_tab) 
 				list_loss_eval_total[i+1,:] = list_loss_eval
 				# To test the bounds with the algo interface with scipy lbfgs
 				if(args.verbose) and test_bnds: print_bnds(result_img,image_style,clip_value_max,clip_value_min)
@@ -460,14 +297,19 @@ def texture_syn_with_loss_decomposition(args,test_bnds = False):
 
 	plt.ion() # Interactive Mode
 	plt.figure()
-	plt.figure()
-	print(style_layers)
-	print(list_num_iter)
 	for i, couple in enumerate(style_layers):
 		layer,_ =couple
 		plt.semilogy(list_num_iter,list_loss_eval_total[:,i], label=layer)
 	plt.legend()
 	plt.title("Comparison of the different layers importance")
+	
+	plt.figure()
+	for i, couple in enumerate(style_layers):
+		layer,_ =couple
+		plt.semilogy(list_num_iter,LA.norm(list_grad_loss_eval[:,i]), label=layer)
+	plt.legend()
+	plt.title("Comparison of the different layers importance, norm of the gradient")
+	
 	input("Press enter to end and close all")
 
 def texture_grad_originArtefacts(args):
@@ -494,12 +336,17 @@ def texture_grad_originArtefacts(args):
 	vgg_layers = st.get_vgg_layers(args.vgg_name)
 
 	# Precomputation Phase :
-	if padding=='VALIDTRUE':
-		net = net_preloaded_VALIDTRUE(vgg_layers,image_content,pooling_type) 
-	else:
+	if padding=='Davy':
+		# In this case the content matrice is just use for the output size
+		image_content = np.zeros((1,2*image_h, 2*image_w, number_of_channels)).astype('float32')
+		M_dict = st.get_M_dict_Davy(2*image_h,2*image_w)
+	elif padding=='VALID':
+		M_dict = st.get_M_dict_Davy(image_h,image_w)
+	else:		
 		M_dict = st.get_M_dict(image_h,image_w)
-		dict_gram = st.get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-		net = st.net_preloaded(vgg_layers, image_content,pooling_type,padding)
+	
+	dict_gram = st.get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
+	net = st.net_preloaded(vgg_layers, image_content,pooling_type,padding)
 	try:
 		config = tf.ConfigProto()
 		if(args.gpu_frac <= 0.):
@@ -513,7 +360,7 @@ def texture_grad_originArtefacts(args):
 
 		## We use a perfect result as input to your networks
 		image_style_name_split = args.style_img_name.split('_')
-		image_style_name_split[-1] = '3'
+		image_style_name_split[-1] = '2'
 		content_img_name_perfect2 = "_".join(image_style_name_split)
 		image_style_name_split[-1] = 'output'
 		output_img_name = "_".join(image_style_name_split)
@@ -525,10 +372,7 @@ def texture_grad_originArtefacts(args):
 		st.plot_image_with_postprocess(args,init_img.copy(),"Initialisation Image")
 
 		style_layers = list(zip(args.style_layers,args.style_layer_weights))
-		if padding=='VALIDTRUE':
-			loss_total,style_losses_tab =  style_losses_VALIDTRUE(sess, net, image_style,style_layers)
-		else:
-			loss_total,style_losses_tab =  st.style_losses(sess, net, dict_gram,M_dict,style_layers)
+		loss_total,style_losses_tab =  st.style_losses(sess, net, dict_gram,M_dict,style_layers)
 		list_loss = style_losses_tab
 		list_loss_name = ['conv1_1','pool1','pool2','pool3','pool4']
 
@@ -558,7 +402,7 @@ def texture_grad_originArtefacts(args):
 				bnds = st.get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
 				trainable_variables = tf.trainable_variables()[0]
 				var_to_bounds = {trainable_variables: bnds}
-				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total, var_to_bounds=var_to_bounds,
+				optimizer = tf.contrib.opt.ScipyOptimizerInterface(loss_total, #var_to_bounds=var_to_bounds,
 					method='L-BFGS-B',options=optimizer_kwargs)
 			else:
 				bnds = st.get_lbfgs_bnds_tf_1_2(init_img,clip_value_min,clip_value_max,BGR)
@@ -675,12 +519,17 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 	vgg_layers = st.get_vgg_layers(args.vgg_name)
 
 	# Precomputation Phase :
-	if padding=='VALIDTRUE':
-		net = net_preloaded_VALIDTRUE(vgg_layers,image_content,pooling_type) 
-	else:
+	if padding=='Davy':
+		# In this case the content matrice is just use for the output size
+		image_content = np.zeros((1,2*image_h, 2*image_w, number_of_channels)).astype('float32')
+		M_dict = st.get_M_dict_Davy(2*image_h,2*image_w)
+	elif padding=='VALID':
+		M_dict = st.get_M_dict_Davy(image_h,image_w)
+	else:		
 		M_dict = st.get_M_dict(image_h,image_w)
-		dict_gram = st.get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-		net = st.net_preloaded(vgg_layers, image_content,pooling_type,padding)
+	
+	dict_gram = st.get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
+	net = st.net_preloaded(vgg_layers, image_content,pooling_type,padding)
 
 	try:
 		config = tf.ConfigProto()
@@ -695,7 +544,7 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 
 		## We use a perfect result as input to your networks
 		image_style_name_split = args.style_img_name.split('_')
-		image_style_name_split[-1] = '3'
+		image_style_name_split[-1] = '2'
 		content_img_name_perfect2 = "_".join(image_style_name_split)
 		image_style_name_split[-1] = 'output'
 		output_img_name = "_".join(image_style_name_split)
@@ -705,10 +554,7 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 		#init_img = get_init_img_wrap(args,output_image_path,image_content)
 
 		style_layers = list(zip(args.style_layers,args.style_layer_weights))
-		if padding=='VALIDTRUE':
-			loss_total,style_losses_tab =  style_losses_VALIDTRUE(sess, net, image_style,style_layers)
-		else:
-			loss_total,style_losses_tab =  st.style_losses(sess, net, dict_gram,M_dict,style_layers)
+		loss_total,style_losses_tab =  st.style_losses(sess, net, dict_gram,M_dict,style_layers)
 		list_loss = style_losses_tab
 		list_loss_name = ['conv1_1','pool1','pool2','pool3','pool4']
 
@@ -820,7 +666,7 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 		result_img = sess.run(net['input'])
 
 		if(args.plot): st.plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
-		result_img_postproc = st.postprocess(result_img)
+		result_img_postproc = st.postprocess(result_img.copy())
 		scipy.misc.toimage(result_img_postproc).save(output_image_path)
 		if args.HistoMatching:
 			# Histogram Matching
@@ -828,7 +674,13 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 			result_img_postproc = Misc.histogram_matching(result_img_postproc, st.postprocess(image_style))
 			output_image_path_hist = args.img_output_folder + args.output_img_name+'_hist' +args.img_ext
 			scipy.misc.toimage(result_img_postproc).save(output_image_path_hist)
-
+		
+		result_img_postproc = st.postprocess(utils.get_center_tensor(result_img.copy()))
+		image_style_name_split[-1] = 'output_crop'
+		output_img_name = "_".join(image_style_name_split)
+		output_image_path_2 = args.img_output_folder + output_img_name +args.img_ext
+		scipy.misc.toimage(result_img_postproc).save(output_image_path_2)
+		
 	except:
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 		result_img = sess.run(net['input'])
@@ -845,10 +697,7 @@ def style_transfer_test_hyp(args,saveFirstGrad=True,test_bnds = False):
 
 def main_loss_decomposition():
 	parser = get_parser_args()
-	#FabricWool0036_2_seamless_S_small_1
-	#TexturesCom_BrickSmallBrown0475_1_M_small_1
-	image_style_name= "BrickSmallBrown0293_1_S_C224_small_1"
-	#image_style_name= "BrickSmallBrown0293_1_small_1"
+	image_style_name= "Brick_512_1"
 	img_output_folder = "images_Hyp/"
 	img_folder = "images_Hyp/"
 	content_img_name  = image_style_name
@@ -873,10 +722,9 @@ def main_loss_decomposition():
 
 def main_test_hyp():
 	parser = get_parser_args()
-	#FabricWool0036_2_seamless_S_small_1
-	#TexturesCom_BrickSmallBrown0475_1_M_small_1
-	image_style_name= "BrickSmallBrown0293_1_S_C224_small_1"
-	image_style_name = 'BrickSmallBrown0293_1_small_1'
+	image_style_name= "Brick_512_1"
+	image_style_name= "BrickSmallBrown0293_1_512_1"
+	image_style_name= "MarbreWhite_1"
 	img_output_folder = "images_Hyp/"
 	img_folder = "images_Hyp/"
 	content_img_name  = image_style_name
@@ -904,10 +752,7 @@ def main_artefacts_grad():
 	""" Etude du gradient appliqué à la première itération
 	"""	
 	parser = get_parser_args()
-	#FabricWool0036_2_seamless_S_small_1
-	#TexturesCom_BrickSmallBrown0475_1_M_small_1
-	image_style_name= "BrickSmallBrown0293_1_S_C224_small_1"
-	image_style_name = 'BrickSmallBrown0293_1_small_1'
+	image_style_name= "Brick_512_1"
 	img_output_folder = "images_Hyp/"
 	img_folder = "images_Hyp/"
 	content_img_name  = image_style_name
@@ -933,7 +778,9 @@ def main_artefacts_grad():
 	texture_grad_originArtefacts(args)
 
 if __name__ == '__main__':
-	#main_test_hyp()
+	main_test_hyp()
+	
+	#main_artefacts_grad()
+	
 	#main_loss_decomposition()
-	main_artefacts_grad()
 
