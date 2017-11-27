@@ -106,6 +106,7 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 			current = pool_layer(current,name,pooling_type,padding)
 
 		net[name] = current
+		print(name,current.shape)
 
 	assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right 
 	return(net)
@@ -178,7 +179,7 @@ def sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers):
 	weight_help_convergence = 10**9 # Need to multiply by 120000 ?
 	content_loss = 0
 	for layer, weight in content_layers:
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		P = tf.constant(dict_features_repr[layer])
 		F = net[layer]
 		content_loss +=  tf.nn.l2_loss(tf.subtract(P,F))*(
@@ -206,7 +207,7 @@ def sum_style_losses(sess, net, dict_gram,M_dict,style_layers):
 		A = dict_gram[layer]
 		A = tf.constant(A)
 		# Get the value of this layer with the generated image
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		x = net[layer]
 		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
 		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
@@ -238,7 +239,7 @@ def style_losses(sess, net, dict_gram,M_dict,style_layers):
 		A = dict_gram[layer]
 		A = tf.constant(A)
 		# Get the value of this layer with the generated image
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		x = net[layer]
 		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
 		style_loss = tf.nn.l2_loss(tf.subtract(G,A))  # output = sum(t ** 2) / 2
@@ -263,7 +264,7 @@ def texture_loss_wt_mask(sess, net, dict_gram,M_dict,mask_dict,style_layers):
 		A = dict_gram[layer]
 		A = tf.constant(A)
 		# Get the value of this layer with the generated image
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		x = net[layer]
 		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
 		diff = tf.subtract(G,A)
@@ -358,7 +359,7 @@ def sum_style_stats_loss(sess,net,image_style,M_dict,style_layers):
 	for layer, weight in style_layers:
 		# For one layer
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer] # response to the layer 
 		mean_x,variance_x,skewness_x,kurtosis_x = compute_4_moments(x)
@@ -380,7 +381,7 @@ def loss_n_moments(sess,net,image_style,M_dict,n,style_layers):
 	for layer, weight in style_layers:
 		# For one layer
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer] # response to the layer 
 		moments_x = compute_n_moments(x,n)
@@ -403,7 +404,7 @@ def loss_n_stats(sess,net,image_style,M_dict,n,style_layers,TypeOfComputation='m
 	for layer, weight in style_layers:
 		# For one layer
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer] # response to the layer 
 		if(TypeOfComputation=='moments'):
@@ -433,7 +434,7 @@ def loss_variance(sess,net,image_style,M_dict,style_layers):
 	for layer, weight in style_layers:
 		# For one layer
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer] # response to the layer 
 		axis = [0,1,2]
@@ -454,7 +455,7 @@ def loss_p_norm(sess,net,image_style,M_dict,p,style_layers): # Faire une fonctio
 	for layer, weight in style_layers:
 		# For one layer
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer] # response to the layer 
 		L_p_x = compute_Lp_norm(x,p) # Les Lp sont positives, on cherche juste à egaliser les énergies la
@@ -548,7 +549,7 @@ def loss_autocorrbizarre(sess,net,image_style,M_dict,style_layers):
 	sess.run(net['input'].assign(image_style))  
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		F_x = tf.fft2d(tf.complex(x,0.))
@@ -578,7 +579,7 @@ def loss_autocorr(sess,net,image_style,M_dict,style_layers):
 		
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		x = tf.transpose(x, [0,3,1,2])
@@ -611,7 +612,7 @@ def loss_autocorrLog(sess,net,image_style,M_dict,style_layers):
 		
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		x = tf.transpose(x, [0,3,1,2])
@@ -645,7 +646,7 @@ def loss_autocorr_rfft(sess,net,image_style,M_dict,style_layers):
 		
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		x = tf.transpose(x, [0,3,1,2])
@@ -685,7 +686,7 @@ def loss_fft_vect(sess,net,image_style,M_dict,style_layers):
 		
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		x = tf.transpose(x, [0,3,1,2])
@@ -719,7 +720,7 @@ def loss_entropy(sess,net,image_style,M_dict,style_layers):
 		
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		
@@ -794,7 +795,7 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
-			M = M_dict[layer[:5]]
+			M = M_dict[layer]
 			x = net[layer]
 			a_phase_alea = image_style_PhaseAlea[layer]
 			loss = tf.nn.l2_loss(tf.subtract(x,a_phase_alea))
@@ -803,7 +804,7 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 		else:
 			sess.run(net['input'].assign(image_style))
 			N = style_layers_size[layer[:5]]
-			M = M_dict[layer[:5]]
+			M = M_dict[layer]
 			a = sess.run(net[layer])
 			x = net[layer]
 			x = tf.transpose(x, [0,3,1,2])
@@ -835,7 +836,7 @@ def loss_PhaseAleatoireSimple(sess,net,image_style,image_style_PhaseAlea,M_dict,
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
-			M = M_dict[layer[:5]]
+			M = M_dict[layer]
 			x = net[layer]
 			a_phase_alea = image_style_PhaseAlea[layer]
 			loss = tf.nn.l2_loss(tf.subtract(x,a_phase_alea))
@@ -893,7 +894,7 @@ def loss_PhaseAleatoirelist(sess,net,image_style,image_style_PhaseAlea,M_dict,st
 	print("Phase aleatoire List !")
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		x = net[layer]
 		a_phase_alea = image_style_PhaseAlea[layer]
 		loss = tf.nn.l2_loss(tf.subtract(x,a_phase_alea))
@@ -919,7 +920,7 @@ def loss_PhaseImpose(sess,net,image_style,M_dict,style_layers):
 	for layer, weight in style_layers:
 		# contrainte sur le module uniquement 
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		x_t = tf.transpose(x, [0,3,1,2])
@@ -1030,7 +1031,7 @@ def loss_intercorr(sess,net,image_style,M_dict,style_layers):
 	for layer, weight in style_layers:
 		print(layer)
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		x = tf.transpose(x, [0,3,1,2])
@@ -1092,7 +1093,7 @@ def loss_SpectrumOnFeatures(sess,net,image_style,M_dict,style_layers):
 	sess.run(net['input'].assign(image_style))  
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		x = net[layer]
 		x_transpose = tf.transpose(x, [0,3,1,2])
@@ -1126,7 +1127,7 @@ def loss_fft3D(sess,net,image_style,M_dict,style_layers):
 	sess.run(net['input'].assign(image_style))  
 	for layer, weight in style_layers:
 		N = style_layers_size[layer[:5]]
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		a = sess.run(net[layer])
 		#R_a = (ifft2(fft2(a) * fft2(a).conj()).real)/M
 		#R_x = x_temp[layer]
@@ -1210,7 +1211,7 @@ def loss__HF_filter(sess, net, image_style,M_dict):
 		input_a = sess.run(net[layer])
 		conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
 				padding='SAME',name='conv')
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		G_x = gram_matrix(conv_x,N,M)
 		G_a = gram_matrix(conv_a,N,M)
 		style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
@@ -1284,7 +1285,7 @@ def loss__HF_many_filters2(sess, net, image_style,M_dict):
 			input_a = sess.run(net[layer])
 			conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
 					padding='SAME',name='conv')
-			M = M_dict[layer[:5]]
+			M = M_dict[layer]
 			G_x = gram_matrix(conv_x,N,M)
 			G_a = gram_matrix(conv_a,N,M)
 			style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
@@ -1328,7 +1329,7 @@ def loss__HF_many_filters(sess, net, image_style,M_dict):
 		input_a = sess.run(net[layer])
 		conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
 				padding='SAME',name='conv')
-		M = M_dict[layer[:5]]
+		M = M_dict[layer]
 		G_x = gram_matrix(conv_x,N,M)
 		G_a = gram_matrix(conv_a,N,M)
 		style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
@@ -1358,7 +1359,7 @@ def loss__HF_many_filters(sess, net, image_style,M_dict):
 			input_a = sess.run(net[layer])
 			conv_a = tf.nn.conv2d(input_a, kernels, strides=(1, 1, 1, 1),
 					padding='SAME',name='conv')
-			M = M_dict[layer[:5]]
+			M = M_dict[layer]
 			G_x = gram_matrix(conv_x,N,M)
 			G_a = gram_matrix(conv_a,N,M)
 			style_loss = tf.nn.l2_loss(tf.subtract(G_x,G_a))
@@ -1542,6 +1543,19 @@ def get_M_dict(image_h,image_w):
 	volutionnal net
 	"""
 	M_dict =  {'conv1' : 0,'relu1' : 0,'pool1':0,'conv2' : 0,'relu2' : 0,'pool2':0,'conv3' : 0,'relu3' : 0,'pool3':0,'conv4': 0,'relu4' : 0,'pool4':0,'conv5' : 0,'relu5' : 0,'pool5':0}
+	M_dict = {
+	'conv1_1': 0, 'relu1_1': 0, 'conv1_2': 0, 'relu1_2': 0, 'pool1': 0,
+
+	'conv2_1': 0, 'relu2_1': 0, 'conv2_2': 0, 'relu2_2': 0, 'pool2': 0,
+
+	'conv3_1': 0, 'relu3_1': 0, 'conv3_2': 0, 'relu3_2': 0, 'conv3_3': 0,
+	'relu3_3': 0, 'conv3_4': 0, 'relu3_4': 0, 'pool3': 0,
+
+	'conv4_1': 0, 'relu4_1': 0, 'conv4_2': 0, 'relu4_2': 0, 'conv4_3': 0,
+	'relu4_3': 0, 'conv4_4': 0, 'relu4_4': 0, 'pool4': 0,
+
+	'conv5_1': 0, 'relu5_1': 0, 'conv5_2': 0, 'relu5_2': 0, 'conv5_3': 0,
+	'relu5_3': 0, 'conv5_4': 0, 'relu5_4': 0}
 	image_h_tmp = image_h
 	image_w_tmp = image_w
 	M = image_h_tmp*image_w_tmp
@@ -1555,7 +1569,46 @@ def get_M_dict(image_h,image_w):
 			M_dict[key] = M
 		elif(key[:4]=='relu'):
 			M_dict[key] = M
-	M_dict['input'] = M_dict['conv1']
+	M_dict['input'] = M_dict['conv1_1']
+	return(M_dict)  
+	
+def get_M_dict_Davy(image_h,image_w):
+	"""
+	This function compute the size of the different dimension in the con
+	volutionnal net when using a VALID padding without circular extensio
+	"""
+	print('Davy')
+	M_dict = {
+	'conv1_1': 0, 'relu1_1': 0, 'conv1_2': 0, 'relu1_2': 0, 'pool1': 0,
+
+	'conv2_1': 0, 'relu2_1': 0, 'conv2_2': 0, 'relu2_2': 0, 'pool2': 0,
+
+	'conv3_1': 0, 'relu3_1': 0, 'conv3_2': 0, 'relu3_2': 0, 'conv3_3': 0,
+	'relu3_3': 0, 'conv3_4': 0, 'relu3_4': 0, 'pool3': 0,
+
+	'conv4_1': 0, 'relu4_1': 0, 'conv4_2': 0, 'relu4_2': 0, 'conv4_3': 0,
+	'relu4_3': 0, 'conv4_4': 0, 'relu4_4': 0, 'pool4': 0,
+
+	'conv5_1': 0, 'relu5_1': 0, 'conv5_2': 0, 'relu5_2': 0, 'conv5_3': 0,
+	'relu5_3': 0, 'conv5_4': 0, 'relu5_4': 0}
+	
+	image_h_tmp = image_h
+	image_w_tmp = image_w
+	M = image_h_tmp*image_w_tmp
+	for key in M_dict.keys():
+		if(key[:4]=='conv'):
+			image_h_tmp = image_h_tmp - 2
+			image_w_tmp = image_w_tmp - 2
+			M_dict[key] = image_h_tmp*image_w_tmp
+		elif(key[:4]=='pool'):
+			image_h_tmp =  math.ceil((image_h_tmp-1) / 2)
+			image_w_tmp = math.ceil((image_w_tmp-1) / 2)
+			M = image_h_tmp*image_w_tmp
+			M_dict[key] = M
+		elif(key[:4]=='relu'):
+			M_dict[key] = M
+		print(key,image_h_tmp,image_w_tmp,M)
+	M_dict['input'] = M_dict['conv1_1']
 	return(M_dict)  
 	
 def print_loss_tab(sess,list_loss,list_loss_name):
@@ -1985,7 +2038,7 @@ def style_transfer(args):
 	image_content = load_img(args,args.content_img_name)
 	image_style = load_img(args,args.style_img_name)
 	_,image_h, image_w, number_of_channels = image_content.shape 
-	M_dict = get_M_dict(image_h,image_w)
+	
 	
 	if(args.clipping_type=='ImageNet'):
 		BGR=False
@@ -2019,8 +2072,13 @@ def style_transfer(args):
 			raise(utils.MyError("It is not allowed to use Davy padding for doing Style Transfer, at least you find how to do. Good luck :)"))
 	else: 
 		dict_features_repr = None
+		
+	if padding=='Davy':
 		# In this case the content matrice is just use for the output size
-		image_content = np.zeros(1,2*image_h, 2*image_w, number_of_channels).astype('float32')
+		image_content = np.zeros((1,2*image_h, 2*image_w, number_of_channels)).astype('float32')
+		M_dict = get_M_dict_Davy(2*image_h,2*image_w)
+	else:
+		M_dict = get_M_dict(image_h,image_w)
 		
 	net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
 	
@@ -2138,7 +2196,7 @@ def style_transfer(args):
 				result_img = sess.run(net['input'])
 				if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
 				if(padding=='Davy'):
-					result_img_postproc = postprocess(result_img[:,256:768,256:768,:])
+					result_img_postproc = postprocess(utils.get_center_tensor(result_img))
 				else:
 					result_img_postproc = postprocess(result_img)
 				scipy.misc.imsave(output_image_path,result_img_postproc)
@@ -2148,7 +2206,7 @@ def style_transfer(args):
 		result_img = sess.run(net['input'])
 		if(args.plot): plot_image_with_postprocess(args,result_img.copy(),"Final Image",fig)
 		if(padding=='Davy'):
-			result_img_postproc = postprocess(result_img[:,256:768,256:768,:])
+			result_img_postproc = postprocess(utils.get_center_tensor(result_img))
 		else:
 			result_img_postproc = postprocess(result_img)
 		scipy.misc.toimage(result_img_postproc).save(output_image_path) 
@@ -2163,7 +2221,7 @@ def style_transfer(args):
 		if(args.verbose): print("Error, in the lbfgs case the image can be strange and incorrect")
 		result_img = sess.run(net['input'])
 		if(padding=='Davy'):
-			result_img_postproc = postprocess(result_img[:,256:768,256:768,:])
+			result_img_postproc = postprocess(utils.get_center_tensor(result_img))
 		else:
 			result_img_postproc = postprocess(result_img)
 		output_image_path_error = args.img_output_folder + args.output_img_name+'_error' +args.img_ext
@@ -2210,7 +2268,7 @@ def main_with_option():
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001
-	optimizer = 'GD'
+	optimizer = 'lbfgs'
 	learning_rate = 1 # 10 for adam and 10**(-10) for GD
 	maxcor = 10
 	sampling = 'up'
