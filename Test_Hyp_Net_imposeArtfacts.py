@@ -725,6 +725,7 @@ def main_test_hyp():
 	image_style_name= "Brick_512_1"
 	image_style_name= "BrickSmallBrown0293_1_512_1"
 	image_style_name= "MarbreWhite_1"
+	image_style_name= "Camouflage_1"
 	img_output_folder = "images_Hyp/"
 	img_folder = "images_Hyp/"
 	content_img_name  = image_style_name
@@ -737,7 +738,7 @@ def main_test_hyp():
 	learning_rate = 10 # 10 for adam and 10**(-10) for GD
 	maxcor = 10
 	sampling = 'up'
-	padding = 'SAME'
+	padding = 'VALID'
 	#padding = 'VALIDTRUE' # TODO change that it doesn't work yet !!! 
 	# In order to set the parameter before run the script
 	parser.set_defaults(img_folder=img_folder,style_img_name=image_style_name,max_iter=max_iter,
