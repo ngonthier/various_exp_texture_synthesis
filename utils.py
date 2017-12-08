@@ -16,7 +16,19 @@ import numpy as np
 import tensorflow as tf
 import os
 import time
+import math
 from pathlib import Path
+	
+def get_center_tensor(im):
+	""" Fonction qui recupere le centre d'un tenseur / imaeg """
+	_,h,w,_ = im.shape 
+	h4 = math.ceil(h/4)
+	h6 = math.ceil(3*h/4)
+	w4 = math.ceil(w/4)
+	w6 = math.ceil(3*w/4)
+	im_tmp = im[:,h4:h6,w4:w6,:]
+	return(im_tmp)
+	
 	
 def get_kernel_size(factor):
 	"""
@@ -132,3 +144,7 @@ def do_mkdir(path):
 	if not(os.path.isdir(path)):
 		os.mkdir(path)
 	return(0)
+
+class MyError(Exception):
+     def __init__(self, message):
+        self.message = message

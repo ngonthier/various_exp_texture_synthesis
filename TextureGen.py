@@ -188,7 +188,7 @@ def plot_stats_etc_on_moment(TypeOfComputation='moments'):
 	plt.close()
 	plt.clf()
 			
-def generate_all_texture(args,path_output_mod,pooling_type='avg',padding='VALID'):
+def generate_all_texture(args,path_output_mod,pooling_type='avg',padding='Circular'):
 	dirs = get_list_of_images()
 	
 	for name_img in dirs:

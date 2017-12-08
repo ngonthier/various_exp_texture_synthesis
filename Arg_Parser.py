@@ -99,7 +99,7 @@ def get_parser_args():
     parser.add_argument('--pooling_type', type=str,default='avg',
         choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
     
-    parser.add_argument('--padding', type=str,choices=['SAME','VALID'],
+    parser.add_argument('--padding', type=str,choices=['SAME','Circular','Davy','VALID'],
         default='SAME',help='Type of padding in the network. (default: %(default)s)')
         
     parser.add_argument('--vgg_name', type=str,

@@ -18,6 +18,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from decimal import Decimal
 
+
 content_layers = [('conv4_2',1.)]
 #style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.),('conv4_1',1.),('conv5_1',1.)]
 style_layers = [('conv1_1',1.),('conv2_1',1.),('conv3_1',1.)]
