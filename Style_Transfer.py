@@ -96,11 +96,11 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
             bias = vgg_layers[i][0][0][2][0][1]
             # matconvnet: weights are [width, height, in_channels, out_channels]
             # tensorflow: weights are [height, width, in_channels, out_channels]
-            kernels = tf.constant(np.transpose(kernels, (1,0 ,2, 3)))
-            #~ if(i==0):
-                #~ kernels = tf.constant(kernels[:,:,::-1,:])
-            #~ else:
-                #~ kernels = tf.constant(kernels)
+            #kernels = tf.constant(np.transpose(kernels, (1,0 ,2, 3)))
+            if(i==0):
+                kernels = tf.constant(kernels[:,:,::-1,:])
+            else:
+                kernels = tf.constant(kernels)
             bias = tf.constant(bias.reshape(-1))
             current = conv_layer(current, kernels, bias,name,padding) 
             # Update the  variable named current to have the right size
@@ -1601,7 +1601,8 @@ def get_M_dict_Davy(image_h,image_w):
         if(key[:4]=='conv'):
             image_h_tmp = image_h_tmp - 2
             image_w_tmp = image_w_tmp - 2
-            M_dict[key] = image_h_tmp*image_w_tmp
+            M  = image_h_tmp*image_w_tmp
+            M_dict[key] = M
         elif(key[:4]=='pool'):
             image_h_tmp =  math.ceil((image_h_tmp-1) / 2)
             image_w_tmp = math.ceil((image_w_tmp-1) / 2)
@@ -1880,7 +1881,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
         style_layers = [('conv1_1',1),('conv2_1',1),('conv3_1',1)]
     elif(args.config_layers=='Custom'):
         content_layers =  list(zip(args.content_layers, args.content_layer_weights))
-        style_layers = slist(zip(args.style_layers,args.style_layer_weights))
+        style_layers = list(zip(args.style_layers,args.style_layer_weights))
     if(args.verbose): print('content_layers',content_layers)
     if(args.verbose): print('style_layers',style_layers)
     
@@ -2264,6 +2265,7 @@ def main_with_option():
     brick = 'Brick_512_1'
     #brick = 'MarbreWhite_1'
     #brick = 'Camouflage_1'
+    brick = 'Fabric_0000'
     img_output_folder = "images_Hyp/"
     img_folder = img_output_folder
     image_style_name = brick
