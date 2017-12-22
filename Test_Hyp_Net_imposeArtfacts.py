@@ -739,7 +739,6 @@ def main_test_hyp():
 	maxcor = 10
 	sampling = 'up'
 	padding = 'VALID'
-	#padding = 'VALIDTRUE' # TODO change that it doesn't work yet !!! 
 	# In order to set the parameter before run the script
 	parser.set_defaults(img_folder=img_folder,style_img_name=image_style_name,max_iter=max_iter,
 		print_iter=print_iter,start_from_noise=start_from_noise,padding=padding,
@@ -750,7 +749,8 @@ def main_test_hyp():
 	style_transfer_test_hyp(args)
 
 def main_artefacts_grad():
-	""" Etude du gradient appliqué à la première itération
+	""" 
+	Etude du gradient appliqué à la première itération
 	"""	
 	parser = get_parser_args()
 	image_style_name= "Brick_512_1"

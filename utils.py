@@ -20,7 +20,7 @@ import math
 from pathlib import Path
 	
 def get_center_tensor(im):
-	""" Fonction qui recupere le centre d'un tenseur / imaeg """
+	""" Fonction qui recupere le centre d'un tenseur / image """
 	_,h,w,_ = im.shape 
 	h4 = math.ceil(h/4)
 	h6 = math.ceil(3*h/4)
@@ -116,6 +116,20 @@ def create_param_id_file_and_dir(param_dir):
 def save_args(args,path):
 	# TODO : a faire
 	return(0)
+	
+def get_list_of_images(path_origin):
+	dirs = os.listdir(path_origin)
+	dirs = sorted(dirs, key=str.lower)
+	return(dirs)
+
+def do_mkdir(path):
+	if not(os.path.isdir(path)):
+		os.mkdir(path)
+	return(0)
+
+class MyError(Exception):
+     def __init__(self, message):
+        self.message = message
 
 if __name__ == '__main__':
 	from numpy import ogrid, repeat, newaxis
@@ -134,17 +148,3 @@ if __name__ == '__main__':
 
 	upsampled_img_tf = upsample_tf(factor=3, input_img=img)
 	io.imshow(upsampled_img_tf)
-
-def get_list_of_images(path_origin):
-	dirs = os.listdir(path_origin)
-	dirs = sorted(dirs, key=str.lower)
-	return(dirs)
-
-def do_mkdir(path):
-	if not(os.path.isdir(path)):
-		os.mkdir(path)
-	return(0)
-
-class MyError(Exception):
-     def __init__(self, message):
-        self.message = message

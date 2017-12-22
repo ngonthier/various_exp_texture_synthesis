@@ -145,7 +145,7 @@ def get_parser_args():
         default=[1.,1.,1.,1.,1.],
         help='Contributions (weights) of each style layer to loss. (default: %(default)s)') # TODO change that to be able to choose only one number, the same weight for all
         
-    parser.add_argument('--config_layers',type=str,default='PoolConfig',choices=['PoolConfig','FirstConvs','Custom'],
+    parser.add_argument('--config_layers',type=str,default='PoolConfig',choices=['PoolConfig','FirstConvs','GatysConfig','Custom'],
         help='Configuration already saved for the choice of the content and style layers and weights choosen, need to be None to allow user to change. (default: %(default)s)') 
         
     # GPU Config :
