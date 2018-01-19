@@ -73,7 +73,7 @@ def get_parser_args():
         help='Clip the values of the variable after each iteration only for adam or GD method. Equal to 1 for true and 0 otherwise (default %(default)s)')  
     
     parser.add_argument('--clipping_type', type=str,choices=['ImageNet','ImageStyle','ImageStyleBGR'],
-		default='ImageStyleBGR',help='Element that we use to compute clip values : ImageNet means, the image style or each channel of the iamge style. (default %(default)s)')  
+        default='ImageStyleBGR',help='Element that we use to compute clip values : ImageNet means, the image style or each channel of the iamge style. (default %(default)s)')  
     
     # Profiling Tensorflow
     parser.add_argument('--tf_profiler',action='store_true',
@@ -134,7 +134,7 @@ def get_parser_args():
         help='VGG19 layers used for the content image. (default: %(default)s)')
   
     parser.add_argument('--style_layers', nargs='+', type=str,
-        default=['conv1_1','pool1','pool2','pool3','pool4'],
+        default=['relu1_1','pool1','pool2','pool3','pool4'],
         help='VGG19 layers used for the style image. (default: %(default)s)') # Need to have config_layers = Custom to change that
   
     parser.add_argument('--content_layer_weights', nargs='+', type=float, 
@@ -145,8 +145,17 @@ def get_parser_args():
         default=[1.,1.,1.,1.,1.],
         help='Contributions (weights) of each style layer to loss. (default: %(default)s)') # TODO change that to be able to choose only one number, the same weight for all
         
-    parser.add_argument('--config_layers',type=str,default='PoolConfig',choices=['PoolConfig','FirstConvs','GatysConfig','Custom'],
+    parser.add_argument('--config_layers',type=str,default='GatysConfig',choices=['PoolConfig','FirstConvs','GatysConfig','Custom'],
         help='Configuration already saved for the choice of the content and style layers and weights choosen, need to be None to allow user to change. (default: %(default)s)') 
+        
+    parser.add_argument('--alpha_phaseAlea',  type=float,default=0.01,
+        help='Value of the weight on the phase imposed. (default: %(default)s)')
+        
+    parser.add_argument('--beta_spectrum',  type=float,default=10**5,
+        help='Value of the weight on the spectrum constraint [Gang 2017]. (default: %(default)s)')
+        
+    parser.add_argument('--gamma_phaseAlea',  type=float,default=1.,
+        help='Value of the weight on the phaseAleatoire loss. (default: %(default)s)')
         
     # GPU Config :
     parser.add_argument('--gpu_frac',  type=float,default=0.,

@@ -215,6 +215,40 @@ def sum_style_losses(sess, net, dict_gram,M_dict,style_layers):
 		total_style_loss += style_loss
 	return(total_style_loss)
 
+def style_losses_audetail(sess, net, dict_gram,M_dict,style_layers):
+	"""
+	Compute the style term of the loss function with Gram Matrix from the
+	Gatys Paper
+	Input : 
+	- the tensforflow session sess
+	- the vgg19 net
+	- the dictionnary of Gram Matrices
+	- the dictionnary of the size of the image content through the net
+	Return an array of the style losses for the differents elements of the layers !!! 
+	"""
+	# Info for the vgg19
+	length_style_layers = float(len(style_layers))
+	weight_help_convergence = 10**(9) # This wight come from a paper of Gatys
+	# Because the function is pretty flat 
+	total_style_loss = 0
+	style_losses_tab = []
+	for i, couple in enumerate(style_layers):
+		layer, weight = couple
+		# For one layer
+		N = style_layers_size[layer[:5]]
+		A = dict_gram[layer]
+		A = tf.constant(A)
+		# Get the value of this layer with the generated image
+		M = M_dict[layer]
+		x = net[layer]
+		G = gram_matrix(x,N,M) # Nota Bene : the Gram matrix is normalized by M
+		#print(tf.shape(G))
+		gram_diff = tf.multiply(tf.pow(tf.subtract(G,A),2),weight * weight_help_convergence  / (4.*(N**2)*length_style_layers))
+		#print(tf.shape(gram_diff))
+		style_losses_tab += [gram_diff]
+		total_style_loss += tf.reduce_sum(gram_diff)
+	return(total_style_loss,style_losses_tab)
+
 def style_losses(sess, net, dict_gram,M_dict,style_layers):
 	"""
 	Compute the style term of the loss function with Gram Matrix from the
@@ -224,7 +258,7 @@ def style_losses(sess, net, dict_gram,M_dict,style_layers):
 	- the vgg19 net
 	- the dictionnary of Gram Matrices
 	- the dictionnary of the size of the image content through the net
-	Return an array of the style losses for the diferents layers and the total_style_loss
+	Return an array of the style losses for the differents layers and the total_style_loss
 	"""
 	# Info for the vgg19
 	length_style_layers = float(len(style_layers))
@@ -780,7 +814,7 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers):
 
 	return(image_style_PhaseAlea)
 	
-def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_layers):
+def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_layers,alpha=1,gamma_phaseAlea=1.):
 	"""
 	In this loss function we impose the TF transform to the last layer 
 	with a random phase imposed and only the spectrum of the others layers
@@ -791,7 +825,6 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 	weight_help_convergence = 10**9
 	total_style_loss = 0.
 	last_style_layers,_ = style_layers[-1]
-	alpha = 1
 	for layer, weight in style_layers:
 		if(last_style_layers==layer):
 			N = style_layers_size[layer[:5]]
@@ -799,7 +832,7 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 			x = net[layer]
 			a_phase_alea = image_style_PhaseAlea[layer]
 			loss = tf.nn.l2_loss(tf.subtract(x,a_phase_alea))
-			loss *= alpha *  weight * weight_help_convergence /(2.*(N**2)*tf.to_float(M**2)*length_style_layers)
+			loss *= gamma_phaseAlea * alpha *  weight * weight_help_convergence /(2.*(N**2)*tf.to_float(M**2)*length_style_layers)
 			total_style_loss += loss
 		else:
 			sess.run(net['input'].assign(image_style))
@@ -816,7 +849,7 @@ def loss_PhaseAleatoire(sess,net,image_style,image_style_PhaseAlea,M_dict,style_
 			R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
 			R_a /= tf.to_float(M**2)
 			style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
-			style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+			style_loss *=  gamma_phaseAlea * weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 			total_style_loss += style_loss
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
@@ -1146,30 +1179,40 @@ def loss_fft3D(sess,net,image_style,M_dict,style_layers):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
-def loss_spectrum(sess,net,image_style,M_dict):
+def loss_spectrum(sess,net,image_style,M_dict,beta):
 	"""
 	Computation of the spectrum loss from Gang Liu 
 	https://arxiv.org/pdf/1605.01141.pdf
 	"""
 	eps = 0.001
-	beta = 10**5 # Value from the paper
-	M = M_dict['input']
-	x = net['input']
-	a = tf.transpose(image_style, [0,3,1,2])
+	M = M_dict['input'] # Nombre de pixels
+	
+	x = net['input'] # Image en cours de synthese
+	
+	
+	#For color images,
+	#the phase of the gray level image is first computed, and then
+	#imposed to each color channel
+	 
+	a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch, h,w,canaux à  batch,canaux,h,w
+	F_a = tf.fft2d(tf.complex(a,0.)) # TF de l image de reference
+	
 	x_t = tf.transpose(x, [0,3,1,2])
-	F_x = tf.fft2d(tf.complex(x_t,0.))
-	#F_a = tf.reduce_sum(tf.fft2d(tf.complex(a,0.)),1, keep_dims=True)
-	F_a = tf.fft2d(tf.complex(a,0.))
-	#innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True )  # sum(ftIm .* conj(ftRef), 3);
-	innerProd = tf.multiply(F_x,tf.conj(F_a))  # sum(ftIm .* conj(ftRef), 3);
+	F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
+	
+	
+	innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
+	# Shape = [  1   1 512 512] pour une image 512*512
 	module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
 	dephase = tf.divide(innerProd,module_InnerProd+eps)
-	ftNew =  tf.multiply(dephase,F_x)
+	#print(sess.run(tf.shape(dephase)))
+	ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
+	#print(sess.run(tf.shape(ftNew)))
 	imF = tf.ifft2d(ftNew)
 	imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
 	loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
 	#loss *= beta/(M*3) # Need to be checked by Said or Yann TODO !
-	loss *= beta/(M*2)
+	loss *= beta/(3*M)
 	return(loss)    
 
 def loss__HF_filter(sess, net, image_style,M_dict):
@@ -1958,7 +2001,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 list_loss +=  [fftVect_loss]
 		 list_loss_name +=  ['fftVect_loss'] 
 	if('spectrum'  in args.loss) or ('full' in args.loss):
-		 spectrum_loss = loss_spectrum(sess,net,image_style,M_dict)
+		 spectrum_loss = loss_spectrum(sess,net,image_style,M_dict,args.beta_spectrum)
 		 list_loss +=  [spectrum_loss]
 		 list_loss_name +=  ['spectrum_loss']  
 	if('variance'  in args.loss) or ('full' in args.loss):
@@ -1971,7 +2014,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 list_loss_name +=  ['SpectrumOnFeatures_loss'] 
 	if('phaseAlea' in args.loss) or ('full' in args.loss):
 		 image_style_Phase = compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers)
-		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict,style_layers)
+		 phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict,style_layers,args.alpha_phaseAlea,args.gamma_phaseAlea)
 		 list_loss +=  [phaseAlea_loss]
 		 list_loss_name +=  ['phaseAlea_loss']  
 	if('entropy' in args.loss) or ('full' in args.loss): 
@@ -2272,13 +2315,15 @@ def main_with_option():
 	brick = 'Brick_512_1'
 	#brick = 'MarbreWhite_1'
 	#brick = 'Camouflage_1'
-	#brick = 'Fabric_0000'
-	img_output_folder = "images_Hyp/"
-	img_folder = img_output_folder
+	#brick = 'OrnamentsCambodia0055_512'
+	brick = 'TilesOrnate0158_512'
+	#brick = 'TilesOrnate0158_1_S'
+	img_folder = "images/"
+	img_output_folder = ""
 	image_style_name = brick
 	content_img_name  = brick
-	max_iter = 20
-	print_iter = 20
+	max_iter = 2000
+	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
 	content_strengh = 0.001

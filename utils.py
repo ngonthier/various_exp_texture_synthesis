@@ -20,7 +20,7 @@ import math
 from pathlib import Path
 	
 def get_center_tensor(im):
-	""" Fonction qui recupere le centre d'un tenseur / image """
+	""" Fonction qui recupere le centre d'une image / numpy array of dim 4 ! """
 	_,h,w,_ = im.shape 
 	h4 = math.ceil(h/4)
 	h6 = math.ceil(3*h/4)
@@ -28,7 +28,19 @@ def get_center_tensor(im):
 	w6 = math.ceil(3*w/4)
 	im_tmp = im[:,h4:h6,w4:w6,:]
 	return(im_tmp)
-	
+
+def get_center_tensor_tf(im,sess):
+	""" Fonction qui retourne le centre d'un tenseur de dim 4 avec la première dimension ne comportant rien """
+	shape =sess.run(tf.shape(im)) 
+	print(shape)
+	begin = []
+	size = []
+	for elt in shape:
+		print(elt)
+		begin += [math.ceil(elt/4)]
+		size += [math.ceil(elt/2)]
+	output = sess.run(tf.slice(im, begin, size))
+	return(output)
 	
 def get_kernel_size(factor):
 	"""
