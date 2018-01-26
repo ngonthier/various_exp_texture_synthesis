@@ -1188,8 +1188,7 @@ def loss_spectrum(sess,net,image_style,M_dict,beta):
 	M = M_dict['input'] # Nombre de pixels
 	
 	x = net['input'] # Image en cours de synthese
-	
-	
+		
 	#For color images,
 	#the phase of the gray level image is first computed, and then
 	#imposed to each color channel
@@ -1200,18 +1199,15 @@ def loss_spectrum(sess,net,image_style,M_dict,beta):
 	x_t = tf.transpose(x, [0,3,1,2])
 	F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
 	
-	
 	innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
 	# Shape = [  1   1 512 512] pour une image 512*512
-	module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
+	#module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
+	module_InnerProd = tf.abs(innerProd) # Possible with tensorflow 1.4
 	dephase = tf.divide(innerProd,module_InnerProd+eps)
-	#print(sess.run(tf.shape(dephase)))
 	ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
-	#print(sess.run(tf.shape(ftNew)))
 	imF = tf.ifft2d(ftNew)
 	imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
 	loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
-	#loss *= beta/(M*3) # Need to be checked by Said or Yann TODO !
 	loss *= beta/(3*M)
 	return(loss)    
 
