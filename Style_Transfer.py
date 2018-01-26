@@ -598,7 +598,7 @@ def loss_autocorrbizarre(sess,net,image_style,M_dict,style_layers):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 
-def loss_autocorr(sess,net,image_style,M_dict,style_layers):
+def loss_autocorr(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
 	"""
 	Computation of the autocorrelation of the filters
 	"""
@@ -625,7 +625,7 @@ def loss_autocorr(sess,net,image_style,M_dict,style_layers):
 		R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
 		R_a /= tf.to_float(M**2)
 		style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
-		style_loss *=  weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		style_loss *=  gamma_autocorr* weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
 		total_style_loss += style_loss
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
@@ -1981,7 +1981,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		 list_loss +=  [autocorrbizarre_loss]
 		 list_loss_name +=  ['autocorrbizarre_loss']   
 	if('autocorr'  in args.loss) or ('full' in args.loss): 
-		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,style_layers)
+		 autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,style_layers,args.gamma_autocorr)
 		 list_loss +=  [autocorr_loss]
 		 list_loss_name +=  ['autocorr_loss']
 	if('autocorrLog'  in args.loss): 

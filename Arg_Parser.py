@@ -156,7 +156,10 @@ def get_parser_args():
         
     parser.add_argument('--gamma_phaseAlea',  type=float,default=1.,
         help='Value of the weight on the phaseAleatoire loss. (default: %(default)s)')
-        
+    
+    parser.add_argument('--gamma_autocorr',  type=float,default=1.,
+        help='Value of the weight on the autocorr loss. (default: %(default)s)') 
+       
     # GPU Config :
     parser.add_argument('--gpu_frac',  type=float,default=0.,
         help='Fraction of the memory for the GPU process, if <=0. then memoryground = True. And if > 1. then normal behaviour ie 0.95%% of the memory is allocated without error. (default %(default)s)')
