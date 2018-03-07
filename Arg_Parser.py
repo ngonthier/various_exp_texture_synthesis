@@ -109,7 +109,12 @@ def get_parser_args():
     
     # Info on the loss function 
     parser.add_argument('--loss',nargs='+',type=str,default='texture',
-        choices=['full','Gatys','texture','content','4moments','nmoments','nmoments_reduce','InterScale','autocorr','autocorrLog','autocorr_rfft','Lp','TV','TV1','fft3D','entropy','spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures','texMask','intercorr','bizarre','HF','HFmany','variance','fftVect','current','phaseAleaList'],
+        choices=['full','Gatys','texture','content','4moments','nmoments',
+			'nmoments_reduce','InterScale','autocorr','autocorrLog',
+			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy',
+			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
+			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
+			'TVronde','current','phaseAleaList'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
@@ -145,11 +150,14 @@ def get_parser_args():
         default=[1.,1.,1.,1.,1.],
         help='Contributions (weights) of each style layer to loss. (default: %(default)s)') # TODO change that to be able to choose only one number, the same weight for all
         
-    parser.add_argument('--config_layers',type=str,default='GatysConfig',choices=['PoolConfig','FirstConvs','GatysConfig','Custom'],
+    parser.add_argument('--config_layers',type=str,default='GatysConfig',choices=['PoolConfig','FirstConvs','GatysConfig','Custom','DCor'],
         help='Configuration already saved for the choice of the content and style layers and weights choosen, need to be None to allow user to change. (default: %(default)s)') 
         
     parser.add_argument('--alpha_phaseAlea',  type=float,default=0.01,
         help='Value of the weight on the phase imposed. (default: %(default)s)')
+        
+    parser.add_argument('--alpha_TV',  type=float,default=10**(-5),
+        help='Value of the weight in front of the TV term. (default: %(default)s)')
         
     parser.add_argument('--beta_spectrum',  type=float,default=10**5,
         help='Value of the weight on the spectrum constraint [Gang 2017]. (default: %(default)s)')

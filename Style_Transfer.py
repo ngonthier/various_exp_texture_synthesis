@@ -808,7 +808,7 @@ def compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers):
 	diff = tf.subtract(F_a_modulus,imF_modulus)
 	diff = sess.run(diff)
 	max_diff = np.max(diff)/F_a_modulus_max
-	if(max_diff > 10**(-4)):
+	if(max_diff > 10**(-2)):
 		print("The modulus of the image style features at the last layer is not preserved ! max_diff =",max_diff)
 		raise Exception
 
@@ -1201,8 +1201,8 @@ def loss_spectrum(sess,net,image_style,M_dict,beta):
 	
 	innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
 	# Shape = [  1   1 512 512] pour une image 512*512
-	#module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
-	module_InnerProd = tf.abs(innerProd) # Possible with tensorflow 1.4
+	module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
+	#module_InnerProd = tf.abs(innerProd) # Possible with tensorflow 1.4
 	dephase = tf.divide(innerProd,module_InnerProd+eps)
 	ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
 	imF = tf.ifft2d(ftNew)
@@ -1406,14 +1406,38 @@ def loss__HF_many_filters(sess, net, image_style,M_dict):
 			total_style_loss += style_loss
 	return(total_style_loss)
 
-def sum_total_variation_losses(sess, net):
+def sum_total_variation_losses(sess, net,alpha_TV):
 	"""
 	denoising loss function, this function come from : 
 	https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
+	this version of the total variation is  anisotropy.
+	Here we have loss = (norm_2 (grad_x(I)) + norm_2 (grad_y(I)))^2
+	
+	In Jonhson we have : https://github.com/jcjohnson/neural-style/blob/master/neural_style.lua
+	-- TV loss backward pass inspired by kaishengtai/neuralart
+	function TVLoss:updateGradInput(input, gradOutput)
+	  self.gradInput:resizeAs(input):zero()
+	  local C, H, W = input:size(1), input:size(2), input:size(3)
+	  self.x_diff:resize(3, H - 1, W - 1)
+	  self.y_diff:resize(3, H - 1, W - 1)
+	  self.x_diff:copy(input[{{}, {1, -2}, {1, -2}}])
+	  self.x_diff:add(-1, input[{{}, {1, -2}, {2, -1}}])
+	  self.y_diff:copy(input[{{}, {1, -2}, {1, -2}}])
+	  self.y_diff:add(-1, input[{{}, {2, -1}, {1, -2}}])
+	  self.gradInput[{{}, {1, -2}, {1, -2}}]:add(self.x_diff):add(self.y_diff)
+	  self.gradInput[{{}, {1, -2}, {2, -1}}]:add(-1, self.x_diff)
+	  self.gradInput[{{}, {2, -1}, {1, -2}}]:add(-1, self.y_diff)
+	  self.gradInput:mul(self.strength)
+	  self.gradInput:add(gradOutput)
+	  return self.gradInput
+	end
+	Inspired from https://github.com/kaishengtai/neuralart/blob/297112666def04397a00b178eb77172df607dda6/costs.lua
+	
 	"""
 	x = net['input']
-	weight_help_convergence = 1.
-	alpha = 10**(-6) # In order to not destroy the image to a constance 
+	weight_help_convergence = 10**9
+	#alpha = 10**(-6) # In order to not destroy the image to a constance 
+	# total variation regularization  with a strength of between 1 × 10 −6 and 1 × 10 −4 from  Jonshon
 	[b, h, w, d] = x.get_shape()
 	b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
 	tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
@@ -1422,7 +1446,26 @@ def sum_total_variation_losses(sess, net):
 	loss_y /= tv_y_size
 	loss_x = tf.nn.l2_loss(x[:,:,1:,:] - x[:,:,:-1,:]) 
 	loss_x /= tv_x_size
-	loss = 2 *alpha * weight_help_convergence * (loss_y + loss_x)
+	loss = 2 *alpha_TV * weight_help_convergence * (loss_y + loss_x)
+	loss = tf.cast(loss, tf.float32)
+	return(loss)
+	
+def sum_TV_ronde_losses(sess, net,alpha_TVronde):
+	"""
+	denoising loss function, 
+	this version of the total variation is  anisotropy.
+	Here we have loss = sum sqrt((grad_x(I)^2) + (grad_y(I)^2))
+	"""
+	x = net['input']
+	weight_help_convergence = 10*9
+	grad_x = x[:,1:,:,:] - x[:,:-1,:,:]
+	grad_x_padding = tf.constant([[0,0],[0,1],[0,0],[0,0]])
+	grad_x = tf.pad(grad_x,grad_x_padding,mode='CONSTANT',constant_values=0)
+	grad_y =x[:,:,1:,:] - x[:,:,:-1,:]
+	grad_y_padding = tf.constant([[0,0],[0,0],[0,1],[0,0]])
+	grad_y = tf.pad(grad_y,grad_y_padding,mode='CONSTANT',constant_values=0)
+	ampl_grad = tf.pow(tf.add(tf.add(tf.pow(grad_x,2),tf.pow(grad_y,2)),1.),0.5)
+	loss = 2 *alpha_TVronde * weight_help_convergence * tf.pow(tf.reduce_mean(ampl_grad),2)
 	loss = tf.cast(loss, tf.float32)
 	return(loss)
 
@@ -1438,23 +1481,18 @@ def sum_total_variation_TF(sess, net):
 	return(loss)
 	
 	
-def sum_total_variation_losses_norm1(sess, net):
+def sum_total_variation_losses_norm1(sess, net,alpha_TV):
 	"""
 	denoising loss function, this function come from : 
 	https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
+	
+	TV anisotropique sum of absolute value of the gradient
 	"""
 	x = net['input']
-	weight_help_convergence = 1.
-	alpha = 10**(-6) # In order to not destroy the image to a constance 
-	[b, h, w, d] = x.get_shape()
-	b, h, w, d = tf.to_int32(b),tf.to_int32(h),tf.to_int32(w),tf.to_int32(d)
-	tv_y_size = tf.to_float(b * (h-1) * w * d) # Nombre de pixels
-	tv_x_size = tf.to_float(b * h * (w-1) * d)
-	loss_y = tf.reduce_sum(tf.abs(x[:,1:,:,:] - x[:,:-1,:,:]))
-	loss_y /= tv_y_size
-	loss_x = tf.reduce_sum(tf.abs(x[:,:,1:,:] - x[:,:,:-1,:]))
-	loss_x /= tv_x_size
-	loss = 2 *alpha * weight_help_convergence * (loss_y + loss_x)
+	weight_help_convergence = 10**9
+	loss_y = tf.reduce_mean(tf.abs(x[:,1:,:,:] - x[:,:-1,:,:]))
+	loss_x = tf.reduce_mean(tf.abs(x[:,:,1:,:] - x[:,:,:-1,:]))
+	loss = alpha_TV * weight_help_convergence * (loss_y + loss_x)
 	loss = tf.cast(loss, tf.float32)
 	return(loss)
 		
@@ -1912,6 +1950,7 @@ def load_img(args,img_name):
 def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding):
 	""" Compute the total loss map of the sub loss """
 	#Get the layer used for style and other
+	content_layers = []
 	if(args.config_layers=='PoolConfig'):
 		content_layers = [('conv4_2',1)]
 		style_layers = [('conv1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
@@ -1921,6 +1960,22 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 	elif(args.config_layers=='GatysConfig'):
 		content_layers = [('conv4_2',1)]
 		style_layers = [('relu1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
+	elif(args.config_layers=='DCor'):
+		# Deep Correlation configuration
+		gram_style_layers = [('pool1',0.25),('pool2',0.25),('pool3',0.25),('pool4',0.25)]
+		style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,gram_style_layers)
+		list_loss =  [style_loss]
+		list_loss_name =  ['style_loss']
+		gamma_autocorr = 10**(-4)
+		deepcoor_layer = [('pool2',1)]
+		autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,deepcoor_layer,gamma_autocorr)
+		list_loss +=  [autocorr_loss]
+		list_loss_name +=  ['autocorr_loss']
+		if(args.type_of_loss=='add'):
+			loss_total = tf.reduce_sum(list_loss)
+		list_loss +=  [loss_total]
+		list_loss_name +=  ['loss_total']
+		return(loss_total,list_loss,list_loss_name)
 	elif(args.config_layers=='Custom'):
 		content_layers =  list(zip(args.content_layers, args.content_layer_weights))
 		style_layers = list(zip(args.style_layers,args.style_layer_weights))
@@ -1931,11 +1986,11 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 	list_loss =  []
 	list_loss_name =  []
 	assert len(args.loss)
-	if('Gatys' in args.loss) or ('content'  in args.loss) or ('full' in args.loss):
+	if('content' in args.loss) or ('Gatys'  in args.loss) or ('full' in args.loss):
 		content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers) # alpha/Beta ratio 
 		list_loss +=  [content_loss]
 		list_loss_name +=  ['content_loss']
-	if('Gatys' in args.loss) or ('texture'  in args.loss) or ('full' in args.loss):
+	if('texture'  in args.loss) or('Gatys' in args.loss) or ('full' in args.loss):
 		style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,style_layers)
 		list_loss +=  [style_loss]
 		list_loss_name +=  ['style_loss']
@@ -1965,11 +2020,16 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		list_loss +=  [loss_L_p_val]
 		list_loss_name +=  ['loss_L_p_val with (p = '+str(args.p)+')']  
 	if('TV'  in args.loss) or ('full' in args.loss):
-		tv_loss =  sum_total_variation_losses(sess, net)
+		tv_loss =  sum_total_variation_losses(sess, net,args.alpha_TV)
 		list_loss +=  [tv_loss]
 		list_loss_name +=  ['tv_loss']
+	if('TVronde'  in args.loss) or ('full' in args.loss):
+		alpha_TVronde = 10
+		tv_loss =  sum_TV_ronde_losses(sess, net,alpha_TVronde)
+		list_loss +=  [tv_loss]
+		list_loss_name +=  ['tv_ronde_loss']
 	if('TV1'  in args.loss) :
-		tv_norm1_loss =  sum_total_variation_losses_norm1(sess, net)
+		tv_norm1_loss =  sum_total_variation_losses_norm1(sess, net,args.alpha_TV)
 		list_loss +=  [tv_norm1_loss]
 		list_loss_name +=  ['tv_norm1_loss']
 	if('bizarre'  in args.loss) or ('full' in args.loss):
@@ -2301,24 +2361,24 @@ def main_with_option():
 	tile =  "TilesOrnate0158_1_S"
 	tile2 = "TilesZellige0099_1_S"
 	peddle = "pebbles"
-	brick256 = "BrickSmallBrown0293_1_S"
-	D ="D20_01"
-	orange = "orange"
-	bleu = "bleu"
-	glass = "glass"
-	damier ='DamierBig_Proces'
-	camouflage = 'Camouflage0003_S'
-	brick = 'Brick_512_1'
-	#brick = 'MarbreWhite_1'
-	#brick = 'Camouflage_1'
+	brick = "BrickSmallBrown0293_1_S"
+	brick = "Brick_512_1"
+	#D ="D20_01"
+	#orange = "orange"
+	#bleu = "bleu"
+	#glass = "glass"
+	#damier ='DamierBig_Proces'
+	#camouflage = 'Camouflage0003_S'
+	#brick = 'Brick_512_1'
+	##brick = 'MarbreWhite_1'
+	##brick = 'Camouflage_1'
 	#brick = 'OrnamentsCambodia0055_512'
-	brick = 'TilesOrnate0158_512'
-	#brick = 'TilesOrnate0158_1_S'
+	##brick = 'TilesOrnate0158_1_S'
 	img_folder = "images/"
-	img_output_folder = ""
+	img_output_folder = "images/"
 	image_style_name = brick
 	content_img_name  = brick
-	max_iter = 2000
+	max_iter = 1000
 	print_iter = 100
 	start_from_noise = 1 # True
 	init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
