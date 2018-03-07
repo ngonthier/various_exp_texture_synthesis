@@ -20,7 +20,7 @@ import math
 from pathlib import Path
 	
 def get_center_tensor(im):
-	""" Fonction qui recupere le centre d'un tenseur / imaeg """
+	""" Fonction qui recupere le centre d'une image / numpy array of dim 4 ! """
 	_,h,w,_ = im.shape 
 	h4 = math.ceil(h/4)
 	h6 = math.ceil(3*h/4)
@@ -28,7 +28,19 @@ def get_center_tensor(im):
 	w6 = math.ceil(3*w/4)
 	im_tmp = im[:,h4:h6,w4:w6,:]
 	return(im_tmp)
-	
+
+def get_center_tensor_tf(im,sess):
+	""" Fonction qui retourne le centre d'un tenseur de dim 4 avec la première dimension ne comportant rien """
+	shape =sess.run(tf.shape(im)) 
+	print(shape)
+	begin = []
+	size = []
+	for elt in shape:
+		print(elt)
+		begin += [math.ceil(elt/4)]
+		size += [math.ceil(elt/2)]
+	output = sess.run(tf.slice(im, begin, size))
+	return(output)
 	
 def get_kernel_size(factor):
 	"""
@@ -116,6 +128,20 @@ def create_param_id_file_and_dir(param_dir):
 def save_args(args,path):
 	# TODO : a faire
 	return(0)
+	
+def get_list_of_images(path_origin):
+	dirs = os.listdir(path_origin)
+	dirs = sorted(dirs, key=str.lower)
+	return(dirs)
+
+def do_mkdir(path):
+	if not(os.path.isdir(path)):
+		os.mkdir(path)
+	return(0)
+
+class MyError(Exception):
+     def __init__(self, message):
+        self.message = message
 
 if __name__ == '__main__':
 	from numpy import ogrid, repeat, newaxis
@@ -134,17 +160,3 @@ if __name__ == '__main__':
 
 	upsampled_img_tf = upsample_tf(factor=3, input_img=img)
 	io.imshow(upsampled_img_tf)
-
-def get_list_of_images(path_origin):
-	dirs = os.listdir(path_origin)
-	dirs = sorted(dirs, key=str.lower)
-	return(dirs)
-
-def do_mkdir(path):
-	if not(os.path.isdir(path)):
-		os.mkdir(path)
-	return(0)
-
-class MyError(Exception):
-     def __init__(self, message):
-        self.message = message
