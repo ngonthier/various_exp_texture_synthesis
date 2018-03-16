@@ -589,6 +589,7 @@ def HistogramOfGradientMatching():
     img_ext = '.png'
     img_folder = 'images/GradHist/'
     name_im_ref = 'TilesOrnate0158_512'
+    name_im_ref = 'Food_0008'
     image_path = img_folder + name_im_ref + img_ext
     ref_image =  scipy.misc.imread(image_path).astype(np.float)
     m,n,c = ref_image.shape
@@ -599,179 +600,181 @@ def HistogramOfGradientMatching():
     name_img_whose_needHGM = 'TilesOrnate0158_512_SAME_texture_spectrum'
     name_img_whose_needHGM = 'TilesOrnate0158_512_SAME_autocorr'
     #name_img_whose_needHGM = 'TilesOrnate0158_512_SAME_texture'
+    name_img_whose_needHGM = 'Food_0008_SAME_texture'
+    name_img_whose_needHGM = 'Food_0008_SAME_autocorr'
     image_path = img_folder + name_img_whose_needHGM +img_ext
     img_needHGM =  scipy.misc.imread(image_path).astype(np.float)
     print("Range Im remap",np.max(img_needHGM),np.min(img_needHGM),np.std(img_needHGM))
     
-    ## Histogram of color Channel matching
-    #img_HCM = histogram_matching(img_needHGM, ref_image, grey=False, n_bins=100)
-    #img_HCM_uint8 = img_HCM.astype(np.uint8)
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HCM' +img_ext
-    #scipy.misc.imsave(output_image_path,img_HCM_uint8)
+    # Histogram of color Channel matching
+    img_HCM = histogram_matching(img_needHGM, ref_image, grey=False, n_bins=100)
+    img_HCM_uint8 = img_HCM.astype(np.uint8)
+    output_image_path = img_folder + name_img_whose_needHGM +'_HCM' +img_ext
+    scipy.misc.imsave(output_image_path,img_HCM_uint8)
     
-    ## Compute the Derivatives
-    #ref_gx,ref_gy = get_gradient(ref_image)
-    #needHGM_gx,needHGM_gy = get_gradient(img_needHGM)
+    # Compute the Derivatives
+    ref_gx,ref_gy = get_gradient(ref_image)
+    needHGM_gx,needHGM_gy = get_gradient(img_needHGM)
     
+    # Matching of the Gradient images
+    # First argument of histogram_matching is the image whose distribution should be remapped
+    matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=False, n_bins=100) 
+    matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=False, n_bins=100)
+   
+    border_img = img_needHGM.astype(np.float)
+
+    # Compute the Laplacian
+    Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
+    
+    final_img = ReconstructionFromLaplacian(ref_image,Laplacian)
+
+    print("Range Im final",np.max(final_img),np.min(final_img),np.std(final_img))
+    final_img_uint8 = final_img.astype(np.uint8)
+
+    # Save the reconstructed image
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM' +img_ext
+    scipy.misc.imsave(output_image_path,final_img_uint8)
+
+
+
+    final_img_HCM = histogram_matching(final_img, ref_image, grey=False, n_bins=100)
+    print("Range Im final with HCM",np.max(final_img_HCM),np.min(final_img_HCM),np.std(final_img_HCM))
+    final_img_HCM_uint8 = final_img_HCM.astype(np.uint8)
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM_HCM' +img_ext
+    scipy.misc.imsave(output_image_path,final_img_HCM_uint8)
+    
+    final_img_scaled = final_img.copy()
+    for i in range(3):
+        final_img_scaled[:,:,i] = (final_img_scaled[:,:,i]-np.min(final_img_scaled[:,:,i]))*255/(np.max(final_img_scaled[:,:,i])-np.min(final_img_scaled[:,:,i]))
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM_scaled' +img_ext
+    final_img_uint8_scaled = final_img_scaled.astype(np.uint8)
+    scipy.misc.imsave(output_image_path,final_img_uint8_scaled)
+    final_img_HCM_scaled_HCM = histogram_matching(final_img_scaled, ref_image, grey=False, n_bins=100)
+    final_img_HCM_scaled_HCM_uint8 = final_img_HCM_scaled_HCM.astype(np.uint8)
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM_scaled_HCM' +img_ext
+    scipy.misc.imsave(output_image_path,final_img_HCM_scaled_HCM_uint8)
+    
+    ## An other solution is to only work on the V or L channel of an HSV/HSL decomposition of the image
+    # Test with a passage throw the HSV domain color 
+    print("Start working on HSV")
+    img_hsv = color.rgb2hsv(ref_image.copy())
+    img_needHGM_hsv = color.rgb2hsv(img_needHGM.copy())
+    # We will only consider the V value and reconstruct on it 
+    img_V = np.expand_dims(img_hsv[:,:,2],axis=-1)
+    ref_gx,ref_gy = get_gradient(img_V)
+    img_needHGM_hsv_V = np.expand_dims(img_needHGM_hsv[:,:,2],axis=-1)
+    needHGM_gx,needHGM_gy = get_gradient(img_needHGM_hsv_V)
+    
+    matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=True, n_bins=100) 
+    matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=True, n_bins=100)
+    
+    Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
+    final_img = ReconstructionFromLaplacian(img_V,Laplacian)
+    print("V ref",np.min(img_V[:,:,0]),np.max(img_V[:,:,0])) 
+    print("V final",np.min(final_img[:,:,0]),np.max( final_img[:,:,0])) 
+    img_hsv_output = img_needHGM_hsv.copy()
+    img_hsv_output[:,:,2] = final_img[:,:,0]
+    img_hsv_rgb = color.hsv2rgb(img_hsv_output)
+    print(np.mean(ref_image),np.mean(img_needHGM),np.mean(img_hsv_rgb))
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSV' +img_ext
+    scipy.misc.imsave(output_image_path,img_hsv_rgb.astype(np.uint8))
+    
+    img_hsv_output[:,:,2] = (final_img[:,:,0]-np.min(final_img[:,:,0]))*225./(np.max(final_img[:,:,0])-np.min(final_img[:,:,0]))
+    img_hsv_rgb_scaled = color.hsv2rgb(img_hsv_output)
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSV_sclaed' +img_ext
+    scipy.misc.imsave(output_image_path,img_hsv_rgb_scaled.astype(np.uint8))
+    
+    # Test with a pasa in the HSL domain color 
+    print("Start working on HSL")
+    img_hsl = colour.RGB_to_HSL(ref_image.copy())
+    img_needHGM_hsl = colour.RGB_to_HSL(img_needHGM.copy())
+    # We will only consider the L luminance and reconstruct on it 
+    img_L = np.expand_dims(img_hsl[:,:,2],axis=-1)
+    ref_gx,ref_gy = get_gradient(img_L)
+    img_needHGM_hsl_L = np.expand_dims(img_needHGM_hsl[:,:,2],axis=-1)
+    needHGM_gx,needHGM_gy = get_gradient(img_needHGM_hsl_L)
+    
+    matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=True, n_bins=100) 
+    matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=True, n_bins=100)
+    
+    Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
+    final_img = ReconstructionFromLaplacian(img_L,Laplacian)
+    print("L ref",np.min(img_L[:,:,0]),np.max(img_L[:,:,0])) 
+    print("L final",np.min(final_img[:,:,0]),np.max( final_img[:,:,0])) # -93.81092802999521 369.4265694531914 alors que l on derait avoir quelque chose entre 0 et 1
+    
+    img_hsl_output = img_needHGM_hsl.copy()
+    img_hsl_output[:,:,2] = final_img[:,:,0]
+    img_hsl_rgb = colour.HSL_to_RGB(img_hsl_output)
+    print(np.mean(ref_image),np.mean(img_needHGM),np.mean(img_hsl_rgb))
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSL' +img_ext
+    scipy.misc.imsave(output_image_path,img_hsl_rgb.astype(np.uint8))
+    
+    img_hsl_output[:,:,2] = (final_img[:,:,0]-np.min(final_img[:,:,0]))*225./(np.max(final_img[:,:,0])-np.min(final_img[:,:,0]))
+    img_hsl_rgb_scaled = colour.HSL_to_RGB(img_hsl_output)
+    output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSL_sclaed' +img_ext
+    scipy.misc.imsave(output_image_path,img_hsl_rgb_scaled.astype(np.uint8))
+    
+    ## Tentative with a PCA decomposition
+    #print('Via PCA')
+    #X = ref_image.copy()
+    #X = X.reshape(-1, 3)
+    #pca = PCA(n_components=3)
+    #X_new =pca.fit_transform(X)
+    #h,w,c = ref_image.shape
+    #ref_image_pca = X_new.reshape(h,w,c)
+    #img_needHGM_pca = pca.transform(img_needHGM.reshape(-1,3))
+    #img_needHGM_pca =  img_needHGM_pca.reshape(h,w,c)
+    #ref_gx,ref_gy = get_gradient(ref_image_pca)
+    #needHGM_gx,needHGM_gy = get_gradient(img_needHGM_pca)
     ## Matching of the Gradient images
     ## First argument of histogram_matching is the image whose distribution should be remapped
     #matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=False, n_bins=100) 
     #matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=False, n_bins=100)
-   
-    #border_img = img_needHGM.astype(np.float)
-
-    ## Compute the Laplacian
     #Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
-    
     #final_img = ReconstructionFromLaplacian(ref_image,Laplacian)
-
-    #print("Range Im final",np.max(final_img),np.min(final_img),np.std(final_img))
-    #final_img_uint8 = final_img.astype(np.uint8)
-
-    ## Save the reconstructed image
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM' +img_ext
-    #scipy.misc.imsave(output_image_path,final_img_uint8)
-
-
-
-    #final_img_HCM = histogram_matching(final_img, ref_image, grey=False, n_bins=100)
-    #print("Range Im final with HCM",np.max(final_img_HCM),np.min(final_img_HCM),np.std(final_img_HCM))
-    #final_img_HCM_uint8 = final_img_HCM.astype(np.uint8)
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_HCM' +img_ext
-    #scipy.misc.imsave(output_image_path,final_img_HCM_uint8)
-    
+    #print(final_img.shape)
+    #X_final_img = final_img.copy()
+    #X_final_img = X_final_img.reshape(-1,3)
+    #X_final_img_inv = pca.inverse_transform(X_final_img)
+    #final_img = X_final_img_inv.reshape(h,w,c)
+    #print(np.mean(ref_image),np.mean(img_needHGM),np.mean(final_img))
+    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaPCA' +img_ext
+    #scipy.misc.imsave(output_image_path,final_img.astype(np.uint8))
     #final_img_scaled = final_img.copy()
     #for i in range(3):
-        #final_img_scaled[:,:,i] = (final_img_scaled[:,:,i]-np.min(final_img_scaled[:,:,i]))*255/(np.max(final_img_scaled[:,:,i])-np.min(final_img_scaled[:,:,i]))
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_scaled' +img_ext
-    #final_img_uint8_scaled = final_img_scaled.astype(np.uint8)
-    #scipy.misc.imsave(output_image_path,final_img_uint8_scaled)
-    #final_img_HCM_scaled_HCM = histogram_matching(final_img_scaled, ref_image, grey=False, n_bins=100)
-    #final_img_HCM_scaled_HCM_uint8 = final_img_HCM_scaled_HCM.astype(np.uint8)
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_scaled_HCM' +img_ext
-    #scipy.misc.imsave(output_image_path,final_img_HCM_scaled_HCM_uint8)
+        #final_img_scaled[:,:,i] = (final_img_scaled[:,:,i]-np.min(final_img_scaled[:,:,i]))*255./(np.max(final_img_scaled[:,:,i])-np.min(final_img_scaled[:,:,i]))
+    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaPCA_scaled' +img_ext
+    #scipy.misc.imsave(output_image_path,final_img_scaled.astype(np.uint8))
     
-    ### An other solution is to only work on the V or L channel of an HSV/HSL decomposition of the image
-    ## Test with a passage throw the HSV domain color 
-    #print("Start working on HSV")
-    #img_hsv = color.rgb2hsv(ref_image.copy())
-    #img_needHGM_hsv = color.rgb2hsv(img_needHGM.copy())
-    ## We will only consider the V value and reconstruct on it 
-    #img_V = np.expand_dims(img_hsv[:,:,2],axis=-1)
-    #ref_gx,ref_gy = get_gradient(img_V)
-    #img_needHGM_hsv_V = np.expand_dims(img_needHGM_hsv[:,:,2],axis=-1)
-    #needHGM_gx,needHGM_gy = get_gradient(img_needHGM_hsv_V)
-    
-    #matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=True, n_bins=100) 
-    #matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=True, n_bins=100)
-    
+    ## Tentative with a PCA decomposition
+    #print('Via ICA')
+    #ica = FastICA(n_components=3)
+    #X = ref_image.copy()
+    #X = X.reshape(-1, 3)
+    #X_new =ica.fit_transform(X)
+    #h,w,c = ref_image.shape
+    #ref_image_ica = X_new.reshape(h,w,c)
+    #img_needHGM_ica = ica.transform(img_needHGM.reshape(-1,3))
+    #img_needHGM_ica =  img_needHGM_ica.reshape(h,w,c)
+    #ref_gx,ref_gy = get_gradient(ref_image_ica)
+    #needHGM_gx,needHGM_gy = get_gradient(img_needHGM_ica)
+    ## Matching of the Gradient images
+    ## First argument of histogram_matching is the image whose distribution should be remapped
+    #matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=False, n_bins=100) 
+    #matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=False, n_bins=100)
     #Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
-    #final_img = ReconstructionFromLaplacian(img_V,Laplacian)
-    #print("V ref",np.min(img_V[:,:,0]),np.max(img_V[:,:,0])) 
-    #print("V final",np.min(final_img[:,:,0]),np.max( final_img[:,:,0])) 
-    #img_hsv_output = img_needHGM_hsv.copy()
-    #img_hsv_output[:,:,2] = final_img[:,:,0]
-    #img_hsv_rgb = color.hsv2rgb(img_hsv_output)
-    #print(np.mean(ref_image),np.mean(img_needHGM),np.mean(img_hsv_rgb))
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSV' +img_ext
-    #scipy.misc.imsave(output_image_path,img_hsv_rgb.astype(np.uint8))
-    
-    #img_hsv_output[:,:,2] = (final_img[:,:,0]-np.min(final_img[:,:,0]))*225./(np.max(final_img[:,:,0])-np.min(final_img[:,:,0]))
-    #img_hsv_rgb_scaled = color.hsv2rgb(img_hsv_output)
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSV_sclaed' +img_ext
-    #scipy.misc.imsave(output_image_path,img_hsv_rgb_scaled.astype(np.uint8))
-    
-    ## Test with a pasa in the HSL domain color 
-    #print("Start working on HSL")
-    #img_hsl = colour.RGB_to_HSL(ref_image.copy())
-    #img_needHGM_hsl = colour.RGB_to_HSL(img_needHGM.copy())
-    ## We will only consider the L luminance and reconstruct on it 
-    #img_L = np.expand_dims(img_hsl[:,:,2],axis=-1)
-    #ref_gx,ref_gy = get_gradient(img_L)
-    #img_needHGM_hsl_L = np.expand_dims(img_needHGM_hsl[:,:,2],axis=-1)
-    #needHGM_gx,needHGM_gy = get_gradient(img_needHGM_hsl_L)
-    
-    #matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=True, n_bins=100) 
-    #matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=True, n_bins=100)
-    
-    #Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
-    #final_img = ReconstructionFromLaplacian(img_L,Laplacian)
-    #print("L ref",np.min(img_L[:,:,0]),np.max(img_L[:,:,0])) 
-    #print("L final",np.min(final_img[:,:,0]),np.max( final_img[:,:,0])) # -93.81092802999521 369.4265694531914 alors que l on derait avoir quelque chose entre 0 et 1
-    
-    #img_hsl_output = img_needHGM_hsl.copy()
-    #img_hsl_output[:,:,2] = final_img[:,:,0]
-    #img_hsl_rgb = colour.HSL_to_RGB(img_hsl_output)
-    #print(np.mean(ref_image),np.mean(img_needHGM),np.mean(img_hsl_rgb))
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSL' +img_ext
-    #scipy.misc.imsave(output_image_path,img_hsl_rgb.astype(np.uint8))
-    
-    #img_hsl_output[:,:,2] = (final_img[:,:,0]-np.min(final_img[:,:,0]))*225./(np.max(final_img[:,:,0])-np.min(final_img[:,:,0]))
-    #img_hsl_rgb_scaled = colour.HSL_to_RGB(img_hsl_output)
-    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaHSL_sclaed' +img_ext
-    #scipy.misc.imsave(output_image_path,img_hsl_rgb_scaled.astype(np.uint8))
-    
-    ### Tentative with a PCA decomposition
-    ##print('Via PCA')
-    ##X = ref_image.copy()
-    ##X = X.reshape(-1, 3)
-    ##pca = PCA(n_components=3)
-    ##X_new =pca.fit_transform(X)
-    ##h,w,c = ref_image.shape
-    ##ref_image_pca = X_new.reshape(h,w,c)
-    ##img_needHGM_pca = pca.transform(img_needHGM.reshape(-1,3))
-    ##img_needHGM_pca =  img_needHGM_pca.reshape(h,w,c)
-    ##ref_gx,ref_gy = get_gradient(ref_image_pca)
-    ##needHGM_gx,needHGM_gy = get_gradient(img_needHGM_pca)
-    ### Matching of the Gradient images
-    ### First argument of histogram_matching is the image whose distribution should be remapped
-    ##matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=False, n_bins=100) 
-    ##matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=False, n_bins=100)
-    ##Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
-    ##final_img = ReconstructionFromLaplacian(ref_image,Laplacian)
-    ##print(final_img.shape)
-    ##X_final_img = final_img.copy()
-    ##X_final_img = X_final_img.reshape(-1,3)
-    ##X_final_img_inv = pca.inverse_transform(X_final_img)
-    ##final_img = X_final_img_inv.reshape(h,w,c)
-    ##print(np.mean(ref_image),np.mean(img_needHGM),np.mean(final_img))
-    ##output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaPCA' +img_ext
-    ##scipy.misc.imsave(output_image_path,final_img.astype(np.uint8))
-    ##final_img_scaled = final_img.copy()
-    ##for i in range(3):
-        ##final_img_scaled[:,:,i] = (final_img_scaled[:,:,i]-np.min(final_img_scaled[:,:,i]))*255./(np.max(final_img_scaled[:,:,i])-np.min(final_img_scaled[:,:,i]))
-    ##output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaPCA_scaled' +img_ext
-    ##scipy.misc.imsave(output_image_path,final_img_scaled.astype(np.uint8))
-    
-    ### Tentative with a PCA decomposition
-    ##print('Via ICA')
-    ##ica = FastICA(n_components=3)
-    ##X = ref_image.copy()
-    ##X = X.reshape(-1, 3)
-    ##X_new =ica.fit_transform(X)
-    ##h,w,c = ref_image.shape
-    ##ref_image_ica = X_new.reshape(h,w,c)
-    ##img_needHGM_ica = ica.transform(img_needHGM.reshape(-1,3))
-    ##img_needHGM_ica =  img_needHGM_ica.reshape(h,w,c)
-    ##ref_gx,ref_gy = get_gradient(ref_image_ica)
-    ##needHGM_gx,needHGM_gy = get_gradient(img_needHGM_ica)
-    ### Matching of the Gradient images
-    ### First argument of histogram_matching is the image whose distribution should be remapped
-    ##matched_gx = histogram_matching(needHGM_gx,ref_gx, grey=False, n_bins=100) 
-    ##matched_gy = histogram_matching(needHGM_gy,ref_gy, grey=False, n_bins=100)
-    ##Laplacian = -getLaplacianFromDerivatives(matched_gx,matched_gy)
-    ##final_img = ReconstructionFromLaplacian(ref_image,Laplacian)
-    ##X_final_img = final_img.reshape(-1,3)
-    ##X_final_img_inv = ica.inverse_transform(X_final_img)
-    ##final_img = X_final_img_inv.reshape(h,w,c)
-    ##print(np.mean(ref_image),np.mean(img_needHGM),np.mean(final_img))
-    ##output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaICA' +img_ext
-    ##scipy.misc.imsave(output_image_path,final_img.astype(np.uint8))
-    ##final_img_scaled = final_img.copy()
-    ##for i in range(3):
-        ##final_img_scaled[:,:,i] = (final_img_scaled[:,:,i]-np.min(final_img_scaled[:,:,i]))*255./(np.max(final_img_scaled[:,:,i])-np.min(final_img_scaled[:,:,i]))
-    ##output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaICA_scaled' +img_ext
-    ##scipy.misc.imsave(output_image_path,final_img_scaled.astype(np.uint8))
+    #final_img = ReconstructionFromLaplacian(ref_image,Laplacian)
+    #X_final_img = final_img.reshape(-1,3)
+    #X_final_img_inv = ica.inverse_transform(X_final_img)
+    #final_img = X_final_img_inv.reshape(h,w,c)
+    #print(np.mean(ref_image),np.mean(img_needHGM),np.mean(final_img))
+    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaICA' +img_ext
+    #scipy.misc.imsave(output_image_path,final_img.astype(np.uint8))
+    #final_img_scaled = final_img.copy()
+    #for i in range(3):
+        #final_img_scaled[:,:,i] = (final_img_scaled[:,:,i]-np.min(final_img_scaled[:,:,i]))*255./(np.max(final_img_scaled[:,:,i])-np.min(final_img_scaled[:,:,i]))
+    #output_image_path = img_folder + name_img_whose_needHGM +'_HGM_viaICA_scaled' +img_ext
+    #scipy.misc.imsave(output_image_path,final_img_scaled.astype(np.uint8))
     
     ### Color Transfert by Optimal Transport
     print("OT")
