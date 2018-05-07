@@ -630,6 +630,39 @@ def loss_autocorr(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
 	total_style_loss =tf.to_float(total_style_loss)
 	return(total_style_loss)
 	
+def loss_autocorr_directSpace(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
+	"""
+	Computation of the autocorrelation of the filters
+	"""
+	# TODO : change the M value attention !!! different size between a and x maybe 
+	return(0)
+	#length_style_layers_int = len(style_layers)
+	#length_style_layers = float(length_style_layers_int)
+	#weight_help_convergence = (10**9)
+	#total_style_loss = 0.
+	
+	#_, h_a, w_a, N = image_style.shape      
+	#sess.run(net['input'].assign(image_style))
+		
+	#for layer, weight in style_layers:
+		#N = style_layers_size[layer[:5]]
+		#M = M_dict[layer]
+		#a = sess.run(net[layer])
+		#x = net[layer]
+		#x = tf.transpose(x, [0,3,1,2])
+		#a = tf.transpose(a, [0,3,1,2])
+		#F_x = tf.fft2d(tf.complex(x,0.))
+		#R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
+		#R_x /= tf.to_float(M**2) # Normalisation du module de la TF
+		#F_a = tf.fft2d(tf.complex(a,0.))
+		#R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
+		#R_a /= tf.to_float(M**2)
+		#style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+		#style_loss *=  gamma_autocorr* weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+		#total_style_loss += style_loss
+	#total_style_loss =tf.to_float(total_style_loss)
+	#return(total_style_loss)
+	
 def loss_autocorrLog(sess,net,image_style,M_dict,style_layers):
 	"""
 	Computation of the autocorrelation of the filters normalise en passant
@@ -1976,6 +2009,22 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
 		list_loss +=  [loss_total]
 		list_loss_name +=  ['loss_total']
 		return(loss_total,list_loss,list_loss_name)
+	#elif(args.config_layers=='DCor_TV'):
+		## Deep Correlation configuration
+		#gram_style_layers = [('pool1',0.25),('pool2',0.25),('pool3',0.25),('pool4',0.25)]
+		#style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,gram_style_layers)
+		#list_loss =  [style_loss]
+		#list_loss_name =  ['style_loss']
+		#gamma_autocorr = 10**(-4)
+		#deepcoor_layer = [('pool2',1)]
+		#autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,deepcoor_layer,gamma_autocorr)
+		#list_loss +=  [autocorr_loss]
+		#list_loss_name +=  ['autocorr_loss']
+		#if(args.type_of_loss=='add'):
+			#loss_total = tf.reduce_sum(list_loss)
+		#list_loss +=  [loss_total]
+		#list_loss_name +=  ['loss_total']
+		#return(loss_total,list_loss,list_loss_name)
 	elif(args.config_layers=='Custom'):
 		content_layers =  list(zip(args.content_layers, args.content_layer_weights))
 		style_layers = list(zip(args.style_layers,args.style_layer_weights))
