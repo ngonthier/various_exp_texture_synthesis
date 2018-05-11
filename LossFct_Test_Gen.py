@@ -192,12 +192,13 @@ def generation_Texture_LossFctBetaSpectrum():
 	
 	#list_img = get_list_of_images(path_origin)
 	list_img = ['TilesOrnate0158_512.png']
+	list_img = ['TexturesCom_TilesOrnate0158_1_seamless_S.png']
 	print(list_img)
 	
 	# Comparison on the loss function !!! 
 	loss = ['texture','spectrum']
 	padding = 'SAME'
-	beta_list = [10**(4),10**(2),0.1] # beta spectrum
+	beta_list = [10**(6),10**(4),10**(5)] # beta spectrum
 	for beta in beta_list:
 		print("Beta :",str(beta))
 		for name_img in list_img:
@@ -205,7 +206,7 @@ def generation_Texture_LossFctBetaSpectrum():
 			tf.reset_default_graph() # Necessity to use a new graph !! 
 			img_folder = path_origin
 			img_output_folder = path_origin
-			output_img_name = name_img_wt_ext + '_'+padding+'_'+str(alpha)
+			output_img_name = name_img_wt_ext + '_'+padding+'_'+str(beta)
 			for loss_item in loss:
 				output_img_name += '_' + loss_item
 			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
@@ -505,12 +506,12 @@ def generation_Texture_JustTexture_and_TexturePlusSpectrum():
 	
 
 if __name__ == '__main__':
-	generation_Texture_LossFct2()
+	#generation_Texture_LossFct2()
 	#generation_Texture_JustTexture_and_TexturePlusSpectrum()
 	#generation_Texture_LossFctAlphaPhaseAlea()
 	#generation_Texture_LossFct()
 	# python LossFct_Test_Gen.py >> /home/nicolas/Style-Transfer/LossFct/results/output.txt
-	#generation_Texture_LossFctBetaSpectrum()
+	generation_Texture_LossFctBetaSpectrum()
 	#generation_Texture_LossFctBetaSpectrum_PhaseAlea()
 	#generation_Texture_LossFct2()
 	#generation_Texture_LossGatysPlusAutocorr()	

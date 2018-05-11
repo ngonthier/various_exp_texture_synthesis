@@ -2422,7 +2422,7 @@ def main_with_option():
 	##brick = 'MarbreWhite_1'
 	##brick = 'Camouflage_1'
 	#brick = 'OrnamentsCambodia0055_512'
-	##brick = 'TilesOrnate0158_1_S'
+	brick = 'tricot'
 	img_folder = "images/"
 	img_output_folder = "images/"
 	image_style_name = brick
