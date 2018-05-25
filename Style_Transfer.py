@@ -1232,7 +1232,10 @@ def loss_spectrum(sess,net,image_style,M_dict,beta):
 	x_t = tf.transpose(x, [0,3,1,2])
 	F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
 	
-	innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
+	if tf.__version__ < '1.8':
+		innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
+	else:
+		innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
 	# Shape = [  1   1 512 512] pour une image 512*512
 	module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
 	#module_InnerProd = tf.abs(innerProd) # Possible with tensorflow 1.4
