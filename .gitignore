@@ -34,3 +34,7 @@ Results/*
 
 data/*
 
+# The array      #
+################
+
+*.npy
