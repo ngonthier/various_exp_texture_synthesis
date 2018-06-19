@@ -1777,7 +1777,7 @@ def get_init_noise_img_smooth_grad(image_content):
 	preprocess_img = preprocess(gaussian_noise_img)
 	return(preprocess_img)
 	
-def get_init_noise_img_gaussian(image_content):
+def get_init_noise_img_gaussian(image_content,init_noise_ratio):
 	"""
 	Generate an image with a gaussian white noise aroud the BGR mean of the
 	image content
@@ -1789,6 +1789,14 @@ def get_init_noise_img_gaussian(image_content):
 		noise_img[:,:,:,i] += bgr_mean[i]
 	# random floats sampled from a univariate “normal” (Gaussian) distribution of mean 0 and variance 1 
 	# Doesn't need preprocess because already arond 0 with a small range
+	
+	if(init_noise_ratio >= 1.):
+		noise_img = noise_img
+	elif(init_noise_ratio <= 0.0):
+		noise_img = image_content
+	else:
+		noise_img = init_noise_ratio* noise_img + (1.-init_noise_ratio) * image_content
+	
 	return(noise_img)
 	
 def get_lbfgs_bnds_tf_1_2(init_img,clip_value_min,clip_value_max,BGR=False):
@@ -1938,10 +1946,11 @@ def get_init_img_wrap(args,output_image_path,image_content):
 			init_img = get_init_noise_img(image_content,args.init_noise_ratio,args.init_range)
 	elif(args.init =='smooth_grad'):
 		if(args.verbose): print("Noisy image generation with a smooth gradient")
+		print("Warning this don t take into account init_noise_ratio")
 		init_img = get_init_noise_img_smooth_grad(image_content) # TODO add a ratio for this kind of initialization also
 	elif(args.init=='Gaussian'):
 		if(args.verbose): print("Noisy image generation with a Gaussian white noise")
-		init_img = get_init_noise_img_gaussian(image_content)
+		init_img = get_init_noise_img_gaussian(image_content,args.init_noise_ratio)
 	elif(args.init=='Uniform'):
 		if(args.verbose): print("Noisy image generation init_noise_ratio = ",args.init_noise_ratio)
 		init_img = get_init_noise_img(image_content,args.init_noise_ratio,args.init_range)
@@ -2449,7 +2458,8 @@ def main_with_option():
 	style_transfer(args)
 
 if __name__ == '__main__':
-	main_with_option()
+	main() # Command line : python Style_Transfer.py --content_img_name VG --style_img_name estampe --print_iter 1000 --max_iter 1000 --loss texture content --HistoMatching
+	#main_with_option()
 	# Use CUDA_VISIBLE_DEVICES='' python ... to avoid using CUDA
 	# Pour update Tensorflow : python3.6 -m pip install --upgrade tensorflow-gpu
 	

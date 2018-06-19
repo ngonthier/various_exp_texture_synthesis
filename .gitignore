@@ -5,6 +5,7 @@
 *.jpeg
 *.png
 *.pkl
+*.JPG
 
 # The VGG19 Model #
 ###################
