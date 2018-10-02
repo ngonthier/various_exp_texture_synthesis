@@ -168,6 +168,18 @@ def pool_layer(input,name,pooling_type='avg',padding='SAME'):
                 padding=padding,name=name) 
     return(pool)
 
+def loss_LowResConstr(sess,net,scale,i_lowres,weightMultiplicatif=1.):
+    """
+    Compute the content term of the loss function on the input X and a lower version of it
+    """
+    weight_help_convergence = 10**9 
+    x = net['input']
+    #x_lowres = tf.image.resize_area(x,(scale,scale),align_corners=False)
+    x_lowres = tf.image.resize_images(x,(scale,scale),method=tf.image.ResizeMethod.BILINEAR,align_corners=False)
+    M = scale*scale
+    loss = tf.nn.l2_loss(tf.subtract(x_lowres,i_lowres))*(weightMultiplicatif*weight_help_convergence/tf.to_float(M**2))    
+    return(loss)
+
 def sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers):
     """
     Compute the content term of the loss function
@@ -177,7 +189,7 @@ def sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers):
     - the dictionnary of the content image representation thanks to the net
     """
     length_content_layers = float(len(content_layers))
-    weight_help_convergence = 10**9 # Need to multiply by 120000 ?
+    weight_help_convergence = 10**9 # Need to multiply by 10**9 to have a big enough gradient for the LBFGS algo
     content_loss = 0
     for layer, weight in content_layers:
         M = M_dict[layer]
@@ -1964,11 +1976,12 @@ def get_init_img_wrap(args,output_image_path,image_content):
         plot_image_with_postprocess(args,init_img.copy(),"Initial Image")
     return(init_img)
 
-def get_upScaleOf(namefile,newsacale):
+def get_upScaleOf(namefile,newscale):
     try:
         init_img = scipy.misc.imread(namefile)
-        upsampled_img = cv2.resize(init_img,(newsacale, newsacale),interpolation=cv2.INTER_CUBIC)
-        upsampled_img = preprocess(upsampled_img.astype('float32'))
+        if not(newscale is None):
+            init_img = cv2.resize(init_img,(newscale, newscale),interpolation=cv2.INTER_CUBIC)
+        upsampled_img = preprocess(init_img.astype('float32'))
     except(FileNotFoundError):
         print('FileNotFoundError')
         raise(FileNotFoundError)
@@ -2005,7 +2018,8 @@ def load_img(args,img_name,scale=None):
     img = preprocess(img.astype('float32'))
     return(img)
 
-def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding):
+def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding,
+        former_scale=None,i_lowres=None):
     """ Compute the total loss map of the sub loss """
     #Get the layer used for style and other
     content_layers = []
@@ -2178,6 +2192,14 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          HFmany_loss = loss__HF_many_filters(sess, net, image_style,M_dict)   
          list_loss +=  [HFmany_loss]
          list_loss_name +=  ['HFmany_loss'] 
+         
+    # If we have a strong constraint on a low resolution version of the image
+    if args.MS_Strat == 'Constr' and not(i_lowres is None): 
+        print('You are here !!!')
+        LowResConstr_loss = loss_LowResConstr(sess,net,former_scale,i_lowres,weightMultiplicatif=args.WLowResConstr)   
+        list_loss +=  [LowResConstr_loss]
+        list_loss_name +=  ['LowResConstr_loss']
+         
     if(args.type_of_loss=='add'):
         loss_total = tf.reduce_sum(list_loss)
     elif(args.type_of_loss=='max'):
@@ -2231,7 +2253,8 @@ def style_transfer(args):
         print('Multiscaled strategy only for squared images !')
         raise(NotImplemented)
     
-    if args.MS_Strat=='Init':
+    if args.MS_Strat in ['Init','Constr']:
+        if args.verbose: print("I would like to warm you up that the resize from TF I use are not really good :( Sorry")
         reDo = True # This is a bad way to do it but the only solution !
         if not(image_h_first%args.MS_minscale==0) or not(image_w_first%args.MS_minscale==0):
             if args.verbose: print('It seems that the scale is not divised by the  args.MS_minscale we will deal with it for the last scale')
@@ -2241,11 +2264,12 @@ def style_transfer(args):
         tmp_output_image_path = args.img_output_folder + 'TextureForMSStrat' + args.img_ext
     else:
         list_scale = [image_h_first]
+    former_scale = None
+    i_lowres = None
         
-        
-    print(list_scale)
+    # Loop on the scale
     for i_scale,scale in enumerate(list_scale):
-        if args.verbose: print('Scale number ',str(1+i_scale),'on ',len(list_scale),' equal to ',scale)
+        if args.verbose: print('Scale number ',str(1+i_scale),'on ',len(list_scale),' equal to ',scale, 'strategy',args.MS_Strat)
         if scale == image_h_first:
             image_h = image_h_first
             image_w = image_w_first
@@ -2282,7 +2306,7 @@ def style_transfer(args):
         vgg_layers = get_vgg_layers(args.vgg_name)
         
         # Precomputation Phase :
-        if args.MS_Strat=='Init':
+        if args.MS_Strat in ['Init','Constr']:
             if args.verbose: print("In those cases we will not use the precomputed gram matrix")
             dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding)
         else:
@@ -2319,13 +2343,19 @@ def style_transfer(args):
                 if args.verbose: print("Becareful args.gpu_frac = ",args.gpu_frac,"It may cause problem if the value is superior to the available memory place.")
             sess = tf.Session(config=config)
 
-            if args.MS_Strat=='Init' and not(i_scale==0):
-                #init_img = load_img(args,output_image_path,scale)
+            
+            if args.MS_Strat=='Constr':
+                init_img = get_upScaleOf(tmp_output_image_path,scale)
+                if not(i_scale==0):
+                    former_scale = list_scale[i_scale-1]
+                    i_lowres = get_upScaleOf(tmp_output_image_path,None)
+            elif args.MS_Strat=='Init' and not(i_scale==0):
                 init_img = get_upScaleOf(tmp_output_image_path,scale)
             else:
                 init_img = get_init_img_wrap(args,output_image_path,image_content)
             
-            loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,pooling_type,padding)
+            loss_total,list_loss,list_loss_name = get_losses(args,sess, net, dict_features_repr,\
+                M_dict,image_style,dict_gram,pooling_type,padding,former_scale=former_scale,i_lowres=i_lowres)
                 
             # Preparation of the assignation operation
             placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
@@ -2511,8 +2541,8 @@ def main_with_option():
     maxcor = 20
     sampling = 'up'
     MS_Strat = 'Init'
-    MS_Strat = 'Const'
-    MS_Strat = ''
+    MS_Strat = 'Constr'
+    #MS_Strat = ''
     # In order to set the parameter before run the script
     parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,img_folder=img_folder,
         print_iter=print_iter,start_from_noise=start_from_noise,img_output_folder=img_output_folder,
