@@ -402,10 +402,10 @@ def generation_Texture_LossFct3():
 				copyfile(src, dst)
 	
 	losses_to_test = [['texture','spectrum'],['autocorr'],['phaseAlea']]
-	scalesStrat = ['Init']
+	scalesStrat = ['Init','Constr']
 	padding = 'SAME'
-	for loss in losses_to_test:
-		for MSS in scalesStrat:
+	for MSS in scalesStrat:
+		for loss in losses_to_test:
 			for name_img in list_img:
 				MS_Strat = MSS
 				name_img_wt_ext,_ = name_img.split('.')
@@ -640,7 +640,8 @@ if __name__ == '__main__':
 	#generation_Texture_LossFct()
 	# python LossFct_Test_Gen.py >> /home/nicolas/Style-Transfer/LossFct/results/output.txt
 	#generation_Texture_LossFctBetaSpectrum()
-	generation_Texture_LossFct3()
+	#generation_Texture_LossFct3()
+	generation_Texture_LossFctWeightMSContraint()
 	#generation_Texture_LossFctBetaSpectrum_PhaseAlea()
 	#generation_Texture_LossFct2()
 	#generation_Texture_LossGatysPlusAutocorr()	

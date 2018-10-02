@@ -2344,11 +2344,10 @@ def style_transfer(args):
             sess = tf.Session(config=config)
 
             
-            if args.MS_Strat=='Constr':
+            if args.MS_Strat=='Constr' and not(i_scale==0):
                 init_img = get_upScaleOf(tmp_output_image_path,scale)
-                if not(i_scale==0):
-                    former_scale = list_scale[i_scale-1]
-                    i_lowres = get_upScaleOf(tmp_output_image_path,None)
+                former_scale = list_scale[i_scale-1]
+                i_lowres = get_upScaleOf(tmp_output_image_path,None)
             elif args.MS_Strat=='Init' and not(i_scale==0):
                 init_img = get_upScaleOf(tmp_output_image_path,scale)
             else:
@@ -2531,8 +2530,8 @@ def main_with_option():
     img_output_folder = "images/"
     image_style_name = brick
     content_img_name  = brick
-    max_iter = 25
-    print_iter = 25
+    max_iter = 2000
+    print_iter = 2000
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
     content_strengh = 0.001
