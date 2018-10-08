@@ -8,6 +8,9 @@ The goal of this script is to code the Style Transfer Algorithm
 Inspired from https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
 and https://github.com/leongatys/PytorchNeuralStyleTransfer/blob/master/NeuralStyleTransfer.ipynb
 
+Message de service tu utilise plusiseurs fois de tf.__version__ > truc 
+cela ne fontionne pas toujours il faudrait changer cela !!!
+
 @author: nicolas
 """
 import os
@@ -27,6 +30,7 @@ from numpy.fft import fft2, ifft2
 from skimage.color import gray2rgb
 import Misc
 import cv2
+from shutil import copyfile
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -986,7 +990,7 @@ def loss_PhaseImpose(sess,net,image_style,M_dict,style_layers):
     """
     TODO !!!
     """
-    print("Here ")
+    #print("Here ")
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
@@ -1065,6 +1069,10 @@ def loss_PhaseImpose(sess,net,image_style,M_dict,style_layers):
     total_style_loss =tf.to_float(total_style_loss)
     return(total_style_loss)    
     
+def saveImExt(nameIm,nameOrign,extension,folder=''):
+    nameNew = folder+  nameOrign + '_IntermediateIm_' + extension + '.png'
+    copyfile(nameIm, nameNew)
+
 
 def angle(z):
     """
@@ -1227,6 +1235,50 @@ def loss_fft3D(sess,net,image_style,M_dict,style_layers):
     
 def loss_spectrum(sess,net,image_style,M_dict,beta):
     """
+    Computation of an approximate version of the spectrum loss from Gang Liu 
+    https://arxiv.org/pdf/1605.01141.pdf
+    This can lead to translationResults
+    """
+    eps = 0.001
+    M = M_dict['input'] # Nombre de pixels
+    
+    x = net['input'] # Image en cours de synthese
+        
+    #For color images,
+    #the phase of the gray level image is first computed, and then
+    #imposed to each color channel
+     
+    a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch,h,w,canaux à  batch,canaux,h,w
+    F_a = tf.fft2d(tf.complex(a,0.)) # TF de l image de reference
+    
+    x_t = tf.transpose(x, [0,3,1,2])
+    F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
+    
+    # Element wise multiplication of FFT and conj of FFT
+    if tf.__version__ < '1.8':
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
+    else:
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
+    # Shape = [  1   1 512 512] pour une image 512*512
+    #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
+    print(innerProd)
+    #if tf.__version__ > '1.4':
+        #module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
+    #else:
+    module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
+    print(module_InnerProd)
+    dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
+    print(dephase)
+    ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
+    # Element wise multiplication
+    imF = tf.ifft2d(ftNew)
+    imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
+    loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
+    loss *= beta/(3*M)
+    return(loss)  
+      
+def loss_spectrumGang(sess,net,image_style,M_dict,beta):
+    """
     Computation of the spectrum loss from Gang Liu 
     https://arxiv.org/pdf/1605.01141.pdf
     """
@@ -1239,21 +1291,29 @@ def loss_spectrum(sess,net,image_style,M_dict,beta):
     #the phase of the gray level image is first computed, and then
     #imposed to each color channel
      
-    a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch, h,w,canaux à  batch,canaux,h,w
+    a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch,h,w,canaux à  batch,canaux,h,w
     F_a = tf.fft2d(tf.complex(a,0.)) # TF de l image de reference
     
     x_t = tf.transpose(x, [0,3,1,2])
     F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
+    # Element wise multiplication of FFT and conj of FFT
     if tf.__version__ < '1.8':
-        innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
     else:
-        innerProd = tf.reduce_sum( tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
     # Shape = [  1   1 512 512] pour une image 512*512
-    module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
-    #module_InnerProd = tf.abs(innerProd) # Possible with tensorflow 1.4
-    dephase = tf.divide(innerProd,module_InnerProd+eps)
+    #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
+    print(innerProd)
+    if tf.__version__ > '1.4':
+        module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
+    else:
+		raise(NotImplemented)
+    print(module_InnerProd)
+    dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
+    print(dephase)
     ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
+    # Element wise multiplication
     imF = tf.ifft2d(ftNew)
     imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
     loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
@@ -2148,6 +2208,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          spectrum_loss = loss_spectrum(sess,net,image_style,M_dict,args.beta_spectrum)
          list_loss +=  [spectrum_loss]
          list_loss_name +=  ['spectrum_loss']  
+    if('spectrumGang'  in args.loss) or ('full' in args.loss):
+         spectrumGang_loss = loss_spectrumGang(sess,net,image_style,M_dict,args.beta_spectrum)
+         list_loss +=  [spectrumGang_loss]
+         list_loss_name +=  ['spectrumGang_loss']  
     if('variance'  in args.loss) or ('full' in args.loss):
          variance_loss = loss_variance(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [variance_loss]
@@ -2195,7 +2259,6 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          
     # If we have a strong constraint on a low resolution version of the image
     if args.MS_Strat == 'Constr' and not(i_lowres is None): 
-        print('You are here !!!')
         LowResConstr_loss = loss_LowResConstr(sess,net,former_scale,i_lowres,weightMultiplicatif=args.WLowResConstr)   
         list_loss +=  [LowResConstr_loss]
         list_loss_name +=  ['LowResConstr_loss']
@@ -2241,6 +2304,7 @@ def style_transfer(args):
     if args.verbose:
         tinit = time.time()
         print("verbosity turned on")
+        print("Message de service tu utilise plusiseurs fois de tf.__version__ > truc cela ne fontionne pas toujours il faudrait changer cela")
         print(args)
     
     output_image_path_first = args.img_output_folder + args.output_img_name + args.img_ext
@@ -2282,6 +2346,10 @@ def style_transfer(args):
             image_content = load_img(args,args.content_img_name,scale=scale)
             image_style = load_img(args,args.style_img_name,scale=scale)
             output_image_path = tmp_output_image_path
+            if args.saveMS: 
+                image_style_pp = postprocess(image_style.copy())
+                tmp_path = args.img_output_folder + args.style_img_name + 'Ref_' + str(list_scale[i_scale]) + args.img_ext  
+                scipy.misc.toimage(image_style_pp).save(tmp_path)
             
         if(args.clipping_type=='ImageNet'):
             BGR=False
@@ -2345,10 +2413,12 @@ def style_transfer(args):
 
             
             if args.MS_Strat=='Constr' and not(i_scale==0):
+                if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
                 init_img = get_upScaleOf(tmp_output_image_path,scale)
                 former_scale = list_scale[i_scale-1]
                 i_lowres = get_upScaleOf(tmp_output_image_path,None)
             elif args.MS_Strat=='Init' and not(i_scale==0):
+                if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
                 init_img = get_upScaleOf(tmp_output_image_path,scale)
             else:
                 init_img = get_init_img_wrap(args,output_image_path,image_content)
@@ -2525,7 +2595,8 @@ def main_with_option():
     ##brick = 'Camouflage_1'
     #brick = 'OrnamentsCambodia0055_512'
     brick = "BrickRound0122_1_seamless_S"
-    brick = "Brick_512_1"
+    brick = "lego_1024"
+    #brick = "lego_1024_IntermediateIm_256"
     img_folder = "images/"
     img_output_folder = "images/"
     image_style_name = brick
@@ -2540,14 +2611,15 @@ def main_with_option():
     maxcor = 20
     sampling = 'up'
     MS_Strat = 'Init'
-    MS_Strat = 'Constr'
+    loss = ['texture','spectrumGang']
+    #MS_Strat = 'Constr'
     #MS_Strat = ''
     # In order to set the parameter before run the script
     parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,img_folder=img_folder,
         print_iter=print_iter,start_from_noise=start_from_noise,img_output_folder=img_output_folder,
         content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
         content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
-        learning_rate=learning_rate,sampling=sampling,MS_Strat=MS_Strat)
+        learning_rate=learning_rate,sampling=sampling,MS_Strat=MS_Strat,loss=loss)
     args = parser.parse_args()
     style_transfer(args)
 

@@ -224,8 +224,8 @@ def generation_Texture_LossFctWeightMSContraint():
 	path_output = '/home/gonthier/Travail_Local/Texture_Style/Style_Transfer/dataImages2_output/'
 	do_mkdir(path_output)
 	parser = get_parser_args()
-	max_iter = 2000
-	print_iter = 2000
+	max_iter = 666
+	print_iter = 666
 	start_from_noise = 1
 	init_noise_ratio = 1.0
 	optimizer = 'lbfgs'
@@ -375,7 +375,7 @@ def generation_Texture_LossFct3():
 	
 	# Comparison on the loss function !!! 
 	#losses_to_test = [['autocorr'],['phaseAlea'],['texture','spectrum'],['texture','TVronde'],['texture','TV1'],['texture','TV']]
-	losses_to_test = [['texture'],['texture','spectrum'],['autocorr'],['phaseAlea']]
+	losses_to_test = [['texture'],['texture','spectrum'],['autocorr'],['phaseAlea'],['texture','spectrumGang']]
 	padding = 'SAME'
 	for loss in losses_to_test:
 		for name_img in list_img:
@@ -401,11 +401,11 @@ def generation_Texture_LossFct3():
 				dst = path_output_tmp+'/'+ output_img_name + '.png'
 				copyfile(src, dst)
 	
-	losses_to_test = [['texture','spectrum'],['autocorr'],['phaseAlea']]
+	losses_to_test = [['texture','spectrumGang'],['texture','spectrum'],['texture'],['autocorr'],['phaseAlea']]
 	scalesStrat = ['Init','Constr']
 	padding = 'SAME'
-	for MSS in scalesStrat:
-		for loss in losses_to_test:
+	for loss in losses_to_test:
+		for MSS in scalesStrat:
 			for name_img in list_img:
 				MS_Strat = MSS
 				name_img_wt_ext,_ = name_img.split('.')
@@ -640,8 +640,8 @@ if __name__ == '__main__':
 	#generation_Texture_LossFct()
 	# python LossFct_Test_Gen.py >> /home/nicolas/Style-Transfer/LossFct/results/output.txt
 	#generation_Texture_LossFctBetaSpectrum()
-	#generation_Texture_LossFct3()
-	generation_Texture_LossFctWeightMSContraint()
+	#generation_Texture_LossFctWeightMSContraint()
+	generation_Texture_LossFct3()
 	#generation_Texture_LossFctBetaSpectrum_PhaseAlea()
 	#generation_Texture_LossFct2()
 	#generation_Texture_LossGatysPlusAutocorr()	

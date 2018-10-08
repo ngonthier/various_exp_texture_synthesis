@@ -27,6 +27,9 @@ def get_parser_args():
     parser.add_argument('--plot',action="store_true",
         help='Boolean flag indicating if image should be plotted.')
         
+    parser.add_argument('--saveMS',action="store_true",
+        help='Boolean flag indicating if intermediate images with a MS strategy have to be saved.')
+        
     # Name of the Images
     parser.add_argument('--output_img_name', type=str, 
         default='Pastiche',help='Filename of the output image.')
@@ -114,7 +117,7 @@ def get_parser_args():
 			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy',
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
-			'TVronde','current','phaseAleaList'],
+			'TVronde','current','phaseAleaList','spectrumGang'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',

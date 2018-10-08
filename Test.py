@@ -99,6 +99,62 @@ def test_n_moments_computation():
 		print("Test not OK pour n moments")		
 	sess.close()
 
+def resizer():
+	#!/usr/bin/env python3
+	# -*- coding: utf-8 -*-
+	"""
+	Created on Mon Oct  1 18:26:33 2018
+
+	@author: gonthier
+	"""
+
+	import matplotlib.pyplot as plt
+	import tensorflow as tf
+	from skimage import data, color
+	from skimage.transform import rescale, resize, downscale_local_mean
+	import numpy as np
+	import cv2
+
+	image = data.chelsea()
+	image = image[0:64,0:64,:]
+	tf_resized = tf.image.resize_area(np.expand_dims(image,axis=0),[image.shape[0]//2, image.shape[1]//2],
+										  align_corners=True)
+	sess = tf.Session()
+	tf_resized_value = sess.run(tf_resized)[0]
+	tf_resized_value = tf_resized_value.astype('uint8')
+	#image_rescaled = rescale(image, 1.0 / 2.0, anti_aliasing=False)
+	image_resized = cv2.resize(image, (image.shape[0]//2, image.shape[1]//2),
+						   interpolation=cv2.INTER_AREA
+						   ).astype('uint8')
+
+	diff = np.abs(tf_resized_value - image_resized)
+	print('Max of diff between TF et skimage',np.max(diff))
+	diff2 = (diff - np.min(diff)) / (np.max(diff) - np.min(diff))
+	image_upscaled = resize(image, (image.shape[0]*2, image.shape[1] *2),anti_aliasing=True)
+
+	fig, axes = plt.subplots(nrows=2, ncols=2)
+
+	ax = axes.ravel()
+
+	ax[0].imshow(image, cmap='gray')
+	ax[0].set_title("Original image")
+
+	ax[1].imshow(tf_resized_value, cmap='gray')
+	ax[1].set_title("Resized by TF image (aliasing ?)")
+
+	ax[2].imshow(image_resized, cmap='gray')
+	ax[2].set_title("Resized by Skimage (no aliasing)")
+	#
+	#ax[3].imshow(image_upscaled, cmap='gray')
+	#ax[3].set_title("Upscale image (no aliasing)")
+	ax[3].imshow(diff2, cmap='gray')
+	ax[3].set_title("Difference")
+
+	#ax[0].set_xlim(0, 512)
+	#ax[0].set_ylim(512, 0)
+	plt.tight_layout()
+plt.show()
+
 if __name__ == '__main__':
 	test_moments_computation()
 	test_n_moments_computation()
