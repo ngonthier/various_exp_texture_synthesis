@@ -1239,7 +1239,9 @@ def loss_spectrum(sess,net,image_style,M_dict,beta):
     https://arxiv.org/pdf/1605.01141.pdf
     This can lead to translationResults
     """
+    
     eps = 0.001
+	# TODO passer eps en argmument il est egal a 10**-16 sur matlab
     M = M_dict['input'] # Nombre de pixels
     
     x = net['input'] # Image en cours de synthese
@@ -1276,13 +1278,15 @@ def loss_spectrum(sess,net,image_style,M_dict,beta):
     loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
     loss *= beta/(3*M)
     return(loss)  
-      
-def loss_spectrumGang(sess,net,image_style,M_dict,beta):
+    
+def loss_spectrumtest(sess,net,image_style,M_dict,beta,eps = 0.001):
     """
-    Computation of the spectrum loss from Gang Liu 
+    Computation of an approximate version of the spectrum loss from Gang Liu 
     https://arxiv.org/pdf/1605.01141.pdf
+    This can lead to translationResults
     """
-    eps = 0.001
+    #eps = 0.
+    #eps = 0.001
     M = M_dict['input'] # Nombre de pixels
     
     x = net['input'] # Image en cours de synthese
@@ -1299,16 +1303,65 @@ def loss_spectrumGang(sess,net,image_style,M_dict,beta):
     
     # Element wise multiplication of FFT and conj of FFT
     if tf.__version__ < '1.8':
-        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     else:
-        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+    # Shape = [  1   1 512 512] pour une image 512*512
+    #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
+    print(innerProd)
+    #if tf.__version__ > '1.4':
+        #module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
+    #else:
+    #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
+    #product = tf.multiply(innerProd,tf.conj(innerProd))
+    product = tf.add(tf.pow(tf.real(innerProd),2.),tf.pow(tf.imag(innerProd),2.)) # cela semble etre ce qui cause la synthese translation !
+    #product = tf.add(tf.pow(tf.real(innerProd),2.),tf.pow(tf.imag(innerProd),2)) # Mais pas celle la
+    product_real = tf.real(product)
+    module_InnerProd = tf.complex(tf.sqrt(product_real),0.)
+    print(module_InnerProd)
+    dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
+    print(dephase)
+    ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
+    # Element wise multiplication
+    imF = tf.ifft2d(ftNew)
+    imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
+    loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
+    loss *= beta/(3*M)
+    return(loss)  
+      
+def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
+    """
+    Computation of the spectrum loss from Gang Liu 
+    https://arxiv.org/pdf/1605.01141.pdf
+    """
+    #eps = 10**(-16)
+    #
+    M = M_dict['input'] # Nombre de pixels
+    
+    x = net['input'] # Image en cours de synthese
+        
+    #For color images,
+    #the phase of the gray level image is first computed, and then
+    #imposed to each color channel
+     
+    a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch,h,w,canaux à  batch,canaux,h,w
+    F_a = tf.fft2d(tf.complex(a,0.)) # TF de l image de reference
+    
+    x_t = tf.transpose(x, [0,3,1,2])
+    F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
+    
+    # Element wise multiplication of FFT and conj of FFT
+    if tf.__version__ < '1.8':
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+    else:
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     # Shape = [  1   1 512 512] pour une image 512*512
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
     print(innerProd)
     if tf.__version__ > '1.4':
         module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     else:
-		raise(NotImplemented)
+        raise(NotImplemented)
     print(module_InnerProd)
     dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
     print(dephase)
@@ -2208,10 +2261,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          spectrum_loss = loss_spectrum(sess,net,image_style,M_dict,args.beta_spectrum)
          list_loss +=  [spectrum_loss]
          list_loss_name +=  ['spectrum_loss']  
-    if('spectrumGang'  in args.loss) or ('full' in args.loss):
-         spectrumGang_loss = loss_spectrumGang(sess,net,image_style,M_dict,args.beta_spectrum)
-         list_loss +=  [spectrumGang_loss]
-         list_loss_name +=  ['spectrumGang_loss']  
+    if('spectrumTFabs'  in args.loss) or ('full' in args.loss):
+         spectrumTFabs_loss = loss_spectrumTFabs(sess,net,image_style,M_dict,args.beta_spectrum)
+         list_loss +=  [spectrumTFabs_loss]
+         list_loss_name +=  ['spectrumTFabs_loss']  
     if('variance'  in args.loss) or ('full' in args.loss):
          variance_loss = loss_variance(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [variance_loss]
@@ -2576,33 +2629,13 @@ def main():
 
 def main_with_option():
     parser = get_parser_args()
-    image_style_name= "StarryNight_Big"
-    image_style_name= "StarryNight"
-    starry = "StarryNight"
-    marbre = 'GrungeMarbled0021_S'
-    tile =  "TilesOrnate0158_1_S"
-    tile2 = "TilesZellige0099_1_S"
-    peddle = "pebbles"
-    brick = "BrickSmallBrown0293_1_S"
-    #D ="D20_01"
-    #orange = "orange"
-    #bleu = "bleu"
-    #glass = "glass"
-    #damier ='DamierBig_Proces'
-    #camouflage = 'Camouflage0003_S'
-    #brick = 'Brick_512_1'
-    ##brick = 'MarbreWhite_1'
-    ##brick = 'Camouflage_1'
-    #brick = 'OrnamentsCambodia0055_512'
-    brick = "BrickRound0122_1_seamless_S"
-    brick = "lego_1024"
-    #brick = "lego_1024_IntermediateIm_256"
+    brick = "lego_1024Ref_256"
     img_folder = "images/"
     img_output_folder = "images/"
     image_style_name = brick
     content_img_name  = brick
-    max_iter = 2000
-    print_iter = 2000
+    max_iter = 1000
+    print_iter = 1000
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
     content_strengh = 0.001
@@ -2610,8 +2643,9 @@ def main_with_option():
     learning_rate = 1 # 10 for adam and 10**(-10) for GD
     maxcor = 20
     sampling = 'up'
-    MS_Strat = 'Init'
-    loss = ['texture','spectrumGang']
+    MS_Strat = ''
+    loss = ['texture','spectrum']
+    saveMS = False
     #MS_Strat = 'Constr'
     #MS_Strat = ''
     # In order to set the parameter before run the script
@@ -2619,9 +2653,60 @@ def main_with_option():
         print_iter=print_iter,start_from_noise=start_from_noise,img_output_folder=img_output_folder,
         content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
         content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
-        learning_rate=learning_rate,sampling=sampling,MS_Strat=MS_Strat,loss=loss)
+        learning_rate=learning_rate,sampling=sampling,MS_Strat=MS_Strat,loss=loss,saveMS=saveMS)
     args = parser.parse_args()
     style_transfer(args)
+    
+#def main_with_option2():
+    #parser = get_parser_args()
+    #image_style_name= "StarryNight_Big"
+    #image_style_name= "StarryNight"
+    #starry = "StarryNight"
+    #marbre = 'GrungeMarbled0021_S'
+    #tile =  "TilesOrnate0158_1_S"
+    #tile2 = "TilesZellige0099_1_S"
+    #peddle = "pebbles"
+    #brick = "BrickSmallBrown0293_1_S"
+    ##D ="D20_01"
+    ##orange = "orange"
+    ##bleu = "bleu"
+    ##glass = "glass"
+    ##damier ='DamierBig_Proces'
+    ##camouflage = 'Camouflage0003_S'
+    ##brick = 'Brick_512_1'
+    ###brick = 'MarbreWhite_1'
+    ###brick = 'Camouflage_1'
+    ##brick = 'OrnamentsCambodia0055_512'
+    #brick = "BrickRound0122_1_seamless_S"
+    #brick = "lego_1024maison"
+    #brick = "lego_1024Ref_256"
+    #output_img_name = 'lego_1024Ref_256_maison_000step'
+    #img_folder = "images/"
+    #img_output_folder = "images/"
+    #image_style_name = brick
+    #content_img_name  = brick
+    #max_iter = 2000
+    #print_iter = 2000
+    #start_from_noise = 1 # True
+    #init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
+    #content_strengh = 0.001
+    #optimizer = 'lbfgs'
+    #learning_rate = 1 # 10 for adam and 10**(-10) for GD
+    #maxcor = 20
+    #sampling = 'up'
+    #MS_Strat = 'Init'
+    #loss = ['texture','spectrum']
+    #saveMS = True
+    ##MS_Strat = 'Constr'
+    ##MS_Strat = ''
+    ## In order to set the parameter before run the script
+    #parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,img_folder=img_folder,
+        #print_iter=print_iter,start_from_noise=start_from_noise,img_output_folder=img_output_folder,
+        #content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,output_img_name=output_img_name,
+        #content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
+        #learning_rate=learning_rate,sampling=sampling,MS_Strat=MS_Strat,loss=loss,saveMS=saveMS)
+    #args = parser.parse_args()
+    #style_transfer(args)
 
 if __name__ == '__main__':
     #main() # Command line : python Style_Transfer.py --content_img_name VG --style_img_name estampe --print_iter 1000 --max_iter 1000 --loss texture content --HistoMatching

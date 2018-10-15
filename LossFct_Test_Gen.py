@@ -373,35 +373,7 @@ def generation_Texture_LossFct3():
 	DrawAgain = False # Erase already synthesied image
 	print(list_img)
 	
-	# Comparison on the loss function !!! 
-	#losses_to_test = [['autocorr'],['phaseAlea'],['texture','spectrum'],['texture','TVronde'],['texture','TV1'],['texture','TV']]
-	losses_to_test = [['texture'],['texture','spectrum'],['autocorr'],['phaseAlea'],['texture','spectrumGang']]
-	padding = 'SAME'
-	for loss in losses_to_test:
-		for name_img in list_img:
-			name_img_wt_ext,_ = name_img.split('.')
-			path_output_tmp = path_output+name_img_wt_ext
-			do_mkdir(path_output_tmp)
-			tf.reset_default_graph() # Necessity to use a new graph !! 
-			img_folder = path_origin
-			img_output_folder = path_origin
-			output_img_name = name_img_wt_ext + '_'+padding
-			for loss_item in loss:
-				output_img_name += '_' + loss_item
-			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
-				img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
-				init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
-				optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
-				vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding)
-			args = parser.parse_args()
-			output_img_name_full = path_output + output_img_name + '.png'
-			if DrawAgain or not(os.path.isfile(output_img_name_full)):
-				st.style_transfer(args)
-				src=output_img_name_full
-				dst = path_output_tmp+'/'+ output_img_name + '.png'
-				copyfile(src, dst)
-	
-	losses_to_test = [['texture','spectrumGang'],['texture','spectrum'],['texture'],['autocorr'],['phaseAlea']]
+	losses_to_test = [['texture','spectrumTFabs'],['texture','spectrum'],['texture'],['autocorr'],['phaseAlea']]
 	scalesStrat = ['Init','Constr']
 	padding = 'SAME'
 	for loss in losses_to_test:
@@ -430,6 +402,36 @@ def generation_Texture_LossFct3():
 					src=output_img_name_full
 					dst = path_output_tmp+'/'+ output_img_name + '.png'
 					copyfile(src, dst)
+	
+	# Comparison on the loss function !!! 
+	#losses_to_test = [['autocorr'],['phaseAlea'],['texture','spectrum'],['texture','TVronde'],['texture','TV1'],['texture','TV']]
+	losses_to_test = [['texture'],['texture','spectrum'],['autocorr'],['phaseAlea'],['texture','spectrumTFabs']]
+	padding = 'SAME'
+	for loss in losses_to_test:
+		for name_img in list_img:
+			name_img_wt_ext,_ = name_img.split('.')
+			path_output_tmp = path_output+name_img_wt_ext
+			do_mkdir(path_output_tmp)
+			tf.reset_default_graph() # Necessity to use a new graph !! 
+			img_folder = path_origin
+			img_output_folder = path_origin
+			output_img_name = name_img_wt_ext + '_'+padding
+			for loss_item in loss:
+				output_img_name += '_' + loss_item
+			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
+				img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
+				init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+				optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
+				vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding)
+			args = parser.parse_args()
+			output_img_name_full = path_output + output_img_name + '.png'
+			if DrawAgain or not(os.path.isfile(output_img_name_full)):
+				st.style_transfer(args)
+				src=output_img_name_full
+				dst = path_output_tmp+'/'+ output_img_name + '.png'
+				copyfile(src, dst)
+	
+	
 					
 def generation_Texture_LossFct2():
 	path_origin = '/home/gonthier/Travail_Local/Texture_Style/Style_Transfer/dataImagesDavy/'

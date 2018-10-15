@@ -69,6 +69,7 @@ def getImageXwithPhaseOfA_tfabs(x,a):
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
     print('innerProd',innerProd)
     if tf.__version__ > '1.4':
+        #module_InnerProd= tf.complex(tf.sqrt(tf.real(tf.add(tf.pow(tf.real(innerProd),2),tf.pow(tf.imag(innerProd),2)))),0.)
         module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     else:
         raise(NotImplemented)
@@ -141,8 +142,10 @@ def investigationSpectrumModulus():
     imF_tfabs,ftNew_tfabs,dephase_tfabs,module_InnerProd_tfabs,innerProd_tfabs = sess.run(getImageXwithPhaseOfA_tfabs(image_style,image_style))
     print('case with a and itself')
     module_InnerProd_tfabs_real = module_InnerProd_tfabs.real
+    print('Max and min  of module_InnerProd_tfabs_real',np.max(module_InnerProd_tfabs_real),np.min(module_InnerProd_tfabs_real))
     module_InnerProd_tfabs_imag = module_InnerProd_tfabs.imag
     module_InnerProd_maison_real = module_InnerProd_maison.real
+    print('Max and min of module_InnerProd_maison_real',np.max(module_InnerProd_maison_real),np.min(module_InnerProd_maison_real))
     module_InnerProd_maison_imag = module_InnerProd_maison.imag
     diff_realpart_module_innerProd  = module_InnerProd_tfabs_real- module_InnerProd_maison_real
     ratio_realpart_module_innerProd  = module_InnerProd_maison_real  / module_InnerProd_tfabs_real
@@ -159,9 +162,9 @@ def investigationSpectrumModulus():
     print('Mean and std of the ratio',np.mean(ratio_realpart_module_innerProd),np.std(ratio_realpart_module_innerProd))
     print('Maximum and minimum of the imag part of module_InnerProd_maison',np.max(module_InnerProd_maison_imag),np.min(module_InnerProd_maison_imag))
     print('Maximum and minimum of the imag part of module_InnerProd_tfabs',np.max(module_InnerProd_tfabs_imag),np.min(module_InnerProd_tfabs_imag))
-    print('Maximum of the difference between module_InnerProd_tfabs_real and module_InnerProd_maison_imag',np.max(np.abs(diff_realpart_module_innerProd)))
+    print('Maximum of the difference between module_InnerProd_tfabs_real and module_InnerProd_maison_real',np.max(np.abs(diff_realpart_module_innerProd)))
     print('MSE between module_InnerProd_tfabs_real and module_InnerProd_maison_imag',np.sum(diff_realpart_module_innerProd**2))
-    print('Maximum of the difference between imF_tfabs and imF_maison',np.max(np.abs(diff_tfabs_main)))
+    print('Maximum of the difference between imF_tfabs and imF_maison : the image reconstruction ',np.max(np.abs(diff_tfabs_main)))
     print('Maximum in percentage of the difference between imF_tfabs and imF_maison',100*np.max(np.abs(diff_tfabs_main))/np.max([np.max(2*np.abs(module_InnerProd_maison_real)),np.max(2*np.abs(module_InnerProd_tfabs_real))]))
     print('MSE between imF_tfabs and imF_maison',np.sum(diff_tfabs_main**2))
     diff_realpart_innerProd_mask = np.zeros_like(diff_realpart_module_innerProd)
@@ -180,8 +183,10 @@ def investigationSpectrumModulus():
     st.plot_image_with_postprocess(args,imF_maison,name="imF_maison with x et a",fig=None)
     st.plot_image_with_postprocess(args,imF_tfabs,name="imF_tfabs with x et a",fig=None)
     module_InnerProd_tfabs_real = module_InnerProd_tfabs.real
+    print('Max and min  of module_InnerProd_tfabs_real',np.max(module_InnerProd_tfabs_real),np.min(module_InnerProd_tfabs_real))
     module_InnerProd_tfabs_imag = module_InnerProd_tfabs.imag
     module_InnerProd_maison_real = module_InnerProd_maison.real
+    print('Max and min of module_InnerProd_maison_real',np.max(module_InnerProd_maison_real),np.min(module_InnerProd_maison_real))
     module_InnerProd_maison_imag = module_InnerProd_maison.imag
     diff_realpart_module_innerProd  = module_InnerProd_tfabs_real- module_InnerProd_maison_real
     ratio_realpart_module_innerProd  = module_InnerProd_maison_real  / module_InnerProd_tfabs_real
@@ -198,9 +203,9 @@ def investigationSpectrumModulus():
     print('Mean and std of the ratio',np.mean(ratio_realpart_module_innerProd),np.std(ratio_realpart_module_innerProd))
     print('Maximum and minimum of the imag part of module_InnerProd_maison',np.max(module_InnerProd_maison_imag),np.min(module_InnerProd_maison_imag))
     print('Maximum and minimum of the imag part of module_InnerProd_tfabs',np.max(module_InnerProd_tfabs_imag),np.min(module_InnerProd_tfabs_imag))
-    print('Maximum of the difference between module_InnerProd_tfabs_real and module_InnerProd_maison_imag',np.max(np.abs(diff_realpart_module_innerProd)))
+    print('Maximum of the difference between module_InnerProd_tfabs_real and module_InnerProd_maison_real',np.max(np.abs(diff_realpart_module_innerProd)))
     print('MSE between module_InnerProd_tfabs_real and module_InnerProd_maison_imag',np.sum(diff_realpart_module_innerProd**2))
-    print('Maximum of the difference between imF_tfabs and imF_maison',np.max(np.abs(diff_tfabs_main)))
+    print('Maximum of the difference between imF_tfabs and imF_maison : the image reconstruction ',np.max(np.abs(diff_tfabs_main)))
     print('Maximum in percentage of the difference between imF_tfabs and imF_maison',100*np.max(np.abs(diff_tfabs_main))/np.max([np.max(2*np.abs(module_InnerProd_maison_real)),np.max(2*np.abs(module_InnerProd_tfabs_real))]))
     print('MSE between imF_tfabs and imF_maison',np.sum(diff_tfabs_main**2))
     diff_realpart_innerProd_mask = np.zeros_like(diff_realpart_module_innerProd)
@@ -235,6 +240,30 @@ def investigationSpectrumModulus():
     plt.show()
     input('wait input to close')
     
+#def testFFT():
+	### DEFINE FFTs
+	#fft1D_np = np.fft.fft
+	#fft1D_tf = tf.fft
+	#ifft1D_np = np.fft.ifft
+	#ifft1D_tf = tf.ifft
+	#fft2D_np = np.fft.fft2
+	#fft2D_tf = tf.fft2d
+	#ifft2D_np = np.fft.ifft2
+	#ifft2D_tf = tf.ifft2d
+	### TEST 2D FFT
+	#np.random.seed(13)
+	#M = np.random.random([1,2,2]).astype(np.complex64)
+	#M_tf = tf.placeholder(dtype=M.dtype, shape=[None,*M.shape[1:]], name='M_tf')
+	#eval_dict = {M_tf: M}
+	#sess, gsaver = nn_utils.init_network()
+	#Mhat = fft2D_np(M) 
+	#Mhat_tf = fft2D_tf(M_tf)
+	#Mhat_tfeval = Mhat_tf.eval(feed_dict=eval_dict)
+	#e = Mhat - Mhat_tfeval
+	#err = np.linalg.norm(e.reshape([-1,1]))
+	#assert( np.isclose(err, 0.0) )
+
     
 if __name__ == '__main__':
     investigationSpectrumModulus()
+    

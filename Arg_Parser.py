@@ -86,7 +86,7 @@ def get_parser_args():
     parser.add_argument('--content_strengh',  type=float,default=0.001,
         help='Importance give to the content : alpha/beta ratio. (default %(default)s)')
     
-    parser.add_argument('--init_noise_ratio',type=float,default=0.1,
+    parser.add_argument('--init_noise_ratio',type=float,default=1.0,
         help='Propostion of the initialization image that is noise. (default %(default)s)')
         
     parser.add_argument('--init',type=str,default='Gaussian',choices=['Uniform','smooth_grad','Gaussian','Cst'],
@@ -117,7 +117,7 @@ def get_parser_args():
 			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy',
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
-			'TVronde','current','phaseAleaList','spectrumGang'],
+			'TVronde','current','phaseAleaList','spectrumTFabs'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
