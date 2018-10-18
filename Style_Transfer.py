@@ -1233,15 +1233,14 @@ def loss_fft3D(sess,net,image_style,M_dict,style_layers):
     total_style_loss =tf.to_float(total_style_loss)
     return(total_style_loss)
     
-def loss_spectrum(sess,net,image_style,M_dict,beta):
+def loss_spectrum(sess,net,image_style,M_dict,beta,eps = 0.001):
     """
     Computation of an approximate version of the spectrum loss from Gang Liu 
     https://arxiv.org/pdf/1605.01141.pdf
     This can lead to translationResults
     """
-    
-    eps = 0.001
-	# TODO passer eps en argmument il est egal a 10**-16 sur matlab
+
+    # TODO passer eps en argmument il est egal a 10**-16 sur matlab
     M = M_dict['input'] # Nombre de pixels
     
     x = net['input'] # Image en cours de synthese
@@ -1283,7 +1282,8 @@ def loss_spectrumtest(sess,net,image_style,M_dict,beta,eps = 0.001):
     """
     Computation of an approximate version of the spectrum loss from Gang Liu 
     https://arxiv.org/pdf/1605.01141.pdf
-    This can lead to translationResults
+    This can lead to translationResults 
+    Fonction pour faire des tests 
     """
     #eps = 0.
     #eps = 0.001
@@ -1308,19 +1308,20 @@ def loss_spectrumtest(sess,net,image_style,M_dict,beta,eps = 0.001):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     # Shape = [  1   1 512 512] pour une image 512*512
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
-    print(innerProd)
+    #print(innerProd)
     #if tf.__version__ > '1.4':
         #module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     #else:
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
     #product = tf.multiply(innerProd,tf.conj(innerProd))
     product = tf.add(tf.pow(tf.real(innerProd),2.),tf.pow(tf.imag(innerProd),2.)) # cela semble etre ce qui cause la synthese translation !
+    # Mais en fait non parce que l on peut obtenir la translation avec le code loss_spectrumTFabs
     #product = tf.add(tf.pow(tf.real(innerProd),2.),tf.pow(tf.imag(innerProd),2)) # Mais pas celle la
     product_real = tf.real(product)
     module_InnerProd = tf.complex(tf.sqrt(product_real),0.)
-    print(module_InnerProd)
+    #print(module_InnerProd)
     dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
-    print(dephase)
+    #print(dephase)
     ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
     # Element wise multiplication
     imF = tf.ifft2d(ftNew)
@@ -1333,6 +1334,7 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     """
     Computation of the spectrum loss from Gang Liu 
     https://arxiv.org/pdf/1605.01141.pdf
+    enfin une reimplementation qui a l air de faire aussi des translations :/
     """
     #eps = 10**(-16)
     #
@@ -1357,14 +1359,14 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     # Shape = [  1   1 512 512] pour une image 512*512
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
-    print(innerProd)
+    #print(innerProd)
     if tf.__version__ > '1.4':
         module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     else:
         raise(NotImplemented)
-    print(module_InnerProd)
+    #print(module_InnerProd)
     dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
-    print(dephase)
+    #print(dephase)
     ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
     # Element wise multiplication
     imF = tf.ifft2d(ftNew)
@@ -1372,6 +1374,59 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
     loss *= beta/(3*M)
     return(loss)    
+    
+@tf.custom_gradient   
+def loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,beta,eps = 0.001):
+    """
+    Computation of the spectrum loss from Gang Liu 
+    https://arxiv.org/pdf/1605.01141.pdf
+    enfin une reimplementation qui a l air de faire aussi des translations :/
+    En cours de test 
+    """
+    #eps = 10**(-16)
+    #
+    M = M_dict['input'] # Nombre de pixels
+    
+    x = net['input'] # Image en cours de synthese
+        
+    #For color images,
+    #the phase of the gray level image is first computed, and then
+    #imposed to each color channel
+     
+    a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch,h,w,canaux à  batch,canaux,h,w
+    F_a = tf.fft2d(tf.complex(a,0.)) # TF de l image de reference
+    
+    x_t = tf.transpose(x, [0,3,1,2])
+    F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
+    
+    # Element wise multiplication of FFT and conj of FFT
+    if tf.__version__ < '1.8':
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+    else:
+        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+    # Shape = [  1   1 512 512] pour une image 512*512
+    #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
+    #print(innerProd)
+    if tf.__version__ > '1.4':
+        module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
+    else:
+        raise(NotImplemented)
+    #print(module_InnerProd)
+    dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
+    #print(dephase)
+    ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
+    # Element wise multiplication
+    imF = tf.ifft2d(ftNew)
+    imF_transposeback =  tf.real(tf.transpose(imF, [0,2,3,1]))
+    loss = tf.nn.l2_loss(tf.subtract(x,imF_transposeback)) # sum (x**2)/2
+    loss *= beta/(3*M)
+    
+    def grad(dy):
+        diff_im = tf.subtract(x,imF_transposeback)
+        grad_custom = dy * tf.multiply(diff_im,beta/(3*M))
+        return grad_custom
+
+    return(loss,grad)    
 
 def loss__HF_filter(sess, net, image_style,M_dict):
     """
@@ -2187,11 +2242,11 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
     list_loss =  []
     list_loss_name =  []
     assert len(args.loss)
-    if('content' in args.loss) or ('Gatys'  in args.loss) or ('full' in args.loss):
+    if('content' in args.loss) or ('GatysStyleTransfer'  in args.loss) or ('full' in args.loss):
         content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers) # alpha/Beta ratio 
         list_loss +=  [content_loss]
         list_loss_name +=  ['content_loss']
-    if('texture'  in args.loss) or('Gatys' in args.loss) or ('full' in args.loss):
+    if('texture'  in args.loss) or('Gatys' in args.loss) or('GatysStyleTransfer' in args.loss)  or ('full' in args.loss):
         style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,style_layers)
         list_loss +=  [style_loss]
         list_loss_name +=  ['style_loss']
@@ -2258,13 +2313,17 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          list_loss +=  [fftVect_loss]
          list_loss_name +=  ['fftVect_loss'] 
     if('spectrum'  in args.loss) or ('full' in args.loss):
-         spectrum_loss = loss_spectrum(sess,net,image_style,M_dict,args.beta_spectrum)
+         spectrum_loss = loss_spectrum(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
          list_loss +=  [spectrum_loss]
          list_loss_name +=  ['spectrum_loss']  
     if('spectrumTFabs'  in args.loss) or ('full' in args.loss):
-         spectrumTFabs_loss = loss_spectrumTFabs(sess,net,image_style,M_dict,args.beta_spectrum)
+         spectrumTFabs_loss = loss_spectrumTFabs(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
          list_loss +=  [spectrumTFabs_loss]
          list_loss_name +=  ['spectrumTFabs_loss']  
+    if('spectrumTest'  in args.loss) or ('full' in args.loss):
+         spectrumTest_loss,_ = loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
+         list_loss +=  [spectrumTest_loss]
+         list_loss_name +=  ['spectrumTest_loss']  
     if('variance'  in args.loss) or ('full' in args.loss):
          variance_loss = loss_variance(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [variance_loss]
@@ -2354,11 +2413,15 @@ def style_transfer(args):
     set up all the things and run an optimization in order to produce an 
     image 
     """
+    #tf.enable_eager_execution()
     if args.verbose:
         tinit = time.time()
         print("verbosity turned on")
         print("Message de service tu utilise plusiseurs fois de tf.__version__ > truc cela ne fontionne pas toujours il faudrait changer cela")
         print(args)
+    
+    if args.max_iter < args.print_iter:
+        args.print_iter = args.max_iter
     
     output_image_path_first = args.img_output_folder + args.output_img_name + args.img_ext
     if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
@@ -2386,7 +2449,8 @@ def style_transfer(args):
         
     # Loop on the scale
     for i_scale,scale in enumerate(list_scale):
-        if args.verbose: print('Scale number ',str(1+i_scale),'on ',len(list_scale),' equal to ',scale, 'strategy',args.MS_Strat)
+        if args.verbose and not(args.MS_Strat==''):
+            print('== Scale number ',str(1+i_scale),'on ',len(list_scale),' equal to ',scale, 'scale',args.MS_Strat,' ==')
         if scale == image_h_first:
             image_h = image_h_first
             image_w = image_w_first
@@ -2616,7 +2680,7 @@ def style_transfer(args):
             sess.close()
             tf.reset_default_graph()
             if(args.verbose): 
-                print("Close Sess")
+                print("Close Sess - End of the global optimization.")
                 tend = time.time()
                 print("Computation total for ",tend-tinit," s")
         if(args.plot): input("Press enter to end and close all")
@@ -2629,9 +2693,11 @@ def main():
 
 def main_with_option():
     parser = get_parser_args()
-    brick = "lego_1024Ref_256"
-    img_folder = "images/"
-    img_output_folder = "images/"
+    brick = "mesh_texture_surface_2048"
+    brick = "mesh_texture_surface_4096"
+    #brick = "lego_1024"
+    img_folder = "HDImages/"
+    img_output_folder = "HDImages/"
     image_style_name = brick
     content_img_name  = brick
     max_iter = 1000

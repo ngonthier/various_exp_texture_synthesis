@@ -10,8 +10,25 @@ Created on Tue Oct  9 13:48:06 2018
 #import skimage.io as skio
 import tensorflow as tf
 import numpy as np
-
+import os.path
+import scipy
+from skimage.color import gray2rgb
 #%%
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import numpy as np
+
+import timeit
+
+from PIL import Image
+
+def convertToColoMap(grayim):
+    cm_hot = mpl.cm.get_cmap('viridis')
+    im = cm_hot(grayim)
+    im = np.uint8(im * 255)
+    return(im)
 
 def calcul_plus_proches(im1,im2,ps=5,nbpatch=None,sess=None):
     """ renvoie une carte x,y donnant la position du plus proche 
@@ -99,56 +116,121 @@ def calcul_plus_proches(im1,im2,ps=5,nbpatch=None,sess=None):
     return (xcoord[actualpos],ycoord[actualpos])
 #%% 
 
+def testfct():
+	#im1=skio.imread()
+	rnd=np.random
+	N=300
+	# 30s for an image of size 512
+	# 404s for an image of size 1024
+	nbcoul=3
+	im1=rnd.randn(N,N,nbcoul)
 
-#im1=skio.imread()
-rnd=np.random
-N=512
-nbcoul=3
-im1=rnd.randn(N,N,nbcoul)
+	im2=im1+0.9*rnd.randn(N,N,nbcoul)
 
-im2=im1+0.9*rnd.randn(N,N,nbcoul)
+	ps=5
 
-ps=5
+	#sess=tf.InteractiveSession()
+	#%% Exemple d'usage
+	import time
+	import matplotlib.pyplot as plt
 
-#sess=tf.InteractiveSession()
-#%% Exemple d'usage
-import time
-import matplotlib.pyplot as plt
+	t0=time.time()
+	(X,Y)=calcul_plus_proches(im1,im2,ps=ps)
+	print(time.time()-t0)
 
-t0=time.time()
-(X,Y)=calcul_plus_proches(im1,im2,ps=ps)
-print(time.time()-t0)
+	#avec deux images im2=im1+bruit on s'attend a ce que X soit presque l'identite...
 
-#avec deux images im2=im1+bruit on s'attend a ce que X soit presque l'identite...
+	print(X)
+	X = X/im1.shape[0]
+	print(X)
+	Xname = 'test.png'
+	scipy.misc.toimage(convertToColoMap(X)).save(Xname)
+	plt.imshow(X)
+	plt.show()
+	# si on prefere les deplacements relatifs aux positions absolues
+	# c'est comme cela qu'on voit si une zone est un copier-coller, 
+	# le vecteur X-X0,Y-Y0 est constant sur une grande plage. 
+	# .... X-XO est nul partout ou X est l'identite
+	X0,Y0=np.meshgrid(np.arange(0,im2.shape[1]-ps+1),np.arange(0,im2.shape[0]-ps+1))
+	plt.imshow(abs(X-X0))
+	plt.show()
+	#%%  VERFICATION
+	t0=time.time()
+	for m in range(10):
+		x=rnd.randint(0,N-ps+1)
+		y=rnd.randint(0,N-ps+1)
+		patchim=im2[y:y+ps,x:x+ps]
+		actuamax=None
+		for k in range(N-ps+1):
+			for l in range(N-ps+1):
+				pi1=im1[k:k+ps,l:l+ps]
+				n2=((pi1-patchim)**2).sum()
+				if actuamax is None:
+					actuamax=n2
+					mieuxX=l
+					mieuxY=k
+				elif actuamax>n2:
+					actuamax=n2
+					mieuxX=l
+					mieuxY=k
+				
+		print (mieuxX,mieuxY,X[y,x],Y[y,x])
+	print((time.time()-t0)/10*N*N)
+	
+def get_list_of_images(path_origin):
+	import os
+	dirs = os.listdir(path_origin)
+	dirs = sorted(dirs, key=str.lower)
+	return(dirs)
 
-plt.imshow(X)
-plt.show()
-# si on prefere les deplacements relatifs aux positions absolues
-# c'est comme cela qu'on voit si une zone est un copier-coller, 
-# le vecteur X-X0,Y-Y0 est constant sur une grande plage. 
-# .... X-XO est nul partout ou X est l'identite
-X0,Y0=np.meshgrid(np.arange(0,im2.shape[1]-ps+1),np.arange(0,im2.shape[0]-ps+1))
-plt.imshow(abs(X-X0))
-plt.show()
-#%%  VERFICATION
-t0=time.time()
-for m in range(10):
-    x=rnd.randint(0,N-ps+1)
-    y=rnd.randint(0,N-ps+1)
-    patchim=im2[y:y+ps,x:x+ps]
-    actuamax=None
-    for k in range(N-ps+1):
-        for l in range(N-ps+1):
-            pi1=im1[k:k+ps,l:l+ps]
-            n2=((pi1-patchim)**2).sum()
-            if actuamax is None:
-                actuamax=n2
-                mieuxX=l
-                mieuxY=k
-            elif actuamax>n2:
-                actuamax=n2
-                mieuxX=l
-                mieuxY=k
-            
-    print (mieuxX,mieuxY,X[y,x],Y[y,x])
-print((time.time()-t0)/10*N*N)
+	
+def eval_copy_paste_onImagesSynth():
+	
+
+	
+	path_origin = '/home/gonthier/Travail_Local/Texture_Style/Implementation Autre Algos/Subset/'
+	ResultsDir = '/home/gonthier/owncloud/These Gonthier Nicolas Partage/Images Textures Résultats/'
+	FolderMaps = '/home/gonthier/owncloud/These Gonthier Nicolas Partage/CopyPaste/'
+	
+	list_img = get_list_of_images(path_origin)
+	
+	list_extTotest = ['_SAME_Gatys_spectrum_MSSInit','MultiScale_o5_l3_8_psame','_SAME_Gatys_spectrumTFabs_MSSInit','_EfrosLeung','_EfrosLeung_EfrosFreeman']
+	
+	ps=5
+	
+	for name_img in list_img:
+		filewithoutext,_ = name_img.split('.')
+		for method in list_extTotest:
+			pngexist,jpgexist = False,False
+			stringname = ResultsDir +filewithoutext+ '/' + filewithoutext + method 
+			print(filewithoutext + method )
+			stringnamepng = stringname + '.png'
+			stringnamejpg = stringname + '.jpg'
+			image_path = path_origin + name_img
+			
+			if os.path.isfile(stringnamepng):
+				pngexist = True
+			if os.path.isfile(stringnamejpg):	
+				jpgexist = True
+			if jpgexist or pngexist:
+				origin_img = scipy.misc.imread(image_path)
+				if jpgexist:
+					syn_img = scipy.misc.imread(stringnamejpg)
+				if pngexist:
+					syn_img = scipy.misc.imread(stringnamepng)
+				print('Start computing nearest patch')
+				(X,Y)=calcul_plus_proches(origin_img,syn_img,ps=ps)
+				Xname = FolderMaps + filewithoutext + method +'_Xmap.png'
+				Yname = FolderMaps + filewithoutext + method +'_Ymap.png'
+				X = X/origin_img.shape[0]
+				Y = Y/origin_img.shape[0]
+				scipy.misc.toimage(convertToColoMap(X)).save(Xname)
+				scipy.misc.toimage(convertToColoMap(Y)).save(Yname)
+				print('Maps saved for',filewithoutext + method)
+				
+	
+	
+	
+if __name__ == '__main__':
+	#testfct()
+	eval_copy_paste_onImagesSynth()

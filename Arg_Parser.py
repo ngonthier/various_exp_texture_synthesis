@@ -112,12 +112,12 @@ def get_parser_args():
     
     # Info on the loss function 
     parser.add_argument('--loss',nargs='+',type=str,default='texture',
-        choices=['full','Gatys','texture','content','4moments','nmoments',
+        choices=['full','GatysStyleTransfer','texture','content','4moments','nmoments',
 			'nmoments_reduce','InterScale','autocorr','autocorrLog',
 			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy',
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
-			'TVronde','current','phaseAleaList','spectrumTFabs'],
+			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
@@ -165,6 +165,9 @@ def get_parser_args():
     parser.add_argument('--beta_spectrum',  type=float,default=10**5,
         help='Value of the weight on the spectrum constraint [Gang 2017]. (default: %(default)s)')
         
+    parser.add_argument('--eps',  type=float,default=0.001,
+        help='Value of the epsilon value in the spectrum constraint. (default: %(default)s)')
+                
     parser.add_argument('--gamma_phaseAlea',  type=float,default=1.,
         help='Value of the weight on the phaseAleatoire loss. (default: %(default)s)')
     
