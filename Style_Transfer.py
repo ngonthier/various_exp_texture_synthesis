@@ -1338,6 +1338,7 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     """
     #eps = 10**(-16)
     #
+    print('eps value :',eps)
     M = M_dict['input'] # Nombre de pixels
     
     x = net['input'] # Image en cours de synthese

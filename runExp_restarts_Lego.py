@@ -48,6 +48,7 @@ def generation_Texture_LegoTest():
 	#alpha = 0.01
 	DrawAgain = False # Erase already synthesied image
 	eps_list=[10**(-16),0.001]
+	eps_list=[1.,10000.]
 	loss= ['Gatys','spectrumTFabs']
 	#scalesStrat = ['Init','']
 	MSS = ''
@@ -55,7 +56,7 @@ def generation_Texture_LegoTest():
 	padding = 'SAME'
 	for i in range(number_of_restarts):
 		for j,eps in enumerate(eps_list):
-			
+			#print('Number :',j,eps)
 			name_img_wt_ext,_ = name_img.split('.')
 			path_output_tmp = path_output+name_img_wt_ext
 			#do_mkdir(path_output_tmp)
@@ -65,11 +66,15 @@ def generation_Texture_LegoTest():
 			output_img_name = name_img_wt_ext + '_'+padding
 			for loss_item in loss:
 				output_img_name += '_' + loss_item
-			if eps==10**(-16) or j==0:
+			if eps==10**(-16):
 				output_img_name += '_eps10m16'
-			elif eps==0.001 or j ==1:
+			elif eps==0.001:
 				output_img_name += '_eps10m3'
-			output_img_name +='_'+str(i)
+			elif eps==1.:
+				output_img_name += '_eps1'
+			elif eps==10000.:
+				output_img_name += '_eps10p5'
+			output_img_name +='_N'+str(i)
 			if not(MSS==''):
 				output_img_name += '_MSS' +MSS
 			parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
