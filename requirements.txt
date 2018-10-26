@@ -8,4 +8,4 @@ pandas>=0.23.4
 Pillow>=5.3.0
 colour>=0.1.5
 scikit_learn>=0.20.0
-tensorflow>=1.0.0
+tensorflow>=1.2.0

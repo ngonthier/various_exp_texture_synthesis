@@ -2751,10 +2751,10 @@ def main_with_option():
     brick = "mesh_texture_surface_2048"
     brick = "mesh_texture_surface_4096"
     brick = "lego_1024"
-    brick = "TexturesCom_BrickSmallNew0099_1_seamless_S_1024"
+    #brick = "TexturesCom_BrickSmallNew0099_1_seamless_S_1024"
     #brick = "StarryNight"
     img_folder = "HDImages/"
-    img_folder = "dataImages2/"
+    #img_folder = "dataImages2/"
     img_output_folder = "dataImages2/"
     image_style_name = brick
     content_img_name  = brick
@@ -2768,7 +2768,7 @@ def main_with_option():
     maxcor = 20
     sampling = 'up'
     MS_Strat = 'Init'
-    #MS_Strat = ''
+    MS_Strat = ''
     loss = ['texture','spectrumTFabs']
     loss = ['texture']
     saveMS = True
