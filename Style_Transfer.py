@@ -8,9 +8,6 @@ The goal of this script is to code the Style Transfer Algorithm
 Inspired from https://github.com/cysmith/neural-style-tf/blob/master/neural_style.py
 and https://github.com/leongatys/PytorchNeuralStyleTransfer/blob/master/NeuralStyleTransfer.ipynb
 
-Message de service tu utilise plusiseurs fois de tf.__version__ > truc 
-cela ne fontionne pas toujours il faudrait changer cela !!!
-
 @author: nicolas
 """
 import os
@@ -50,6 +47,15 @@ VGG19_LAYERS = (
 #layers   = [2 5 10 19 28]; for texture generation
 style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 128,'relu2' : 128,'pool2':128,'conv3' : 256,'relu3' : 256,'pool3':256,'conv4': 512,'relu4' : 512,'pool4':512,'conv5' : 512,'relu5' : 512,'pool5':512}
 # TODO : check if the N value are right for the poolx
+
+def test_version_sup(version_str):
+	version_str_tab = version_str.split('.')
+	tf_version_teb =  tf.__version__.split('.')
+	status = False
+	for a,b in zip(tf_version_teb,version_str_tab):
+		if float(a) > float(b):
+			status = True
+	return(status)
 
 def plot_image(path_to_image):
     """
@@ -1257,7 +1263,7 @@ def loss_spectrum(sess,net,image_style,M_dict,beta,eps = 0.001):
     F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
     # Element wise multiplication of FFT and conj of FFT
-    if tf.__version__ < '1.8':
+    if not(test_version_sup('1.8')):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
     else:
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
@@ -1303,7 +1309,7 @@ def loss_spectrumtest(sess,net,image_style,M_dict,beta,eps = 0.001):
     F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
     # Element wise multiplication of FFT and conj of FFT
-    if tf.__version__ < '1.8':
+    if not(test_version_sup('1.8')):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     else:
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
@@ -1355,14 +1361,14 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
     # Element wise multiplication of FFT and conj of FFT
-    if tf.__version__ < '1.8':
+    if not(test_version_sup('1.8')):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     else:
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     # Shape = [  1   1 512 512] pour une image 512*512
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
     #print(innerProd)
-    if tf.__version__ > '1.4':
+    if test_version_sup('1.4'):
         module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     else:
         raise(NotImplemented)
@@ -1402,14 +1408,14 @@ def loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,beta,eps = 0.001):
     F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
     # Element wise multiplication of FFT and conj of FFT
-    if tf.__version__ < '1.8':
+    if not(test_version_sup('1.8')):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     else:
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     # Shape = [  1   1 512 512] pour une image 512*512
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
     #print(innerProd)
-    if tf.__version__ > '1.4':
+    if test_version_sup('1.4'):
         module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     else:
         raise(NotImplemented)
@@ -2440,7 +2446,6 @@ def style_transfer(args):
     if args.verbose:
         tinit = time.time()
         print("verbosity turned on")
-        print("Message de service tu utilise plusiseurs fois de tf.__version__ > truc cela ne fontionne pas toujours il faudrait changer cela")
         print(args)
     
     if args.max_iter < args.print_iter:
@@ -2660,7 +2665,7 @@ def style_transfer(args):
                     'disp': print_iterations}
                 #,'callback':callback
                 # To solve the non retro compatibility of Tensorflow !
-                if(tf.__version__ >= '1.3'): # TODO change it : this string comparison don t work for version > 1.10
+                if test_version_sup('1.3'): # TODO change it : this string comparison don t work for version > 1.10
                     bnds = get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
                     trainable_variables = tf.trainable_variables()[0]
                     var_to_bounds = {trainable_variables: bnds}
@@ -2746,14 +2751,15 @@ def main_with_option():
     brick = "mesh_texture_surface_2048"
     brick = "mesh_texture_surface_4096"
     brick = "lego_1024"
+    brick = "TexturesCom_BrickSmallNew0099_1_seamless_S_1024"
     #brick = "StarryNight"
     img_folder = "HDImages/"
-    img_folder = "images/"
-    img_output_folder = "HDImages/"
+    img_folder = "dataImages2/"
+    img_output_folder = "dataImages2/"
     image_style_name = brick
     content_img_name  = brick
-    max_iter = 10
-    print_iter = 2
+    max_iter = 2000
+    print_iter = 2000
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
     content_strengh = 0.001
@@ -2762,16 +2768,19 @@ def main_with_option():
     maxcor = 20
     sampling = 'up'
     MS_Strat = 'Init'
-    loss = ['texture','spectrum']
-    saveMS = False
+    #MS_Strat = ''
+    loss = ['texture','spectrumTFabs']
+    loss = ['texture']
+    saveMS = True
     #MS_Strat = 'Constr'
     #MS_Strat = ''
+    eps = 10**(-16)
     # In order to set the parameter before run the script
     parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,img_folder=img_folder,
         print_iter=print_iter,start_from_noise=start_from_noise,img_output_folder=img_output_folder,
         content_img_name=content_img_name,init_noise_ratio=init_noise_ratio,
         content_strengh=content_strengh,optimizer=optimizer,maxcor=maxcor,
-        learning_rate=learning_rate,sampling=sampling,MS_Strat=MS_Strat,loss=loss,saveMS=saveMS)
+        learning_rate=learning_rate,sampling=sampling,MS_Strat=MS_Strat,loss=loss,saveMS=saveMS,eps=eps)
     args = parser.parse_args()
     style_transfer(args)
     

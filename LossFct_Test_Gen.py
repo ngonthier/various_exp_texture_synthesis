@@ -454,6 +454,11 @@ def generation_Texture_LossFctSubset():
 	#beta_spectrum = 100
 	#alpha = 0.01
 	list_img = get_list_of_images(path_origin)
+	
+	priorityIm = True
+	if priorityIm: # We will synthesis those texture in priority
+		list_img = ['BrickRound0122_1_seamless_S','TexturesCom_BrickSmallBrown0473_1_M_1024','lego_1024','TexturesCom_TilesOrnate0158_1_seamless_S'] + list_img 
+	
 	DrawAgain = False # Erase already synthesied image
 	print(list_img)
 	eps=10**(-16)
@@ -491,11 +496,49 @@ def generation_Texture_LossFctSubset():
 					src=output_img_name_full
 					dst = path_output_tmp+'/'+ output_img_name + '.png'
 					copyfile(src, dst)
+	
+	## Multiscale case : with different K
+	#K_list = [1,3,4]
+	#losses_to_test = [['Gatys'],['Gatys','spectrumTFabs'],['autocorr']]
+	#MSS = 'Init'
+	#padding = 'SAME'
+	#for loss in losses_to_test:
+		#for K in K_list:
+			#for name_img in list_img:
+				#MS_Strat = MSS
+				#name_img_wt_ext,_ = name_img.split('.')
+				#path_output_tmp = path_output+name_img_wt_ext
+				#do_mkdir(path_output_tmp)
+				#tf.reset_default_graph() # Necessity to use a new graph !! 
+				#img_folder = path_origin
+				#img_output_folder = path_origin
+				#output_img_name = name_img_wt_ext + '_'+padding
+				#for loss_item in loss:
+					#output_img_name += '_' + loss_item
+				#if 'spectrumTFabs' in loss:
+					#output_img_name += '_eps10m16'
+				#if not(MSS==''):
+					#output_img_name += '_MSS' +MSS
+					#if not(K==2):
+						#output_img_name += 'K' +str(K)
+				#parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
+					#img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
+					#init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+					#optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
+					#vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
+					#eps=eps,data_folder=data_folder,K=K)
+				#args = parser.parse_args()
+				#output_img_name_full = path_output + output_img_name + '.png'
+				#if DrawAgain or not(os.path.isfile(output_img_name_full)):
+					#st.style_transfer(args)
+					#src=output_img_name_full
+					#dst = path_output_tmp+'/'+ output_img_name + '.png'
+					#copyfile(src, dst)
 					
 	# Spectrum case :
 	beta_list = [10**8,10**4,10**3,10**2,10,1,0.1]
 	loss = ['Gatys','spectrumTFabs']
-	scalesStrat = ['Init','']
+	scalesStrat = ['','Init']
 	padding = 'SAME'
 	
 	for MSS in scalesStrat:
@@ -529,6 +572,7 @@ def generation_Texture_LossFctSubset():
 					src=output_img_name_full
 					dst = path_output_tmp+'/'+ output_img_name + '.png'
 					copyfile(src, dst)
+				return(0)
 		
 	
 					
@@ -620,7 +664,6 @@ def generation_Texture_JustTexture_and_TexturePlusSpectrum():
 	list_img = get_list_of_images(path_origin)
 	DrawAgain = False # Erase already synthesied image
 	print(list_img)
-	
 	# Comparison on the loss function !!! 
 	losses_to_test = [['texture'],['texture','spectrum']]
 	padding = 'SAME'
