@@ -48,7 +48,7 @@ def generation_Texture_LegoTest():
 	#alpha = 0.01
 	DrawAgain = False # Erase already synthesied image
 	eps_list=[10**(-16),0.001]
-	eps_list=[1.,10000.]
+	eps_list=[0.,1.,10000.]
 	loss= ['Gatys','spectrumTFabs']
 	#scalesStrat = ['Init','']
 	MSS = ''
@@ -72,6 +72,8 @@ def generation_Texture_LegoTest():
 				output_img_name += '_eps10m3'
 			elif eps==1.:
 				output_img_name += '_eps1'
+			elif eps==0.:
+				output_img_name += '_eps0'
 			elif eps==10000.:
 				output_img_name += '_eps10p5'
 			output_img_name +='_N'+str(i)

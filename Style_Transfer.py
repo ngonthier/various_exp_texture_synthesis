@@ -31,6 +31,7 @@ from skimage.color import gray2rgb
 import Misc
 import cv2
 from shutil import copyfile
+from functools import partial
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -179,8 +180,8 @@ def loss_LowResConstr(sess,net,scale,i_lowres,weightMultiplicatif=1.):
     weight_help_convergence = 10**9 
     x = net['input']
     #x_lowres = tf.image.resize_area(x,(scale,scale),align_corners=False)
-    x_lowres = tf.image.resize_images(x,(scale,scale),method=tf.image.ResizeMethod.BILINEAR,align_corners=False)
-    M = scale*scale
+    x_lowres = tf.image.resize_images(x,(scale[0],scale[1]),method=tf.image.ResizeMethod.BILINEAR,align_corners=False)
+    M = scale[0]*scale[1]
     loss = tf.nn.l2_loss(tf.subtract(x_lowres,i_lowres))*(weightMultiplicatif*weight_help_convergence/tf.to_float(M**2))    
     return(loss)
 
@@ -1262,14 +1263,14 @@ def loss_spectrum(sess,net,image_style,M_dict,beta,eps = 0.001):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
     # Shape = [  1   1 512 512] pour une image 512*512
     #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
-    print(innerProd)
+    #print(innerProd)
     #if tf.__version__ > '1.4':
         #module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     #else:
     module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
-    print(module_InnerProd)
+    #print(module_InnerProd)
     dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
-    print(dephase)
+    #print(dephase)
     ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
     # Element wise multiplication
     imF = tf.ifft2d(ftNew)
@@ -1734,11 +1735,21 @@ def gram_matrix(x,N,M):
   # That come from Control paper
   return(G)
  
-def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
+def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME',args=None):
     """
     Computation of all the Gram matrices from one image thanks to the 
     vgg_layers
     """
+    if args.GramLightComput:
+        print('Warning you are using a light version of the Gram Matrix dictionnary,this can cause some side effect it was not test !')
+        # TODO : tester tous les cas limites genre les configurations etc !
+        layers_to_use = []
+        layers_to_use += args.style_layers 
+        if 'content' in args.loss or 'full' in args.loss:
+            layers_to_use += args.content_layers 
+    else: 
+        layers_to_use = VGG19_LAYERS 
+    
     dict_gram = {}
     net = net_preloaded(vgg_layers, image_style,pooling_type,padding) # net for the style image
     sess = tf.Session()
@@ -1748,7 +1759,7 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME'):
     M = height*width
     A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
     dict_gram['input'] = sess.run(A)    
-    for layer in VGG19_LAYERS:
+    for layer in layers_to_use:
         a = net[layer]
         _,height,width,N = a.shape
         M = height*width
@@ -2069,7 +2080,10 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
         stringAdd = '_v' # Regular one
     elif(vgg_name=='random_net.mat'):
         stringAdd = '_r' # random
-    data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd+".pkl"
+    data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd
+    if args.GramLightComput:
+        data_style_path += '_lightVersion'
+    data_style_path += ".pkl"
     if(vgg_name=='random_net.mat'):
         try:
             os.remove(data_style_path)
@@ -2080,7 +2094,7 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
         dict_gram = pickle.load(open(data_style_path, 'rb'))
     except(FileNotFoundError):
         if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
-        dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding)
+        dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,args)
         with open(data_style_path, 'wb') as output_gram_pkl:
             pickle.dump(dict_gram,output_gram_pkl)
         if(args.verbose): print("Pickle dumped")
@@ -2149,7 +2163,8 @@ def get_upScaleOf(namefile,newscale):
     try:
         init_img = scipy.misc.imread(namefile)
         if not(newscale is None):
-            init_img = cv2.resize(init_img,(newscale, newscale),interpolation=cv2.INTER_CUBIC)
+            init_img = cv2.resize(init_img,(newscale[1],newscale[0]),interpolation=cv2.INTER_CUBIC)
+            # Warning ! cv2.resize need w,h whereas in scale it is provide h*w
         upsampled_img = preprocess(init_img.astype('float32'))
     except(FileNotFoundError):
         print('FileNotFoundError')
@@ -2183,7 +2198,8 @@ def load_img(args,img_name,scale=None):
         if(args.verbose): print("Convert Grey Scale to RGB")
         img = gray2rgb(img) # Convertion greyscale to RGB
     if not(scale is None):
-        img = cv2.resize(img, (scale,scale),interpolation=cv2.INTER_AREA)
+        img = cv2.resize(img, (scale[1],scale[0]),interpolation=cv2.INTER_AREA) 
+        # Warning ! cv2.resize need w,h whereas in scale it is provide h*w
     img = preprocess(img.astype('float32'))
     return(img)
 
@@ -2202,7 +2218,8 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
         content_layers = [('conv4_2',1)]
         style_layers = [('relu1_1',1),('pool1',1),('pool2',1),('pool3',1),('pool4',1)]
     elif(args.config_layers=='DCor'):
-        # Deep Correlation configuration
+        # Pseudo Deep Correlation configuration : in the paper there are not 
+        # doing autocorr this way and theay are not doing only that (diversity term)
         gram_style_layers = [('pool1',0.25),('pool2',0.25),('pool3',0.25),('pool4',0.25)]
         style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,gram_style_layers)
         list_loss =  [style_loss]
@@ -2217,22 +2234,6 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
         list_loss +=  [loss_total]
         list_loss_name +=  ['loss_total']
         return(loss_total,list_loss,list_loss_name)
-    #elif(args.config_layers=='DCor_TV'):
-        ## Deep Correlation configuration
-        #gram_style_layers = [('pool1',0.25),('pool2',0.25),('pool3',0.25),('pool4',0.25)]
-        #style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,gram_style_layers)
-        #list_loss =  [style_loss]
-        #list_loss_name =  ['style_loss']
-        #gamma_autocorr = 10**(-4)
-        #deepcoor_layer = [('pool2',1)]
-        #autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,deepcoor_layer,gamma_autocorr)
-        #list_loss +=  [autocorr_loss]
-        #list_loss_name +=  ['autocorr_loss']
-        #if(args.type_of_loss=='add'):
-            #loss_total = tf.reduce_sum(list_loss)
-        #list_loss +=  [loss_total]
-        #list_loss_name +=  ['loss_total']
-        #return(loss_total,list_loss,list_loss_name)
     elif(args.config_layers=='Custom'):
         content_layers =  list(zip(args.content_layers, args.content_layer_weights))
         style_layers = list(zip(args.style_layers,args.style_layer_weights))
@@ -2398,13 +2399,34 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
     list_loss_name +=  ['loss_total']
     return(loss_total,list_loss,list_loss_name)
     
-def get_scales(image_h,MS_minscale):
+def get_scales(image_h,image_w,MS_minscale,K):
+    """
+    This function produce the list of scale for the image synthesis
+    If K!=-1 we can work with no squared image
+    """
     list_scale = []
-    while MS_minscale <= image_h:
-        list_scale += [MS_minscale]
-        MS_minscale *= 2
-    if not(list_scale[-1]==image_h):
-        list_scale += [image_h]
+    if K==-1:
+        if image_h < image_w:
+            dim_image = image_h
+            MS_minscale_h = MS_minscale
+            MS_minscale_w = int(np.floor(MS_minscale*image_w/image_h))
+        else:
+            dim_image = image_w
+            MS_minscale_h = int(np.floor(MS_minscale*image_h/image_w))
+            MS_minscale_w = MS_minscale
+        while (MS_minscale <= dim_image):
+            list_scale += [[MS_minscale_h,MS_minscale_w]]
+            MS_minscale_h *= 2
+            MS_minscale_w *= 2
+            if MS_minscale_h==image_h:
+                MS_minscale_w = image_w
+            if MS_minscale_w==image_w:
+                MS_minscale_h = image_h
+        if not(list_scale[-1][0]==image_h) or not(list_scale[-1][1]==image_w):
+            list_scale += [[image_h,image_w]]
+    else:
+        for i in range(-K,1):
+            list_scale += [[int(np.floor(image_h*(2**i))),int(np.floor(image_w*(2**i)))]]
     return(list_scale)
     
     
@@ -2429,11 +2451,7 @@ def style_transfer(args):
     image_content_first = load_img(args,args.content_img_name)
     image_style_first = load_img(args,args.style_img_name)
     _,image_h_first, image_w_first, number_of_channels = image_content_first.shape 
-    
-    if not(args.MS_Strat=='') and not(image_h_first==image_w_first):
-        print('Multiscaled strategy only for squared images !')
-        raise(NotImplemented)
-    
+        
     if args.MS_Strat in ['Init','Constr']:
         if args.verbose: print("I would like to warm you up that the resize from TF I use are not really good :( Sorry")
         reDo = True # This is a bad way to do it but the only solution !
@@ -2441,33 +2459,47 @@ def style_transfer(args):
             if args.verbose: print('It seems that the scale is not divised by the  args.MS_minscale we will deal with it for the last scale')
         if image_h_first < args.MS_minscale:
             print('image_h < args.MS_minscale No multiscale strategy')
-        list_scale = get_scales(image_h_first,args.MS_minscale)
+        list_scale = get_scales(image_h_first,image_w_first,args.MS_minscale,args.K)
         tmp_output_image_path = args.img_output_folder + 'TextureForMSStrat' + args.img_ext
     else:
-        list_scale = [image_h_first]
+        list_scale = [[image_h_first,image_w_first]]
     former_scale = None
     i_lowres = None
         
     # Loop on the scale
-    for i_scale,scale in enumerate(list_scale):
+    for i_scale,scales in enumerate(list_scale):
+        scale_h,scale_w = scales
         if args.verbose and not(args.MS_Strat==''):
-            print('== Scale number ',str(1+i_scale),'on ',len(list_scale),' equal to ',scale, 'scale',args.MS_Strat,' ==')
-        if scale == image_h_first:
+            print('== Scale number ',str(1+i_scale),'on ',len(list_scale),' equal to ',scale_h,' * ',scale_w,'scale',args.MS_Strat,' ==')
+        if scale_h == image_h_first:
             image_h = image_h_first
             image_w = image_w_first
             image_content = image_content_first
             image_style = image_style_first
             output_image_path = output_image_path_first
         else:
-            image_h = scale
-            image_w = scale
-            image_content = load_img(args,args.content_img_name,scale=scale)
-            image_style = load_img(args,args.style_img_name,scale=scale)
+            image_h = scale_h
+            image_w = scale_w
+            image_content = load_img(args,args.content_img_name,scale=[scale_h,scale_w])
+            image_style = load_img(args,args.style_img_name,scale=[scale_h,scale_w])
             output_image_path = tmp_output_image_path
-            if args.saveMS: 
+            if args.saveMS or args.savedIntermediateIm: 
                 image_style_pp = postprocess(image_style.copy())
-                tmp_path = args.img_output_folder + args.style_img_name + 'Ref_' + str(list_scale[i_scale]) + args.img_ext  
+                tmp_path_wt_ext = args.img_output_folder + args.style_img_name + 'Ref_' + str(list_scale[i_scale][0])
+                tmp_path = tmp_path_wt_ext + args.img_ext  
                 scipy.misc.toimage(image_style_pp).save(tmp_path)
+         
+        # Definition of the callback for the optimization
+        global _iter
+        _iter = 0
+        def print_loss_tab_callback(list_loss,list_loss_name):
+            global _iter
+            strToPrint = ''
+            for loss,loss_name in zip(list_loss,list_loss_name):
+                loss_tmp = sess.run(loss)
+                strToPrint +=  loss_name + ' = {:.2e}, '.format(loss_tmp)
+            print(strToPrint)
+            _iter += 1
             
         if(args.clipping_type=='ImageNet'):
             BGR=False
@@ -2492,9 +2524,9 @@ def style_transfer(args):
         vgg_layers = get_vgg_layers(args.vgg_name)
         
         # Precomputation Phase :
-        if args.MS_Strat in ['Init','Constr']:
+        if args.MS_Strat in ['Init','Constr'] or args.GramLightComput:
             if args.verbose: print("In those cases we will not use the precomputed gram matrix")
-            dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding)
+            dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,args)
         else:
             dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
         if ('full' in args.loss) or('Gatys' in args.loss) or ('content' in args.loss):
@@ -2514,7 +2546,7 @@ def style_transfer(args):
         else:       
             M_dict = get_M_dict(image_h,image_w)
             
-        net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # The output image as the same size as the content one
+        net = net_preloaded(vgg_layers,image_content,pooling_type,padding) # The output image as the same size as the content one
         
         t2 = time.time()
         if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
@@ -2532,12 +2564,12 @@ def style_transfer(args):
             
             if args.MS_Strat=='Constr' and not(i_scale==0):
                 if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
-                init_img = get_upScaleOf(tmp_output_image_path,scale)
+                init_img = get_upScaleOf(tmp_output_image_path,[scale_h,scale_w])
                 former_scale = list_scale[i_scale-1]
                 i_lowres = get_upScaleOf(tmp_output_image_path,None)
             elif args.MS_Strat=='Init' and not(i_scale==0):
                 if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
-                init_img = get_upScaleOf(tmp_output_image_path,scale)
+                init_img = get_upScaleOf(tmp_output_image_path,[scale_h,scale_w])
             else:
                 init_img = get_init_img_wrap(args,output_image_path,image_content)
             
@@ -2547,6 +2579,7 @@ def style_transfer(args):
             # Preparation of the assignation operation
             placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
             placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
+            print(init_img.shape)
             assign_op = net['input'].assign(placeholder)
             clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=np.mean(clip_value_min),clip_value_max=np.mean(clip_value_max),name="Clip") # The np.mean is a necessity in the case whe got the BGR values TODO : need to change all that
             
@@ -2559,6 +2592,9 @@ def style_transfer(args):
                 optimizer = tf.train.GradientDescentOptimizer(args.learning_rate)
                 
             if((args.optimizer=='GD') or (args.optimizer=='adam')):
+                if args.savedIntermediateIm:
+                    raise(NotImplemented) # TODO
+                    
                 train = optimizer.minimize(loss_total)
 
                 sess.run(tf.global_variables_initializer())
@@ -2612,9 +2648,19 @@ def style_transfer(args):
                 nb_iter = args.max_iter  // args.print_iter
                 max_iterations_local = args.max_iter // nb_iter
                 if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
-                optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor}
+                print_iterations = args.iprint if args.verbose else 0 # Number of iterations between optimizer print statements.
+                
+                #if args.savedIntermediateIm:
+                    #callback = print_loss_and_savedIm_callback
+                #else:
+                    ##callback = partial(print_loss_tab_callback,list_loss_name=list_loss_name)
+                    #callback = print_loss_tab_callback(list_loss,list_loss_name=list_loss_name)
+                
+                optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor, \
+                    'disp': print_iterations}
+                #,'callback':callback
                 # To solve the non retro compatibility of Tensorflow !
-                if(tf.__version__ >= '1.3'):
+                if(tf.__version__ >= '1.3'): # TODO change it : this string comparison don t work for version > 1.10
                     bnds = get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
                     trainable_variables = tf.trainable_variables()[0]
                     var_to_bounds = {trainable_variables: bnds}
@@ -2632,6 +2678,9 @@ def style_transfer(args):
                 
                 if(args.verbose): print("loss before optimization")
                 if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
+                
+                #optimizer.minimize(sess, init_img, loss_callback=callback)
+                
                 for i in range(nb_iter):
                     t3 =  time.time()
                     optimizer.minimize(sess)
@@ -2645,7 +2694,7 @@ def style_transfer(args):
                     else:
                         result_img_postproc = postprocess(result_img.copy())
                     scipy.misc.imsave(output_image_path,result_img_postproc)
-
+            
             # The last iterations are not made
             # The End : save the resulting image
             result_img = sess.run(net['input'])
@@ -2696,13 +2745,15 @@ def main_with_option():
     parser = get_parser_args()
     brick = "mesh_texture_surface_2048"
     brick = "mesh_texture_surface_4096"
-    #brick = "lego_1024"
+    brick = "lego_1024"
+    #brick = "StarryNight"
     img_folder = "HDImages/"
+    img_folder = "images/"
     img_output_folder = "HDImages/"
     image_style_name = brick
     content_img_name  = brick
-    max_iter = 1000
-    print_iter = 1000
+    max_iter = 10
+    print_iter = 2
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
     content_strengh = 0.001
@@ -2710,7 +2761,7 @@ def main_with_option():
     learning_rate = 1 # 10 for adam and 10**(-10) for GD
     maxcor = 20
     sampling = 'up'
-    MS_Strat = ''
+    MS_Strat = 'Init'
     loss = ['texture','spectrum']
     saveMS = False
     #MS_Strat = 'Constr'

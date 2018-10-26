@@ -437,6 +437,7 @@ def generation_Texture_LossFctSubset():
 	#path_origin = '/home/gonthier/Travail_Local/Texture_Style/Style_Transfer/dataImages2/'
 	path_origin = '/home/gonthier/Travail_Local/Texture_Style/Implementation Autre Algos/Subset/'
 	path_output = '/home/gonthier/Travail_Local/Texture_Style/Style_Transfer/dataImages2_output/'
+	data_folder= '/media/HDD/output_exp/TextureSynthesisOutput/data/'
 	do_mkdir(path_output)
 	parser = get_parser_args()
 	max_iter = 2000
@@ -457,13 +458,12 @@ def generation_Texture_LossFctSubset():
 	print(list_img)
 	eps=10**(-16)
 	losses_to_test = [['Gatys','spectrumTFabs'],['Gatys','spectrum'],['Gatys'],['autocorr'],['phaseAlea']]
-	losses_to_test = [['Gatys'],['Gatys','spectrumTFabs']]
+	losses_to_test = [['Gatys'],['Gatys','spectrumTFabs'],['autocorr'],['phaseAlea']]
 	scalesStrat = ['Init','']
 	padding = 'SAME'
 	for loss in losses_to_test:
 		for MSS in scalesStrat:
 			for name_img in list_img:
-				
 				MS_Strat = MSS
 				name_img_wt_ext,_ = name_img.split('.')
 				path_output_tmp = path_output+name_img_wt_ext
@@ -483,7 +483,45 @@ def generation_Texture_LossFctSubset():
 					init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
 					optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
 					vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
-					eps=eps)
+					eps=eps,data_folder=data_folder)
+				args = parser.parse_args()
+				output_img_name_full = path_output + output_img_name + '.png'
+				if DrawAgain or not(os.path.isfile(output_img_name_full)):
+					st.style_transfer(args)
+					src=output_img_name_full
+					dst = path_output_tmp+'/'+ output_img_name + '.png'
+					copyfile(src, dst)
+					
+	# Spectrum case :
+	beta_list = [10**8,10**4,10**3,10**2,10,1,0.1]
+	loss = ['Gatys','spectrumTFabs']
+	scalesStrat = ['Init','']
+	padding = 'SAME'
+	
+	for MSS in scalesStrat:
+		for name_img in list_img:
+			for beta in beta_list:
+				MS_Strat = MSS
+				name_img_wt_ext,_ = name_img.split('.')
+				path_output_tmp = path_output+name_img_wt_ext
+				do_mkdir(path_output_tmp)
+				tf.reset_default_graph() # Necessity to use a new graph !! 
+				img_folder = path_origin
+				img_output_folder = path_origin
+				output_img_name = name_img_wt_ext + '_'+padding
+				for loss_item in loss:
+					output_img_name += '_' + loss_item
+				if 'spectrumTFabs' in loss:
+					output_img_name += '_eps10m16'
+					output_img_name += '_beta' +str(beta)
+				if not(MSS==''):
+					output_img_name += '_MSS' +MSS
+				parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
+					img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
+					init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+					optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
+					vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
+					eps=eps,beta_spectrum=beta,data_folder=data_folder)
 				args = parser.parse_args()
 				output_img_name_full = path_output + output_img_name + '.png'
 				if DrawAgain or not(os.path.isfile(output_img_name_full)):
