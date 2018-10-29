@@ -49,13 +49,13 @@ style_layers_size =  {'input':3,'conv1' : 64,'relu1' : 64,'pool1': 64,'conv2' : 
 # TODO : check if the N value are right for the poolx
 
 def test_version_sup(version_str):
-	version_str_tab = version_str.split('.')
-	tf_version_teb =  tf.__version__.split('.')
-	status = False
-	for a,b in zip(tf_version_teb,version_str_tab):
-		if float(a) > float(b):
-			status = True
-	return(status)
+    version_str_tab = version_str.split('.')
+    tf_version_teb =  tf.__version__.split('.')
+    status = False
+    for a,b in zip(tf_version_teb,version_str_tab):
+        if float(a) > float(b):
+            status = True
+    return(status)
 
 def plot_image(path_to_image):
     """
@@ -2198,8 +2198,13 @@ def load_img(args,img_name,scale=None):
             img = scipy.misc.imread(image_path,mode='RGB')
             if(args.verbose): print("The image have been sucessfully loaded with a different extension")
         except IOError:
-            if(args.verbose): print("Exception when we try to open the image, we already test the 2 differents extension.")
-            raise
+            try:
+                image_path = args.img_folder + img_name # Try the new path
+                img = scipy.misc.imread(image_path,mode='RGB')
+                if(args.verbose): print("The image have been sucessfully loaded without extension")
+            except IOError:
+                if(args.verbose): print("Exception when we try to open the image, we already test the 2 differents extension and without it.")
+                raise
     if(len(img.shape)==2):
         if(args.verbose): print("Convert Grey Scale to RGB")
         img = gray2rgb(img) # Convertion greyscale to RGB
