@@ -11,8 +11,23 @@ This code is inspired from :
 
 ## Requirement 
 
+If you want to have all the right requirements. We advice you to create a new enviromment (for instance conda one)
+And then in this enviromment run :
+pip install -r requirements.txt
+
+For instance you need :
 Tensorflow >= 1.2
 
-VGG19 CNN weights (It can be downloaded here : http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat)
-VGG19 normalized weights (can be download here : https://partage.mines-telecom.fr/index.php/s/DVw31LQ1UC0EoUM)
+You have to download the weights for the network :
+- VGG19 CNN weights (It can be downloaded here : http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat)
+- VGG19 normalized weights (can be download here : https://partage.mines-telecom.fr/index.php/s/DVw31LQ1UC0EoUM)
+
+
+## Argument of the function
+
+To synthesis a texture you have to run :
+python Style_Transfer.py 
+
+To get the help you can run : 
+python Style_Transfer.py --help
 

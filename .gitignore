@@ -5,6 +5,7 @@
 *.jpeg
 *.png
 *.pkl
+*.JPG
 
 # The VGG19 Model #
 ###################
@@ -34,3 +35,7 @@ Results/*
 
 data/*
 
+# The array      #
+################
+
+*.npy

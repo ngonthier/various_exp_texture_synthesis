@@ -20,25 +20,34 @@ def get_parser_args():
     parser = argparse.ArgumentParser(description=desc)
 
     # Verbose argument
-    parser.add_argument('--verbose',action="store_true",
+    parser.add_argument('-v','--verbose',action="store_true",
         help='Boolean flag indicating if statements should be printed to the console.')
 
-    # Plot argument
+    # Print Plot and save arguments
     parser.add_argument('--plot',action="store_true",
         help='Boolean flag indicating if image should be plotted.')
         
+    parser.add_argument('--saveMS',action="store_true",
+        help='Boolean flag indicating if intermediate images with a MS strategy have to be saved.')
+        
+    parser.add_argument('--savedIntermediateIm',action="store_true",
+        help='Boolean flag indicating if we save the intermediate images at a specific scale.')
+    
+    parser.add_argument('--iprint',  type=int,default=0,
+        help='Number of iterations between optimizer print statements for the lbfgs algo only. (default %(default)s)')
+        
     # Name of the Images
-    parser.add_argument('--output_img_name', type=str, 
+    parser.add_argument('-o','--output_img_name', type=str, 
         default='Pastiche',help='Filename of the output image.')
         
-    parser.add_argument('--style_img_name',  type=str,default='StarryNight_Big',
+    parser.add_argument('-si','--style_img_name',  type=str,default='StarryNight_Big',
         help='Filename of the style image (example: StarryNight). It must be a .jpg image otherwise change the img_ext.')
   
     parser.add_argument('--content_img_name', type=str,default='Louvre_Big',
         help='Filename of the content image (example: Louvre). It must be a .jpg image otherwise change the img_ext.')
         
     # Name of the folders 
-    parser.add_argument('--img_folder',  type=str,default='images/',
+    parser.add_argument('-f','--img_folder',  type=str,default='images/',
         help='Name of the images folder')
   
     parser.add_argument('--img_output_folder',  type=str,default='images/',
@@ -58,10 +67,7 @@ def get_parser_args():
     
     parser.add_argument('--max_iter',  type=int,default=1000,
         help='Number of Iteration Maximum. (default %(default)s)')
-    
-    parser.add_argument('--print_iter',  type=int,default=100,
-        help='Number of iteration between each checkpoint. (default %(default)s)')
-        
+           
     parser.add_argument('--maxcor',  type=int,default=10,
         help='The maximum number of variable metric corrections used to define the limited memory matrix in LBFGS method. (default %(default)s)')
         
@@ -83,7 +89,7 @@ def get_parser_args():
     parser.add_argument('--content_strengh',  type=float,default=0.001,
         help='Importance give to the content : alpha/beta ratio. (default %(default)s)')
     
-    parser.add_argument('--init_noise_ratio',type=float,default=0.1,
+    parser.add_argument('--init_noise_ratio',type=float,default=1.0,
         help='Propostion of the initialization image that is noise. (default %(default)s)')
         
     parser.add_argument('--init',type=str,default='Gaussian',choices=['Uniform','smooth_grad','Gaussian','Cst'],
@@ -94,6 +100,10 @@ def get_parser_args():
         
     parser.add_argument('--start_from_noise',type=int,default=1,choices=[0,1],
         help='Start compulsory from the content image noised if = 1 or from the former image with the output name if = 0. (default %(default)s)')
+    
+    # About the way some of the thing are computed
+    parser.add_argument('--GramLightComput',action="store_true",
+        help='If True it will try to compute a light version of the Gram Matrix (default: %(default)s)')
     
     # VGG 19 info
     parser.add_argument('--pooling_type', type=str,default='avg',
@@ -109,12 +119,12 @@ def get_parser_args():
     
     # Info on the loss function 
     parser.add_argument('--loss',nargs='+',type=str,default='texture',
-        choices=['full','Gatys','texture','content','4moments','nmoments',
+        choices=['full','GatysStyleTransfer','texture','content','4moments','nmoments',
 			'nmoments_reduce','InterScale','autocorr','autocorrLog',
 			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy',
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
-			'TVronde','current','phaseAleaList'],
+			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
@@ -162,14 +172,29 @@ def get_parser_args():
     parser.add_argument('--beta_spectrum',  type=float,default=10**5,
         help='Value of the weight on the spectrum constraint [Gang 2017]. (default: %(default)s)')
         
+    parser.add_argument('--eps',  type=float,default=0.001,
+        help='Value of the epsilon value in the spectrum constraint. (default: %(default)s)')
+                
     parser.add_argument('--gamma_phaseAlea',  type=float,default=1.,
         help='Value of the weight on the phaseAleatoire loss. (default: %(default)s)')
     
     parser.add_argument('--gamma_autocorr',  type=float,default=1.,
         help='Value of the weight on the autocorr loss. (default: %(default)s)') 
-       
+        
+    parser.add_argument('--MS_Strat',  type=str,default='',
+        help='Multi scale strategy, if none no use of the multiscale strategy. If Init use the lower scale as initialisation, Constr is a hard constraint. (default: %(default)s)')
+         
+    parser.add_argument('--K',  type=int,default=2,
+        help='Number of scale for the multi scale strategy : this parameter have the priority on --MS_minscale. (default: %(default)s)') 
+    
+    parser.add_argument('--MS_minscale',  type=int,default=256,
+        help='Minimum scale for the multi scale strategy used if K==-1. (default: %(default)s)') 
+
+    parser.add_argument('--WLowResConstr',  type=float,default=1.,
+        help='Weight for the MultiScale strategy constraint. (default: %(default)s)') 
+
     # GPU Config :
-    parser.add_argument('--gpu_frac',  type=float,default=0.,
+    parser.add_argument('-g','--gpu_frac',  type=float,default=0.,
         help='Fraction of the memory for the GPU process, if <=0. then memoryground = True. And if > 1. then normal behaviour ie 0.95%% of the memory is allocated without error. (default %(default)s)')
     
     # PostProcessing of the output
