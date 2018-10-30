@@ -14,6 +14,8 @@ This code is inspired from :
 If you want to have all the right requirements. We advice you to create a new enviromment (for instance conda one)
 And then in this enviromment run :
 pip install -r requirements.txt
+If you don't have the admin right try :
+pip install --user -r requirements.txt
 
 For instance you need :
 Tensorflow >= 1.2
@@ -30,4 +32,9 @@ python Style_Transfer.py
 
 To get the help you can run : 
 python Style_Transfer.py --help
+
+## Test
+
+I advice you to run the python script Test.py to try two synthesis 3 differents images
+to test your installation.
 

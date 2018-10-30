@@ -434,12 +434,12 @@ def generation_Texture_LossFct3():
                 copyfile(src, dst)
 
 def generation_Texture_LossFctHDimages():
-    path_origin = '/home/gonthier/Travail_Local/Texture_Style/Style_Transfer/HDImages/'
-    path_output = '/home/gonthier/Travail_Local/Texture_Style/Style_Transfer/HDImages_output/'
-    data_folder= '/media/HDD/output_exp/TextureSynthesisOutput/data/'
+    path_origin = 'HDImages/'
+    path_output = 'HDImages_output/'
+    data_folder= 'data/'
     do_mkdir(path_output)
     parser = get_parser_args()
-    max_iter = 2000
+    max_iter = 2
     print_iter = 2000
     start_from_noise = 1
     init_noise_ratio = 1.0
@@ -903,9 +903,9 @@ if __name__ == '__main__':
     #generation_Texture_LossFctBetaSpectrum()
     #generation_Texture_LossFctWeightMSContraint()
     #generation_Texture_LossFct3()
-    #generation_Texture_LossFctHDimages()
-    generation_Texture_LossFct4Subset()
-    generation_Texture_LossFctSubset()
+    generation_Texture_LossFctHDimages()
+    #generation_Texture_LossFct4Subset()
+    #generation_Texture_LossFctSubset()
     #generation_Texture_LossFctBetaSpectrum_PhaseAlea()
     #generation_Texture_LossFct2()
     #generation_Texture_LossGatysPlusAutocorr() 

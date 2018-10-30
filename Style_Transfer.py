@@ -1738,7 +1738,7 @@ def gram_matrix(x,N,M):
   F = tf.reshape(x,[M,N])
   G = tf.matmul(tf.transpose(F),F)
   G /= tf.to_float(M)
-  # That come from Control paper
+  # That come from Control paper of Gatys et al.
   return(G)
  
 def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME',args=None):
@@ -1763,13 +1763,13 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME',arg
     a = net['input']
     _,height,width,N = a.shape
     M = height*width
-    A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
+    A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M))
     dict_gram['input'] = sess.run(A)    
     for layer in layers_to_use:
         a = net[layer]
         _,height,width,N = a.shape
         M = height*width
-        A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M)) #  TODO Need to divided by M ????
+        A = gram_matrix(a,tf.to_int32(N),tf.to_int32(M))
         dict_gram[layer] = sess.run(A) # Computation
     sess.close()
     tf.reset_default_graph() # To clear all operation and variable
@@ -1925,15 +1925,20 @@ def get_M_dict_Davy(image_h,image_w):
     M_dict['input'] = M_dict['conv1_1']
     return(M_dict)  
     
-def print_loss_tab(sess,list_loss,list_loss_name):
+def print_loss_tab(sess,list_loss,list_loss_name,numIter=-1):
     """
     Fonction pour afficher la valeur des différentes loss
     """
     strToPrint = ''
+    if numIter >= 0:
+        strToPrint +='Step ' + str(numIter) +' : '
     for loss,loss_name in zip(list_loss,list_loss_name):
         loss_tmp = sess.run(loss)
-        strToPrint +=  loss_name + ' = {:.2e}, '.format(loss_tmp)
+        strToPrint +=  loss_name + ' = {:.2e}'.format(loss_tmp)
+        strToPrint += ','
+    strToPrint = strToPrint[:-1]
     print(strToPrint)
+    return(strToPrint)
     
 def print_loss(sess,loss_total,content_loss,style_loss):
     loss_total_tmp = sess.run(loss_total)
@@ -2259,8 +2264,9 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
         content_loss = args.content_strengh * sum_content_losses(sess, net, dict_features_repr,M_dict,content_layers) # alpha/Beta ratio 
         list_loss +=  [content_loss]
         list_loss_name +=  ['content_loss']
-    if('texture'  in args.loss) or('Gatys' in args.loss) or('GatysStyleTransfer' in args.loss)  or ('full' in args.loss):
-        style_loss =  sum_style_losses(sess, net, dict_gram,M_dict,style_layers)
+    if('texture'  in args.loss) or ('Gram' in args.loss) or('Gatys' in args.loss) or('GatysStyleTransfer' in args.loss)  or ('full' in args.loss):
+        # Gatys, Gram and texture are the same loss : the one based on the Gram matrix from the feature maps
+        style_loss =  sum_style_losses(sess,net,dict_gram,M_dict,style_layers)
         list_loss +=  [style_loss]
         list_loss_name +=  ['style_loss']
     if('texMask'  in args.loss):
@@ -2458,9 +2464,16 @@ def style_transfer(args):
     
     output_image_path_first = args.img_output_folder + args.output_img_name + args.img_ext
     if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
-    image_content_first = load_img(args,args.content_img_name)
     image_style_first = load_img(args,args.style_img_name)
-    _,image_h_first, image_w_first, number_of_channels = image_content_first.shape 
+   
+    if 'content' in args.loss or 'all' in args.loss:
+        image_content_first = load_img(args,args.content_img_name)
+        _,image_h_first, image_w_first, number_of_channels = image_content_first.shape
+    else:
+        # In this case there is no content image 
+        _,image_h_first, image_w_first, number_of_channels = image_style_first.shape
+        image_content_first = image_style_first
+    # TODO : Need to add a different ratio to synthesis bigger image than the reference image
         
     if args.MS_Strat in ['Init','Constr']:
         if args.verbose: print("I would like to warm you up that the resize from TF I use are not really good :( Sorry")
@@ -2475,13 +2488,13 @@ def style_transfer(args):
         list_scale = [[image_h_first,image_w_first]]
     former_scale = None
     i_lowres = None
-        
+    
     # Loop on the scale
     for i_scale,scales in enumerate(list_scale):
         scale_h,scale_w = scales
         if args.verbose and not(args.MS_Strat==''):
             print('== Scale number ',str(1+i_scale),'on ',len(list_scale),' equal to ',scale_h,' * ',scale_w,'scale',args.MS_Strat,' ==')
-        if scale_h == image_h_first:
+        if scale_h == image_h_first or len(list_scale)==1:
             image_h = image_h_first
             image_w = image_w_first
             image_content = image_content_first
@@ -2502,14 +2515,30 @@ def style_transfer(args):
         # Definition of the callback for the optimization
         global _iter
         _iter = 0
-        def print_loss_tab_callback(list_loss,list_loss_name):
+        def print_loss_tab_callback(xs,nbIterSaved,h,w,list_loss,list_loss_name,sess):
             global _iter
-            strToPrint = ''
-            for loss,loss_name in zip(list_loss,list_loss_name):
-                loss_tmp = sess.run(loss)
-                strToPrint +=  loss_name + ' = {:.2e}, '.format(loss_tmp)
-            print(strToPrint)
             _iter += 1
+            if (_iter-1) % nbIterSaved == 0:
+                X_reshape = np.reshape(xs.copy(),(1,h,w,3))
+                sess.run(assign_op, {placeholder: X_reshape})
+                print_loss_tab(sess,list_loss,list_loss_name,numIter=_iter)
+            return(False)
+            
+        def savedIm_callback(xs,nbIterSaved,h,w,output_image_path,ext):
+            """
+            This is a step_callback function it will save the image every 
+            nbIterSaved iterations
+            """
+            global _iter
+            _iter += 1
+            if (_iter-1) % nbIterSaved == 0:
+                X_reshape = np.reshape(xs.copy(),(1,h,w,3))
+                sess.run(assign_op, {placeholder: X_reshape})
+                print_loss_tab(sess,list_loss,list_loss_name,numIter=_iter)
+                result_img_postproc = postprocess(X_reshape)
+                output_image_path = output_image_path + '_' +str(_iter) + ext
+                scipy.misc.toimage(result_img_postproc.copy()).save(output_image_path)
+            return(False)
             
         if(args.clipping_type=='ImageNet'):
             BGR=False
@@ -2589,11 +2618,11 @@ def style_transfer(args):
             # Preparation of the assignation operation
             placeholder = tf.placeholder(tf.float32, shape=init_img.shape)
             placeholder_clip = tf.placeholder(tf.float32, shape=init_img.shape)
-            print(init_img.shape)
+
             assign_op = net['input'].assign(placeholder)
             clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=np.mean(clip_value_min),clip_value_max=np.mean(clip_value_max),name="Clip") # The np.mean is a necessity in the case whe got the BGR values TODO : need to change all that
             
-            if(args.verbose): print("init loss total")
+            if(args.verbose): print("init loss total :")
 
             if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
                 optimizer = tf.train.AdamOptimizer(args.learning_rate)
@@ -2658,17 +2687,19 @@ def style_transfer(args):
                 nb_iter = args.max_iter  // args.print_iter
                 max_iterations_local = args.max_iter // nb_iter
                 if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
-                print_iterations = args.iprint if args.verbose else 0 # Number of iterations between optimizer print statements.
+                print_disp = args.iprint if args.verbose else 0 # Number of iterations between optimizer print statements.
                 
-                #if args.savedIntermediateIm:
-                    #callback = print_loss_and_savedIm_callback
-                #else:
-                    ##callback = partial(print_loss_tab_callback,list_loss_name=list_loss_name)
+                if args.savedIntermediateIm: # h,w,output_image_path,ext
+                    name_output_forcallback = args.img_output_folder + args.output_img_name + '_h' +str(scale_h)
+                    callback = partial(savedIm_callback,nbIterSaved=args.print_iter,h=scale_h\
+                        ,w=scale_w,output_image_path=name_output_forcallback,ext=args.img_ext)
+                else: # print_loss_tab_callback(Xi,list_loss,list_loss_name):
+                    callback = partial(print_loss_tab_callback,nbIterSaved=args.print_iter,h=scale_h\
+                        ,w=scale_w,list_loss=list_loss,list_loss_name=list_loss_name,sess=sess)
                     #callback = print_loss_tab_callback(list_loss,list_loss_name=list_loss_name)
                 
-                optimizer_kwargs = {'maxiter': max_iterations_local,'maxcor': args.maxcor, \
-                    'disp': print_iterations}
-                #,'callback':callback
+                optimizer_kwargs = {'maxiter': args.max_iter,'maxcor': args.maxcor, \
+                    'disp': print_disp}
                 # To solve the non retro compatibility of Tensorflow !
                 if test_version_sup('1.3'): # TODO change it : this string comparison don t work for version > 1.10
                     bnds = get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
@@ -2688,22 +2719,21 @@ def style_transfer(args):
                 
                 if(args.verbose): print("loss before optimization")
                 if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
+                optimizer.minimize(sess,step_callback=callback)
                 
-                #optimizer.minimize(sess, init_img, loss_callback=callback)
-                
-                for i in range(nb_iter):
-                    t3 =  time.time()
-                    optimizer.minimize(sess)
-                    t4 = time.time()
-                    if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-                    if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-                    result_img = sess.run(net['input'])
-                    if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
-                    if(padding=='Davy'):
-                        result_img_postproc = postprocess(utils.get_center_tensor(result_img))
-                    else:
-                        result_img_postproc = postprocess(result_img.copy())
-                    scipy.misc.imsave(output_image_path,result_img_postproc)
+                #for i in range(nb_iter):
+                    #t3 =  time.time()
+                    #optimizer.minimize(sess)
+                    #t4 = time.time()
+                    #if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
+                    #if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
+                    #result_img = sess.run(net['input'])
+                    #if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
+                    #if(padding=='Davy'):
+                        #result_img_postproc = postprocess(utils.get_center_tensor(result_img))
+                    #else:
+                        #result_img_postproc = postprocess(result_img.copy())
+                    #scipy.misc.imsave(output_image_path,result_img_postproc)
             
             # The last iterations are not made
             # The End : save the resulting image
@@ -2750,21 +2780,23 @@ def main():
     parser = get_parser_args()
     args = parser.parse_args()
     style_transfer(args)
-
+    
 def main_with_option():
     parser = get_parser_args()
     brick = "mesh_texture_surface_2048"
-    brick = "mesh_texture_surface_4096"
+    #brick = "mesh_texture_surface_4096"
     brick = "lego_1024"
     #brick = "TexturesCom_BrickSmallNew0099_1_seamless_S_1024"
     #brick = "StarryNight"
-    img_folder = "HDImages/"
+    #brick = "TilesOrnate0158_1_S"
+    img_folder = "images/"
     #img_folder = "dataImages2/"
     img_output_folder = "dataImages2/"
+    img_output_folder = "images/output/"
     image_style_name = brick
     content_img_name  = brick
-    max_iter = 2000
-    print_iter = 2000
+    max_iter = 200
+    print_iter = 50
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
     content_strengh = 0.001
@@ -2773,7 +2805,7 @@ def main_with_option():
     maxcor = 20
     sampling = 'up'
     MS_Strat = 'Init'
-    MS_Strat = ''
+    #MS_Strat = ''
     loss = ['texture','spectrumTFabs']
     loss = ['texture']
     saveMS = True
@@ -2845,5 +2877,3 @@ if __name__ == '__main__':
     main_with_option()
     # Use CUDA_VISIBLE_DEVICES='' python ... to avoid using CUDA
     # Pour update Tensorflow : python3.6 -m pip install --upgrade tensorflow-gpu
-    
-    

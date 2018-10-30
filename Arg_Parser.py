@@ -36,21 +36,24 @@ def get_parser_args():
     parser.add_argument('--iprint',  type=int,default=0,
         help='Number of iterations between optimizer print statements for the lbfgs algo only. (default %(default)s)')
         
+    parser.add_argument('--print_iter',  type=int,default=0,
+        help='Number of iterations between optimizer save the image or  print statements for the lbfgs algo only. (default %(default)s)')
+        
     # Name of the Images
     parser.add_argument('-o','--output_img_name', type=str, 
         default='Pastiche',help='Filename of the output image.')
         
-    parser.add_argument('-si','--style_img_name',  type=str,default='StarryNight_Big',
-        help='Filename of the style image (example: StarryNight). It must be a .jpg image otherwise change the img_ext.')
+    parser.add_argument('-s','--style_img_name',  type=str,default='Hokusai_GreatWave_crop',
+        help='Filename of the style image (example: Hokusai_GreatWave_crop) or the reference texture example. It must be a .jpg image otherwise change the img_ext.')
   
-    parser.add_argument('--content_img_name', type=str,default='Louvre_Big',
+    parser.add_argument('-c','--content_img_name', type=str,default='Louvre',
         help='Filename of the content image (example: Louvre). It must be a .jpg image otherwise change the img_ext.')
         
     # Name of the folders 
     parser.add_argument('-f','--img_folder',  type=str,default='images/',
         help='Name of the images folder')
   
-    parser.add_argument('--img_output_folder',  type=str,default='images/',
+    parser.add_argument('--img_output_folder',  type=str,default='images_output/',
         help='Name of the images output folder')
   
     parser.add_argument('--data_folder', type=str,default='data/',
@@ -90,7 +93,7 @@ def get_parser_args():
         help='Importance give to the content : alpha/beta ratio. (default %(default)s)')
     
     parser.add_argument('--init_noise_ratio',type=float,default=1.0,
-        help='Propostion of the initialization image that is noise. (default %(default)s)')
+        help='Propostion of the initialization image that is noise : 1 means  100 % of the image is noise. (default %(default)s)')
         
     parser.add_argument('--init',type=str,default='Gaussian',choices=['Uniform','smooth_grad','Gaussian','Cst'],
         help='Type of initialization for the image variable.')
@@ -118,10 +121,10 @@ def get_parser_args():
         help='Name of the network to use, it must be in the same place that the Style_Transfer script. (default: %(default)s)')
     
     # Info on the loss function 
-    parser.add_argument('--loss',nargs='+',type=str,default='texture',
+    parser.add_argument('-l','--loss',nargs='+',type=str,default='texture',
         choices=['full','GatysStyleTransfer','texture','content','4moments','nmoments',
 			'nmoments_reduce','InterScale','autocorr','autocorrLog',
-			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy',
+			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy','Gram',
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
 			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest'],
