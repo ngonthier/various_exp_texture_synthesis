@@ -43,3 +43,4 @@ data/*
 # Autre #
 ###################
 .ipynb_checkpoints
+.ipynb_checkpoints/*
