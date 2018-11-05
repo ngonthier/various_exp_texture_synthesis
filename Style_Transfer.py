@@ -1935,8 +1935,8 @@ def print_loss_tab(sess,list_loss,list_loss_name,numIter=-1):
     for loss,loss_name in zip(list_loss,list_loss_name):
         loss_tmp = sess.run(loss)
         strToPrint +=  loss_name + ' = {:.2e}'.format(loss_tmp)
-        strToPrint += ','
-    strToPrint = strToPrint[:-1]
+        strToPrint += ', '
+    strToPrint = strToPrint[:-2]
     print(strToPrint)
     return(strToPrint)
     
@@ -2720,21 +2720,7 @@ def style_transfer(args):
                 if(args.verbose): print("loss before optimization")
                 if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
                 optimizer.minimize(sess,step_callback=callback)
-                
-                #for i in range(nb_iter):
-                    #t3 =  time.time()
-                    #optimizer.minimize(sess)
-                    #t4 = time.time()
-                    #if(args.verbose): print("Iteration ",i, "after ",t4-t3," s")
-                    #if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
-                    #result_img = sess.run(net['input'])
-                    #if(args.plot): fig = plot_image_with_postprocess(args,result_img.copy(),"Intermediate Image",fig)
-                    #if(padding=='Davy'):
-                        #result_img_postproc = postprocess(utils.get_center_tensor(result_img))
-                    #else:
-                        #result_img_postproc = postprocess(result_img.copy())
-                    #scipy.misc.imsave(output_image_path,result_img_postproc)
-            
+                            
             # The last iterations are not made
             # The End : save the resulting image
             result_img = sess.run(net['input'])

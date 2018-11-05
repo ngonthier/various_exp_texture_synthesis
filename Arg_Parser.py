@@ -175,7 +175,7 @@ def get_parser_args():
     parser.add_argument('--beta_spectrum',  type=float,default=10**5,
         help='Value of the weight on the spectrum constraint [Gang 2017]. (default: %(default)s)')
         
-    parser.add_argument('--eps',  type=float,default=0.001,
+    parser.add_argument('--eps',  type=float,default=10**(-16),
         help='Value of the epsilon value in the spectrum constraint. (default: %(default)s)')
                 
     parser.add_argument('--gamma_phaseAlea',  type=float,default=1.,

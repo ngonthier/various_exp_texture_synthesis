@@ -663,7 +663,7 @@ def generation_Texture_LossFct4Subset():
     priorityIm = False
     if priorityIm: # We will synthesis those texture in priority
         list_img = ['BrickRound0122_1_seamless_S.png','TexturesCom_BrickSmallBrown0473_1_M_1024.png','lego_1024.png','TexturesCom_TilesOrnate0158_1_seamless_S.png'] + list_img 
-    list_img = ['tricot_1024.png','TexturesCom_BrickSmallBrown0473_1_M_1024.png','vegetable_1024.png','CRW_3438_1024.png']
+    list_img = ['TexturesCom_BrickSmallBrown0473_1_M_1024.png','CRW_3438_1024.png','tricot_1024.png','vegetable_1024.png']
     
     DrawAgain = False # Erase already synthesied image
     print(list_img)
@@ -694,6 +694,44 @@ def generation_Texture_LossFct4Subset():
                     optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
                     vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
                     eps=eps,data_folder=data_folder)
+                args = parser.parse_args()
+                output_img_name_full = path_output + output_img_name + '.png'
+                if DrawAgain or not(os.path.isfile(output_img_name_full)):
+                    st.style_transfer(args)
+                    src=output_img_name_full
+                    dst = path_output_tmp+'/'+ output_img_name + '.png'
+                    copyfile(src, dst)
+    
+    # Spectrum case :
+    beta_list = [10**11,10**8,10**7,10**4,10**3,10**2,10,1,0.1]
+    loss = ['Gatys','spectrumTFabs']
+    scalesStrat = ['','Init']
+    padding = 'SAME'
+    
+    for MSS in scalesStrat:
+        for name_img in list_img:
+            for beta in beta_list:
+                MS_Strat = MSS
+                name_img_wt_ext,_ = name_img.split('.')
+                path_output_tmp = path_output+name_img_wt_ext
+                do_mkdir(path_output_tmp)
+                tf.reset_default_graph() # Necessity to use a new graph !! 
+                img_folder = path_origin
+                img_output_folder = path_origin
+                output_img_name = name_img_wt_ext + '_'+padding
+                for loss_item in loss:
+                    output_img_name += '_' + loss_item
+                if 'spectrumTFabs' in loss:
+                    output_img_name += '_eps10m16'
+                    output_img_name += '_beta' +str(beta)
+                if not(MSS==''):
+                    output_img_name += '_MSS' +MSS
+                parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
+                    img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
+                    init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+                    optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
+                    vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
+                    eps=eps,beta_spectrum=beta,data_folder=data_folder)
                 args = parser.parse_args()
                 output_img_name_full = path_output + output_img_name + '.png'
                 if DrawAgain or not(os.path.isfile(output_img_name_full)):
@@ -740,43 +778,7 @@ def generation_Texture_LossFct4Subset():
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
                     
-    # Spectrum case :
-    beta_list = [10**8,10**4,10**3,10**2,10,1,0.1]
-    loss = ['Gatys','spectrumTFabs']
-    scalesStrat = ['','Init']
-    padding = 'SAME'
     
-    for MSS in scalesStrat:
-        for name_img in list_img:
-            for beta in beta_list:
-                MS_Strat = MSS
-                name_img_wt_ext,_ = name_img.split('.')
-                path_output_tmp = path_output+name_img_wt_ext
-                do_mkdir(path_output_tmp)
-                tf.reset_default_graph() # Necessity to use a new graph !! 
-                img_folder = path_origin
-                img_output_folder = path_origin
-                output_img_name = name_img_wt_ext + '_'+padding
-                for loss_item in loss:
-                    output_img_name += '_' + loss_item
-                if 'spectrumTFabs' in loss:
-                    output_img_name += '_eps10m16'
-                    output_img_name += '_beta' +str(beta)
-                if not(MSS==''):
-                    output_img_name += '_MSS' +MSS
-                parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
-                    img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
-                    init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
-                    optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
-                    vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
-                    eps=eps,beta_spectrum=beta,data_folder=data_folder)
-                args = parser.parse_args()
-                output_img_name_full = path_output + output_img_name + '.png'
-                if DrawAgain or not(os.path.isfile(output_img_name_full)):
-                    st.style_transfer(args)
-                    src=output_img_name_full
-                    dst = path_output_tmp+'/'+ output_img_name + '.png'
-                    copyfile(src, dst)
     
     
         
@@ -903,9 +905,9 @@ if __name__ == '__main__':
     #generation_Texture_LossFctBetaSpectrum()
     #generation_Texture_LossFctWeightMSContraint()
     #generation_Texture_LossFct3()
-    generation_Texture_LossFctHDimages()
-    #generation_Texture_LossFct4Subset()
-    #generation_Texture_LossFctSubset()
+    #generation_Texture_LossFctHDimages()
+    generation_Texture_LossFct4Subset()
+    generation_Texture_LossFctSubset()
     #generation_Texture_LossFctBetaSpectrum_PhaseAlea()
     #generation_Texture_LossFct2()
     #generation_Texture_LossGatysPlusAutocorr() 
