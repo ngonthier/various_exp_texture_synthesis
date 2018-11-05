@@ -703,6 +703,46 @@ def generation_Texture_LossFct4Subset():
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
     
+    # Padding case with different K
+    K_list = [0,1,2,3,4]
+    loss = ['Gatys']
+    padding_tab = ['SAME','VALID','Davy']
+    for padding in padding_tab:
+        for K in K_list:
+			if K == 0:
+				MSS = ''
+			else:
+				MSS = 'Init'
+            for name_img in list_img:
+                name_img_wt_ext,_ = name_img.split('.')
+                path_output_tmp = path_output+name_img_wt_ext
+                do_mkdir(path_output_tmp)
+                tf.reset_default_graph() # Necessity to use a new graph !! 
+                img_folder = path_origin
+                img_output_folder = path_origin
+                output_img_name = name_img_wt_ext + '_'+padding
+                for loss_item in loss:
+                    output_img_name += '_' + loss_item
+                if 'spectrumTFabs' in loss:
+                    output_img_name += '_eps10m16'
+                if not(MSS==''):
+                    output_img_name += '_MSS' +MSS
+                    if not(K==2):
+                        output_img_name += 'K' +str(K)
+                parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
+                    img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
+                    init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+                    optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
+                    vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MSS,
+                    eps=eps,data_folder=data_folder,K=K)
+                args = parser.parse_args()
+                output_img_name_full = path_output + output_img_name + '.png'
+                if DrawAgain or not(os.path.isfile(output_img_name_full)):
+                    st.style_transfer(args)
+                    src=output_img_name_full
+                    dst = path_output_tmp+'/'+ output_img_name + '.png'
+                    copyfile(src, dst)
+    
     # Spectrum case :
     beta_list = [10**11,10**8,10**7,10**4,10**3,10**2,10,1,0.1]
     loss = ['Gatys','spectrumTFabs']
