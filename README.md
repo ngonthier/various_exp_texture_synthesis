@@ -17,6 +17,8 @@ pip install -r requirements.txt
 If you don't have the admin right try :
 pip install --user -r requirements.txt
 
+This requirements file have been generated with the help of pipreqs.
+
 For instance you need :
 Tensorflow >= 1.2
 

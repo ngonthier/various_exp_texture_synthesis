@@ -12,6 +12,10 @@ import os
 import tensorflow as tf
 import os.path
 from shutil import copyfile
+import pathlib
+
+moreSaveIm = '/home/gonthier/owncloud/These Gonthier Nicolas Partage/Images_Texturest_Résultats_More'
+
 
 def get_list_of_images(path_origin):
     dirs = os.listdir(path_origin)
@@ -491,12 +495,16 @@ def generation_Texture_LossFctHDimages():
                 output_img_name_full = path_output + output_img_name + '.png'
                 img = st.load_img(args,name_img)
                 _,h,w,_ = img.shape
-                print(h*w,maxNumPix)
-                #if (DrawAgain or not(os.path.isfile(output_img_name_full))) and not(h*w > maxNumPix):
-                    #st.style_transfer(args)
-                    #src=output_img_name_full
-                    #dst = path_output_tmp+'/'+ output_img_name + '.png'
-                    #copyfile(src, dst)
+                if (DrawAgain or not(os.path.isfile(output_img_name_full))) and not(h*w > maxNumPix):
+                    st.style_transfer(args)
+                    src=output_img_name_full
+                    dst = path_output_tmp+'/'+ output_img_name + '.png'
+                    copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
 
 
 def generation_Texture_LossFctSubset():
@@ -562,6 +570,11 @@ def generation_Texture_LossFctSubset():
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
     
     # Multiscale case : with different K
     K_list = [1,3,4]
@@ -600,6 +613,11 @@ def generation_Texture_LossFctSubset():
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
                     
     # Spectrum case :
     beta_list = [10**8,10**4,10**3,10**2,10,1,0.1]
@@ -638,6 +656,11 @@ def generation_Texture_LossFctSubset():
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
                     
 def generation_Texture_LossFct4Subset():
     path_origin = '/home/gonthier/Travail_Local/Texture_Style/Style_Transfer/dataImages2/'
@@ -702,6 +725,11 @@ def generation_Texture_LossFct4Subset():
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
     
     # Padding case with different K
     K_list = [0,1,2,3,4]
@@ -709,10 +737,10 @@ def generation_Texture_LossFct4Subset():
     padding_tab = ['SAME','VALID','Davy']
     for padding in padding_tab:
         for K in K_list:
-			if K == 0:
-				MSS = ''
-			else:
-				MSS = 'Init'
+            if K == 0:
+                MSS = ''
+            else:
+                MSS = 'Init'
             for name_img in list_img:
                 name_img_wt_ext,_ = name_img.split('.')
                 path_output_tmp = path_output+name_img_wt_ext
@@ -742,6 +770,11 @@ def generation_Texture_LossFct4Subset():
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
     
     # Spectrum case :
     beta_list = [10**11,10**8,10**7,10**4,10**3,10**2,10,1,0.1]
@@ -780,6 +813,11 @@ def generation_Texture_LossFct4Subset():
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
     
     # Multiscale case : with different K
     K_list = [1,3,4]
@@ -818,6 +856,11 @@ def generation_Texture_LossFct4Subset():
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
+                    if not(moreSaveIm==''):
+                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        name_out = path_out + output_img_name + '.png'
+                        copyfile(src, name_out)
                     
     
     
@@ -947,8 +990,8 @@ if __name__ == '__main__':
     #generation_Texture_LossFctWeightMSContraint()
     #generation_Texture_LossFct3()
     generation_Texture_LossFctHDimages()
-    #generation_Texture_LossFct4Subset()
-    #generation_Texture_LossFctSubset()
+    generation_Texture_LossFct4Subset()
+    generation_Texture_LossFctSubset()
     #generation_Texture_LossFctBetaSpectrum_PhaseAlea()
     #generation_Texture_LossFct2()
     #generation_Texture_LossGatysPlusAutocorr() 
