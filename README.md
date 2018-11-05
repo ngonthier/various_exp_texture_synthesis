@@ -21,8 +21,12 @@ For instance you need :
 Tensorflow >= 1.2
 
 You have to download the weights for the network :
+- VGG19 normalized weights (can be download here : https://partage.mines-telecom.fr/index.php/s/sqa9QntDcPqgLex)
+Those weights are used by default in the code.
+
+If you want to use the usual pretrained weights : 
 - VGG19 CNN weights (It can be downloaded here : http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat)
-- VGG19 normalized weights (can be download here : https://partage.mines-telecom.fr/index.php/s/DVw31LQ1UC0EoUM)
+
 
 
 ## Argument of the function
@@ -32,6 +36,21 @@ python Style_Transfer.py
 
 To get the help you can run : 
 python Style_Transfer.py --help
+
+### Simple version of the command line
+
+To synthesis a texture with the Gatys loss you have to run :
+python Style_Transfer.py --verbose --style_img_name TilesOrnate0158_1_S --max_iter 1000 --loss Gatys --output_img_name Gatys_syn
+
+For the Gatys plus spectrum :
+python Style_Transfer.py --verbose --style_img_name TilesOrnate0158_1_S --max_iter 1000 --loss Gatys,spectrumTFabs --output_img_name Gatys_spectrum_syn
+
+For autocorr :
+python Style_Transfer.py --verbose --style_img_name TilesOrnate0158_1_S --max_iter 1000 --loss autocorr --output_img_name Autocorr_syn
+
+For using the multi scale initialization strategy :
+python Style_Transfer.py --verbose --style_img_name TilesOrnate0158_1_S --max_iter 1000 --loss Gatys --output_img_name Gatys_MSInit_syn --MS_Strat Init --K 2
+   
 
 ## Test
 

@@ -491,11 +491,12 @@ def generation_Texture_LossFctHDimages():
                 output_img_name_full = path_output + output_img_name + '.png'
                 img = st.load_img(args,name_img)
                 _,h,w,_ = img.shape
-                if (DrawAgain or not(os.path.isfile(output_img_name_full))) and not(h*w > maxNumPix):
-                    st.style_transfer(args)
-                    src=output_img_name_full
-                    dst = path_output_tmp+'/'+ output_img_name + '.png'
-                    copyfile(src, dst)
+                print(h*w,maxNumPix)
+                #if (DrawAgain or not(os.path.isfile(output_img_name_full))) and not(h*w > maxNumPix):
+                    #st.style_transfer(args)
+                    #src=output_img_name_full
+                    #dst = path_output_tmp+'/'+ output_img_name + '.png'
+                    #copyfile(src, dst)
 
 
 def generation_Texture_LossFctSubset():
@@ -905,9 +906,9 @@ if __name__ == '__main__':
     #generation_Texture_LossFctBetaSpectrum()
     #generation_Texture_LossFctWeightMSContraint()
     #generation_Texture_LossFct3()
-    #generation_Texture_LossFctHDimages()
-    generation_Texture_LossFct4Subset()
-    generation_Texture_LossFctSubset()
+    generation_Texture_LossFctHDimages()
+    #generation_Texture_LossFct4Subset()
+    #generation_Texture_LossFctSubset()
     #generation_Texture_LossFctBetaSpectrum_PhaseAlea()
     #generation_Texture_LossFct2()
     #generation_Texture_LossGatysPlusAutocorr() 

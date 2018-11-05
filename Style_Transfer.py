@@ -2458,10 +2458,18 @@ def style_transfer(args):
         tinit = time.time()
         print("verbosity turned on")
         print(args)
-    
-    if args.max_iter < args.print_iter:
-        args.print_iter = args.max_iter
-    
+        
+    # Test to see if it is possible to synthesis the image 
+    # Test if the loss contains a term that can be done with a different output size
+    listNotPossDiffSize =['autocorr','autocorrLog','autocorr_rfft','fft3D',\
+    'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures','texMask'\
+    'bizarre','fftVect','phaseAleaList','spectrumTFabs','spectrumTest']
+    if len(np.intersect1d(listNotPossDiffSize,args.loss))>0 and args.padding=='Davy':
+        print("/!\ I am sorry but it is not possible to use one of the following term in the loss with the Davy padding.")
+        print(listNotPossDiffSize)
+        raise(NotImplemented)
+      
+        
     output_image_path_first = args.img_output_folder + args.output_img_name + args.img_ext
     if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
     image_style_first = load_img(args,args.style_img_name)
@@ -2469,6 +2477,11 @@ def style_transfer(args):
     if 'content' in args.loss or 'all' in args.loss:
         image_content_first = load_img(args,args.content_img_name)
         _,image_h_first, image_w_first, number_of_channels = image_content_first.shape
+        if not((image_h_first==image_style_first.shape[1]) and (image_h_first==image_style_first.shape[2]))\
+            and len(np.intersect1d(listNotPossDiffSize,args.loss))>0:
+            print("/!\ I am sorry but it is not possible to realize style transfer with one of the following term in the loss.")
+            print(listNotPossDiffSize)
+            raise(NotImplemented)
     else:
         # In this case there is no content image 
         _,image_h_first, image_w_first, number_of_channels = image_style_first.shape
@@ -2578,8 +2591,12 @@ def style_transfer(args):
             
         if padding=='Davy':
             # In this case the content matrice is just use for the output size
-            image_content = np.zeros((1,2*image_h, 2*image_w, number_of_channels)).astype('float32')
-            M_dict = get_M_dict_Davy(2*image_h,2*image_w)
+            image_h = 2*image_h
+            image_w = 2*image_w
+            scale_h = 2*scale_h
+            scale_w = 2*scale_w
+            image_content = np.zeros((1,image_h, image_w, number_of_channels)).astype('float32')
+            M_dict = get_M_dict_Davy(image_h,image_w)
         elif padding=='VALID':
             M_dict = get_M_dict_Davy(image_h,image_w)
         else:       
@@ -2589,6 +2606,8 @@ def style_transfer(args):
         
         t2 = time.time()
         if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
+
+        
 
         try:
             config = tf.ConfigProto()
@@ -2605,6 +2624,9 @@ def style_transfer(args):
                 if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
                 init_img = get_upScaleOf(tmp_output_image_path,[scale_h,scale_w])
                 former_scale = list_scale[i_scale-1]
+                if padding=='Davy':
+                    former_scale[0] = 2*former_scale[0]
+                    former_scale[1] = 2*former_scale[1]
                 i_lowres = get_upScaleOf(tmp_output_image_path,None)
             elif args.MS_Strat=='Init' and not(i_scale==0):
                 if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
@@ -2622,8 +2644,11 @@ def style_transfer(args):
             assign_op = net['input'].assign(placeholder)
             clip_op = tf.clip_by_value(placeholder_clip,clip_value_min=np.mean(clip_value_min),clip_value_max=np.mean(clip_value_max),name="Clip") # The np.mean is a necessity in the case whe got the BGR values TODO : need to change all that
             
+            if args.print_iter == 0 or args.print_iter > args.max_iter: 
+                args.print_iter = args.max_iter
+                        
             if(args.verbose): print("init loss total :")
-
+            
             if(args.optimizer=='adam'): # Gradient Descent with ADAM algo
                 optimizer = tf.train.AdamOptimizer(args.learning_rate)
             elif(args.optimizer=='GD'): # Gradient Descente 
@@ -2683,12 +2708,8 @@ def style_transfer(args):
                             cliptensor = sess.run(clip_op,{placeholder_clip: result_img})
                             sess.run(assign_op, {placeholder: cliptensor}) 
             elif(args.optimizer=='lbfgs'):
-                # TODO : be able to detect of print_iter > max_iter and deal with it
-                nb_iter = args.max_iter  // args.print_iter
-                max_iterations_local = args.max_iter // nb_iter
-                if(args.verbose): print("Start LBFGS optim with a print each ",max_iterations_local," iterations")
+                if(args.verbose): print("Start LBFGS optim with a print each ",args.print_iter," iterations")
                 print_disp = args.iprint if args.verbose else 0 # Number of iterations between optimizer print statements.
-                
                 if args.savedIntermediateIm: # h,w,output_image_path,ext
                     name_output_forcallback = args.img_output_folder + args.output_img_name + '_h' +str(scale_h)
                     callback = partial(savedIm_callback,nbIterSaved=args.print_iter,h=scale_h\
@@ -2696,8 +2717,6 @@ def style_transfer(args):
                 else: # print_loss_tab_callback(Xi,list_loss,list_loss_name):
                     callback = partial(print_loss_tab_callback,nbIterSaved=args.print_iter,h=scale_h\
                         ,w=scale_w,list_loss=list_loss,list_loss_name=list_loss_name,sess=sess)
-                    #callback = print_loss_tab_callback(list_loss,list_loss_name=list_loss_name)
-                
                 optimizer_kwargs = {'maxiter': args.max_iter,'maxcor': args.maxcor, \
                     'disp': print_disp}
                 # To solve the non retro compatibility of Tensorflow !
@@ -2770,33 +2789,32 @@ def main():
 def main_with_option():
     parser = get_parser_args()
     brick = "mesh_texture_surface_2048"
-    #brick = "mesh_texture_surface_4096"
-    brick = "lego_1024"
-    #brick = "TexturesCom_BrickSmallNew0099_1_seamless_S_1024"
-    #brick = "StarryNight"
-    #brick = "TilesOrnate0158_1_S"
-    img_folder = "images/"
-    #img_folder = "dataImages2/"
+    ##brick = "mesh_texture_surface_4096"
+    #brick = "lego_1024"
+    brick = "TexturesCom_BrickSmallNew0099_1_seamless_S_1024"
+    ##brick = "StarryNight"
+    ##brick = "TilesOrnate0158_1_S"
+    img_folder = "dataImages2/"
     img_output_folder = "dataImages2/"
-    img_output_folder = "images/output/"
+    #img_folder = "HDImages/"
+    #img_output_folder = "HDImages_output/"
     image_style_name = brick
     content_img_name  = brick
-    max_iter = 200
+    max_iter = 20
     print_iter = 50
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
     content_strengh = 0.001
     optimizer = 'lbfgs'
     learning_rate = 1 # 10 for adam and 10**(-10) for GD
-    maxcor = 20
+    maxcor = 10
     sampling = 'up'
-    MS_Strat = 'Init'
-    #MS_Strat = ''
-    loss = ['texture','spectrumTFabs']
     loss = ['texture']
+    #loss = ['texture']
     saveMS = True
     #MS_Strat = 'Constr'
     #MS_Strat = ''
+    MS_Strat = 'Init'
     eps = 10**(-16)
     # In order to set the parameter before run the script
     parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,img_folder=img_folder,
@@ -2859,7 +2877,8 @@ def main_with_option():
     #style_transfer(args)
 
 if __name__ == '__main__':
-    #main() # Command line : python Style_Transfer.py --content_img_name VG --style_img_name estampe --print_iter 1000 --max_iter 1000 --loss texture content --HistoMatching
-    main_with_option()
+    main() 
+    # Command line : python Style_Transfer.py --content_img_name VG --style_img_name estampe --print_iter 1000 --max_iter 1000 --loss texture content --HistoMatching
+    #main_with_option()
     # Use CUDA_VISIBLE_DEVICES='' python ... to avoid using CUDA
     # Pour update Tensorflow : python3.6 -m pip install --upgrade tensorflow-gpu

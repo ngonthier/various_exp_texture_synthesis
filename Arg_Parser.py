@@ -127,7 +127,7 @@ def get_parser_args():
 			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy','Gram',
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
-			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest'],
+			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest','Gatys'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
@@ -185,6 +185,7 @@ def get_parser_args():
         help='Value of the weight on the autocorr loss. (default: %(default)s)') 
         
     parser.add_argument('--MS_Strat',  type=str,default='',
+		choices=['','Init','Constr'],
         help='Multi scale strategy, if none no use of the multiscale strategy. If Init use the lower scale as initialisation, Constr is a hard constraint. (default: %(default)s)')
          
     parser.add_argument('--K',  type=int,default=2,
