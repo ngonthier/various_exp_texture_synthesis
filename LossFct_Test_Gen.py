@@ -444,8 +444,8 @@ def generation_Texture_LossFctHDimages():
     data_folder= '/media/HDD/output_exp/TextureSynthesisOutput/data/'
     do_mkdir(path_output)
     parser = get_parser_args()
-    max_iter = 2
-    print_iter = 2
+    max_iter = 2000
+    print_iter = 2000
     start_from_noise = 1
     init_noise_ratio = 1.0
     optimizer = 'lbfgs'
@@ -467,6 +467,7 @@ def generation_Texture_LossFctHDimages():
     K = 3
     scalesStrat = ['Init']
     padding = 'SAME'
+    GramLightComput = True # To only compute the gram matrix we need
     for loss in losses_to_test:
         for MSS in scalesStrat:
             for name_img in list_img:
@@ -491,22 +492,22 @@ def generation_Texture_LossFctHDimages():
                     init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
                     optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
                     vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
-                    eps=eps,data_folder=data_folder,K=K)
+                    eps=eps,data_folder=data_folder,K=K,GramLightComput=GramLightComput)
                 args = parser.parse_args()
                 output_img_name_full = path_output + output_img_name + '.png'
                 img = st.load_img(args,name_img)
                 _,h,w,_ = img.shape
                 if (DrawAgain or not(os.path.isfile(output_img_name_full))) and not(h*w > maxNumPix):
                     st.style_transfer(args)
-                    tf.reset_default_graph()
-                    src=output_img_name_full
-                    dst = path_output_tmp+'/'+ output_img_name + '.png'
-                    copyfile(src, dst)
-                    if not(moreSaveIm==''):
-                        path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
-                        pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
-                        name_out = path_out + output_img_name + '.png'
-                        copyfile(src, name_out)
+                    #tf.reset_default_graph()
+                    #src=output_img_name_full
+                    #dst = path_output_tmp+'/'+ output_img_name + '.png'
+                    #copyfile(src, dst)
+                    #if not(moreSaveIm==''):
+                        #path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        #pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        #name_out = path_out + output_img_name + '.png'
+                        #copyfile(src, name_out)
 
 
 def generation_Texture_LossFctSubset():
@@ -517,7 +518,15 @@ def generation_Texture_LossFctSubset():
     do_mkdir(path_output)
     parser = get_parser_args()
     max_iter = 2000
-    print_iter = 2000
+    print_iter = 2000tf.reset_default_graph()
+                    #src=output_img_name_full
+                    #dst = path_output_tmp+'/'+ output_img_name + '.png'
+                    #copyfile(src, dst)
+                    #if not(moreSaveIm==''):
+                        #path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+                        #pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+                        #name_out = path_out + output_img_name + '.png'
+                        #copyfile(src, name_out)
     start_from_noise = 1
     init_noise_ratio = 1.0
     optimizer = 'lbfgs'

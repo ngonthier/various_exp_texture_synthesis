@@ -2472,6 +2472,8 @@ def style_transfer(args):
     pathlib.Path(args.img_output_folder).mkdir(parents=True, exist_ok=True) # Create the output folder if it does nt exist
     if not(args.img_output_folder[-1]=='/'):
         args.img_output_folder += '/'
+    if not(args.img_folder[-1]=='/'):
+        args.img_folder += '/'
     output_image_path_first = args.img_output_folder + args.output_img_name + args.img_ext
     if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
     image_style_first = load_img(args,args.style_img_name)
@@ -2488,6 +2490,7 @@ def style_transfer(args):
         # In this case there is no content image 
         _,image_h_first, image_w_first, number_of_channels = image_style_first.shape
         image_content_first = image_style_first
+        args.content_img_name = args.style_img_name
     # TODO : Need to add a different ratio to synthesis bigger image than the reference image
         
     if args.MS_Strat in ['Init','Constr']:
@@ -2583,7 +2586,7 @@ def style_transfer(args):
             dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,args)
         else:
             dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
-        if ('full' in args.loss) or('Gatys' in args.loss) or ('content' in args.loss):
+        if ('full' in args.loss) or('GatysStyleTransfer' in args.loss) or ('content' in args.loss):
             if not(padding=='Davy'):
                 dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
             else:
@@ -2819,6 +2822,7 @@ def main_with_option():
     #MS_Strat = ''
     MS_Strat = 'Init'
     eps = 10**(-16)
+    # python Style_Transfer.py --style_img_name mesh_texture_surface_2048 --print_iter 100 --max_iter 2000 --loss texture --img_folder HDImages/ --img_output_folder HDImages_output --MS_Strat Init --K 0
     # In order to set the parameter before run the script
     parser.set_defaults(style_img_name=image_style_name,max_iter=max_iter,img_folder=img_folder,
         print_iter=print_iter,start_from_noise=start_from_noise,img_output_folder=img_output_folder,

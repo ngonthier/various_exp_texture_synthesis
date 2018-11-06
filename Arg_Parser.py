@@ -74,7 +74,7 @@ def get_parser_args():
     parser.add_argument('--max_iter',  type=int,default=1000,
         help='Number of Iteration Maximum. (default %(default)s)')
            
-    parser.add_argument('--maxcor',  type=int,default=10,
+    parser.add_argument('--maxcor',  type=int,default=20,
         help='The maximum number of variable metric corrections used to define the limited memory matrix in LBFGS method. (default %(default)s)')
         
     parser.add_argument('--learning_rate',  type=float,default=10.,
