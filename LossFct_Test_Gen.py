@@ -518,15 +518,7 @@ def generation_Texture_LossFctSubset():
     do_mkdir(path_output)
     parser = get_parser_args()
     max_iter = 2000
-    print_iter = 2000tf.reset_default_graph()
-                    #src=output_img_name_full
-                    #dst = path_output_tmp+'/'+ output_img_name + '.png'
-                    #copyfile(src, dst)
-                    #if not(moreSaveIm==''):
-                        #path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
-                        #pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
-                        #name_out = path_out + output_img_name + '.png'
-                        #copyfile(src, name_out)
+    print_iter = 2000
     start_from_noise = 1
     init_noise_ratio = 1.0
     optimizer = 'lbfgs'
