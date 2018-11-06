@@ -2,7 +2,7 @@ scikit_image>=0.13.1
 numpy<=1.14.5,>=1.13.3
 PyHamcrest>=1.9.0
 setuptools<=39.1.0
-tensorflow>=1.2.0
+tensorflow-gpu>=1.2.0
 opencv_python>=3.4.0.12
 scipy>=1.0.1
 matplotlib>=2.2.2

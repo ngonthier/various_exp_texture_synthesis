@@ -22,7 +22,9 @@ pip install --user -r requirements.txt
 This requirements file have been generated with the help of pipreqs.
 
 For instance you need :
-Tensorflow >= 1.2
+tensorflow-gpu >= 1.2
+
+If you don't have a GPU supported by Tensorflow, replace the tensorflow-gpu>=1.2.0 line by tensorflow>=1.2.0
 
 You have to download the weights for the network :
 - VGG19 normalized weights (can be download here : https://partage.mines-telecom.fr/index.php/s/sqa9QntDcPqgLex)

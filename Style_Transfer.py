@@ -2880,8 +2880,8 @@ def main_with_option():
     #style_transfer(args)
 
 if __name__ == '__main__':
-    #main() 
+    main() 
     # Command line : python Style_Transfer.py --content_img_name VG --style_img_name estampe --print_iter 1000 --max_iter 1000 --loss texture content --HistoMatching
-    main_with_option()
+    #main_with_option()
     # Use CUDA_VISIBLE_DEVICES='' python ... to avoid using CUDA
     # Pour update Tensorflow : python3.6 -m pip install --upgrade tensorflow-gpu
