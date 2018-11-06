@@ -29,6 +29,7 @@ import Misc
 import cv2
 from shutil import copyfile
 from functools import partial
+import pathlib
 
 # Name of the 19 first layers of the VGG19
 VGG19_LAYERS = (
@@ -2193,7 +2194,7 @@ def load_img(args,img_name,scale=None):
     try:
         img = scipy.misc.imread(image_path)  # Float between 0 and 255
     except IOError:
-        if(args.verbose): print("Exception when we try to open the image, try with a different extension format",str(args.img_ext))
+        if(args.debug): print("Exception when we try to open the image, try with a different extension format",str(args.img_ext))
         if(args.img_ext==".jpg"):
             new_img_ext = ".png"
         elif(args.img_ext==".png"):
@@ -2201,12 +2202,12 @@ def load_img(args,img_name,scale=None):
         try:
             image_path = args.img_folder + img_name +new_img_ext # Try the new path
             img = scipy.misc.imread(image_path,mode='RGB')
-            if(args.verbose): print("The image have been sucessfully loaded with a different extension")
+            if(args.debug): print("The image have been sucessfully loaded with a different extension than",str(args.img_ext))
         except IOError:
             try:
                 image_path = args.img_folder + img_name # Try the new path
                 img = scipy.misc.imread(image_path,mode='RGB')
-                if(args.verbose): print("The image have been sucessfully loaded without extension")
+                if(args.debug): print("The image have been sucessfully loaded without extension")
             except IOError:
                 if(args.verbose): print("Exception when we try to open the image, we already test the 2 differents extension and without it.")
                 raise
@@ -2453,7 +2454,6 @@ def style_transfer(args):
     set up all the things and run an optimization in order to produce an 
     image 
     """
-    #tf.enable_eager_execution()
     if args.verbose:
         tinit = time.time()
         print("verbosity turned on")
@@ -2469,7 +2469,9 @@ def style_transfer(args):
         print(listNotPossDiffSize)
         raise(NotImplemented)
       
-        
+    pathlib.Path(args.img_output_folder).mkdir(parents=True, exist_ok=True) # Create the output folder if it does nt exist
+    if not(args.img_output_folder[-1]=='/'):
+        args.img_output_folder += '/'
     output_image_path_first = args.img_output_folder + args.output_img_name + args.img_ext
     if(args.verbose and args.img_ext=='.jpg'): print("Be careful you are saving the image in JPEG !")
     image_style_first = load_img(args,args.style_img_name)
@@ -2489,7 +2491,7 @@ def style_transfer(args):
     # TODO : Need to add a different ratio to synthesis bigger image than the reference image
         
     if args.MS_Strat in ['Init','Constr']:
-        if args.verbose: print("I would like to warm you up that the resize from TF I use are not really good :( Sorry")
+        if args.debug: print("I would like to warm you up that the resize from TF I use are not really good :( Sorry")
         reDo = True # This is a bad way to do it but the only solution !
         if not(image_h_first%args.MS_minscale==0) or not(image_w_first%args.MS_minscale==0):
             if args.verbose: print('It seems that the scale is not divised by the  args.MS_minscale we will deal with it for the last scale')
@@ -2668,9 +2670,8 @@ def style_transfer(args):
                 if(args.verbose): print("sess.graph.finalize()") 
 
                 t3 = time.time()
-                if(args.verbose): print("sess Adam initialized after ",t3-t2," s")
-                # turn on interactive mode
-                if(args.verbose): print("loss before optimization")
+                if(args.verbose): print("sess Adam or GD initialized after ",t3-t2," s")
+                if(args.verbose): print("loss before optimization :")
                 if(args.verbose): print_loss_tab(sess,list_loss,list_loss_name)
                 for i in range(args.max_iter):
                     if(i%args.print_iter==0):
@@ -2711,7 +2712,9 @@ def style_transfer(args):
                 if(args.verbose): print("Start LBFGS optim with a print each ",args.print_iter," iterations")
                 print_disp = args.iprint if args.verbose else 0 # Number of iterations between optimizer print statements.
                 if args.savedIntermediateIm: # h,w,output_image_path,ext
-                    name_output_forcallback = args.img_output_folder + args.output_img_name + '_h' +str(scale_h)
+                    folder_forcallback  =args.img_output_folder + args.output_img_name+'/'
+                    name_output_forcallback =folder_forcallback + args.output_img_name + '_h' +str(scale_h)+ '_w' +str(scale_w)
+                    pathlib.Path(folder_forcallback).mkdir(parents=True, exist_ok=True)
                     callback = partial(savedIm_callback,nbIterSaved=args.print_iter,h=scale_h\
                         ,w=scale_w,output_image_path=name_output_forcallback,ext=args.img_ext)
                 else: # print_loss_tab_callback(Xi,list_loss,list_loss_name):
@@ -2801,7 +2804,7 @@ def main_with_option():
     image_style_name = brick
     content_img_name  = brick
     max_iter = 20
-    print_iter = 50
+    print_iter = 1
     start_from_noise = 1 # True
     init_noise_ratio = 1.0 # TODO add a gaussian noise on the image instead a uniform one
     content_strengh = 0.001
@@ -2877,8 +2880,8 @@ def main_with_option():
     #style_transfer(args)
 
 if __name__ == '__main__':
-    main() 
+    #main() 
     # Command line : python Style_Transfer.py --content_img_name VG --style_img_name estampe --print_iter 1000 --max_iter 1000 --loss texture content --HistoMatching
-    #main_with_option()
+    main_with_option()
     # Use CUDA_VISIBLE_DEVICES='' python ... to avoid using CUDA
     # Pour update Tensorflow : python3.6 -m pip install --upgrade tensorflow-gpu

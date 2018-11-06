@@ -22,6 +22,9 @@ def get_parser_args():
     # Verbose argument
     parser.add_argument('-v','--verbose',action="store_true",
         help='Boolean flag indicating if statements should be printed to the console.')
+        
+    parser.add_argument('--debug',action="store_true",
+        help='Boolean flag indicating if the debug statements should be printed to the console.')
 
     # Print Plot and save arguments
     parser.add_argument('--plot',action="store_true",
@@ -43,8 +46,8 @@ def get_parser_args():
     parser.add_argument('-o','--output_img_name', type=str, 
         default='Pastiche',help='Filename of the output image.')
         
-    parser.add_argument('-s','--style_img_name',  type=str,default='Hokusai_GreatWave_crop',
-        help='Filename of the style image (example: Hokusai_GreatWave_crop) or the reference texture example. It must be a .jpg image otherwise change the img_ext.')
+    parser.add_argument('-s','--style_img_name',  type=str,default='TilesOrnate0158_1_S',
+        help='Filename of the style image (example: TilesOrnate0158_1_S) or the reference texture example. It must be a .jpg image otherwise change the img_ext.')
   
     parser.add_argument('-c','--content_img_name', type=str,default='Louvre',
         help='Filename of the content image (example: Louvre). It must be a .jpg image otherwise change the img_ext.')
@@ -54,7 +57,7 @@ def get_parser_args():
         help='Name of the images folder')
   
     parser.add_argument('--img_output_folder',  type=str,default='images_output/',
-        help='Name of the images output folder')
+        help='Name of the images output folder, need to be in the format namefolder/')
   
     parser.add_argument('--data_folder', type=str,default='data/',
         help='Name of the data folder')

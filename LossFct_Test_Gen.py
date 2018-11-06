@@ -440,11 +440,12 @@ def generation_Texture_LossFct3():
 def generation_Texture_LossFctHDimages():
     path_origin = 'HDImages/'
     path_output = 'HDImages_output/'
-    data_folder= 'data/'
+    #data_folder= 'data/'
+    data_folder= '/media/HDD/output_exp/TextureSynthesisOutput/data/'
     do_mkdir(path_output)
     parser = get_parser_args()
     max_iter = 2
-    print_iter = 2000
+    print_iter = 2
     start_from_noise = 1
     init_noise_ratio = 1.0
     optimizer = 'lbfgs'
@@ -497,6 +498,7 @@ def generation_Texture_LossFctHDimages():
                 _,h,w,_ = img.shape
                 if (DrawAgain or not(os.path.isfile(output_img_name_full))) and not(h*w > maxNumPix):
                     st.style_transfer(args)
+                    tf.reset_default_graph()
                     src=output_img_name_full
                     dst = path_output_tmp+'/'+ output_img_name + '.png'
                     copyfile(src, dst)
@@ -990,8 +992,8 @@ if __name__ == '__main__':
     #generation_Texture_LossFctWeightMSContraint()
     #generation_Texture_LossFct3()
     generation_Texture_LossFctHDimages()
-    generation_Texture_LossFct4Subset()
-    generation_Texture_LossFctSubset()
+    #generation_Texture_LossFct4Subset()
+    #generation_Texture_LossFctSubset()
     #generation_Texture_LossFctBetaSpectrum_PhaseAlea()
     #generation_Texture_LossFct2()
     #generation_Texture_LossGatysPlusAutocorr() 

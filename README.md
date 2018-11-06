@@ -11,6 +11,8 @@ This code is inspired from :
 
 ## Requirement 
 
+This code have been test on Python 3.5, it is probable that it doesn't work on Python 2.
+
 If you want to have all the right requirements. We advice you to create a new enviromment (for instance conda one)
 And then in this enviromment run :
 pip install -r requirements.txt
