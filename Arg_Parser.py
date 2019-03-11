@@ -34,7 +34,7 @@ def get_parser_args():
         help='Boolean flag indicating if intermediate images with a MS strategy have to be saved.')
         
     parser.add_argument('--savedIntermediateIm',action="store_true",
-        help='Boolean flag indicating if we save the intermediate images at a specific scale.')
+        help='Boolean flag indicating if we save the intermediate reference images at a specific scale.')
     
     parser.add_argument('--iprint',  type=int,default=0,
         help='Number of iterations between optimizer print statements for the lbfgs algo only. (default %(default)s)')

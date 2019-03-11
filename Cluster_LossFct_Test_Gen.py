@@ -517,9 +517,9 @@ def generation_Texture_LossFctHDimagesIntermadiateImage():
 						
 def generation_Texture_LossFctHDimages():
 	path_origin = 'HDImages/'
-	path_output = '/media/HDD/output_exp/TextureSynthesisOutput/HDImages_output/'
+	path_output = 'HDImages_output/'
 	#data_folder= 'data/'
-	data_folder= '/media/HDD/output_exp/TextureSynthesisOutput/data/'
+	data_folder= 'data/'
 	do_mkdir(path_output)
 	parser = get_parser_args()
 	max_iter = 2000
@@ -541,7 +541,7 @@ def generation_Texture_LossFctHDimages():
 	maxNumPix = 2048**2
 	
 	eps=10**(-16)
-	losses_to_test = [['autocorr'],['Gatys'],['Gatys','spectrumTFabs'],['autocorr','spectrumTFabs']]
+	losses_to_test = [['autocorr'],['autocorr','spectrumTFabs']]
 	K = 3
 	scalesStrat = ['','Init']
 	padding = 'SAME'
@@ -1062,19 +1062,4 @@ def generation_Texture_JustTexture_and_TexturePlusSpectrum():
 	
 
 if __name__ == '__main__':
-	#generation_Texture_LossFct2()
-	#generation_Texture_JustTexture_and_TexturePlusSpectrum()
-	#generation_Texture_LossFctAlphaPhaseAlea()
-	#generation_Texture_LossFct()
-	# python LossFct_Test_Gen.py >> /home/nicolas/Style-Transfer/LossFct/results/output.txt
-	#generation_Texture_LossFctBetaSpectrum()
-	#generation_Texture_LossFctWeightMSContraint()
-	#generation_Texture_LossFct3()
-	generation_Texture_LossFct3()
-	generation_Texture_LossFctHDimagesIntermadiateImage()
 	generation_Texture_LossFctHDimages()
-	#generation_Texture_LossFct4Subset()
-	#generation_Texture_LossFctSubset()
-	#generation_Texture_LossFctBetaSpectrum_PhaseAlea()
-	#generation_Texture_LossFct2()
-	#generation_Texture_LossGatysPlusAutocorr() 

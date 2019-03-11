@@ -2526,7 +2526,7 @@ def style_transfer(args):
             output_image_path = tmp_output_image_path
             if args.saveMS or args.savedIntermediateIm: 
                 image_style_pp = postprocess(image_style.copy())
-                tmp_path_wt_ext = args.img_output_folder + args.style_img_name + 'Ref_' + str(list_scale[i_scale][0])
+                tmp_path_wt_ext = args.img_output_folder + args.style_img_name + '_Ref_' + str(list_scale[i_scale][0])
                 tmp_path = tmp_path_wt_ext + args.img_ext  
                 scipy.misc.toimage(image_style_pp).save(tmp_path)
          
@@ -2626,7 +2626,7 @@ def style_transfer(args):
 
             
             if args.MS_Strat=='Constr' and not(i_scale==0):
-                if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
+                if args.saveMS: saveImExt(tmp_output_image_path,args.output_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
                 init_img = get_upScaleOf(tmp_output_image_path,[scale_h,scale_w])
                 former_scale = list_scale[i_scale-1]
                 if padding=='Davy':
@@ -2634,7 +2634,7 @@ def style_transfer(args):
                     former_scale[1] = 2*former_scale[1]
                 i_lowres = get_upScaleOf(tmp_output_image_path,None)
             elif args.MS_Strat=='Init' and not(i_scale==0):
-                if args.saveMS: saveImExt(tmp_output_image_path,args.style_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
+                if args.saveMS: saveImExt(tmp_output_image_path,args.output_img_name,str(list_scale[i_scale-1]),args.img_output_folder)
                 init_img = get_upScaleOf(tmp_output_image_path,[scale_h,scale_w])
             else:
                 init_img = get_init_img_wrap(args,output_image_path,image_content)
@@ -2726,7 +2726,7 @@ def style_transfer(args):
                 optimizer_kwargs = {'maxiter': args.max_iter,'maxcor': args.maxcor, \
                     'disp': print_disp}
                 # To solve the non retro compatibility of Tensorflow !
-                if test_version_sup('1.3'): # TODO change it : this string comparison don t work for version > 1.10
+                if test_version_sup('1.3'): 
                     bnds = get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR)
                     trainable_variables = tf.trainable_variables()[0]
                     var_to_bounds = {trainable_variables: bnds}
