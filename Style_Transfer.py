@@ -1384,58 +1384,58 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     loss *= beta/(3*M)
     return(loss)    
     
-@tf.custom_gradient   
-def loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,beta,eps = 0.001):
-    """
-    Computation of the spectrum loss from Gang Liu 
-    https://arxiv.org/pdf/1605.01141.pdf
-    enfin une reimplementation qui a l air de faire aussi des translations :/
-    En cours de test 
-    """
-    #eps = 10**(-16)
-    #
-    M = M_dict['input'] # Nombre de pixels
+#@tf.custom_gradient   
+#def loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,beta,eps = 0.001):
+    #"""
+    #Computation of the spectrum loss from Gang Liu 
+    #https://arxiv.org/pdf/1605.01141.pdf
+    #enfin une reimplementation qui a l air de faire aussi des translations :/
+    #En cours de test 
+    #"""
+    ##eps = 10**(-16)
+    ##
+    #M = M_dict['input'] # Nombre de pixels
     
-    x = net['input'] # Image en cours de synthese
+    #x = net['input'] # Image en cours de synthese
         
-    #For color images,
-    #the phase of the gray level image is first computed, and then
-    #imposed to each color channel
+    ##For color images,
+    ##the phase of the gray level image is first computed, and then
+    ##imposed to each color channel
      
-    a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch,h,w,canaux à  batch,canaux,h,w
-    F_a = tf.fft2d(tf.complex(a,0.)) # TF de l image de reference
+    #a = tf.transpose(image_style, [0,3,1,2]) # On passe l image de batch,h,w,canaux à  batch,canaux,h,w
+    #F_a = tf.fft2d(tf.complex(a,0.)) # TF de l image de reference
     
-    x_t = tf.transpose(x, [0,3,1,2])
-    F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
+    #x_t = tf.transpose(x, [0,3,1,2])
+    #F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
-    # Element wise multiplication of FFT and conj of FFT
-    if not(test_version_sup('1.8')):
-        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
-    else:
-        innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
-    # Shape = [  1   1 512 512] pour une image 512*512
-    #module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
-    #print(innerProd)
-    if test_version_sup('1.4'):
-        module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
-    else:
-        raise(NotImplemented)
-    #print(module_InnerProd)
-    dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
-    #print(dephase)
-    ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
-    # Element wise multiplication
-    imF = tf.ifft2d(ftNew)
-    imF_transposeback =  tf.real(tf.transpose(imF, [0,2,3,1]))
-    loss = tf.nn.l2_loss(tf.subtract(x,imF_transposeback)) # sum (x**2)/2
-    loss *= beta/(3*M)
+    ## Element wise multiplication of FFT and conj of FFT
+    #if not(test_version_sup('1.8')):
+        #innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+    #else:
+        #innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+    ## Shape = [  1   1 512 512] pour une image 512*512
+    ##module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5) # replace by tf.abs
+    ##print(innerProd)
+    #if test_version_sup('1.4'):
+        #module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
+    #else:
+        #raise(NotImplemented)
+    ##print(module_InnerProd)
+    #dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
+    ##print(dephase)
+    #ftNew =  tf.multiply(dephase,F_a) #compute the new version of the FT of the reference image
+    ## Element wise multiplication
+    #imF = tf.ifft2d(ftNew)
+    #imF_transposeback =  tf.real(tf.transpose(imF, [0,2,3,1]))
+    #loss = tf.nn.l2_loss(tf.subtract(x,imF_transposeback)) # sum (x**2)/2
+    #loss *= beta/(3*M)
     
-    def grad(dy):
-        diff_im = tf.subtract(x,imF_transposeback)
-        grad_custom = dy * tf.multiply(diff_im,beta/(3*M))
-        return grad_custom
+    #def grad(dy):
+        #diff_im = tf.subtract(x,imF_transposeback)
+        #grad_custom = dy * tf.multiply(diff_im,beta/(3*M))
+        #return grad_custom
 
-    return(loss,grad)    
+    #return(loss,grad)    
 
 def loss__HF_filter(sess, net, image_style,M_dict):
     """
@@ -2340,10 +2340,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          spectrumTFabs_loss = loss_spectrumTFabs(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
          list_loss +=  [spectrumTFabs_loss]
          list_loss_name +=  ['spectrumTFabs_loss']  
-    if('spectrumTest'  in args.loss) or ('full' in args.loss):
-         spectrumTest_loss,_ = loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
-         list_loss +=  [spectrumTest_loss]
-         list_loss_name +=  ['spectrumTest_loss']  
+    #if('spectrumTest'  in args.loss) or ('full' in args.loss):
+         #spectrumTest_loss,_ = loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
+         #list_loss +=  [spectrumTest_loss]
+         #list_loss_name +=  ['spectrumTest_loss']  
     if('variance'  in args.loss) or ('full' in args.loss):
          variance_loss = loss_variance(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [variance_loss]
