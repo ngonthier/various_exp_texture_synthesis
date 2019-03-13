@@ -15,6 +15,7 @@ from shutil import copyfile
 import pathlib
 
 moreSaveIm = '/home/gonthier/owncloud/These Gonthier Nicolas Partage/Images_Texturest_Résultats_More'
+moreSaveIm = ''
 
 
 def get_list_of_images(path_origin):
@@ -161,7 +162,7 @@ def generation_Texture_LossFct5AutocorrInput():
 	priorityIm = False
 	if priorityIm: # We will synthesis those texture in priority
 		list_img = ['BrickRound0122_1_seamless_S.png','TexturesCom_BrickSmallBrown0473_1_M_1024.png','lego_1024.png','TexturesCom_TilesOrnate0158_1_seamless_S.png'] + list_img 
-	list_img = ['TexturesCom_BrickSmallBrown0473_1_M_1024.png','CRW_3438_1024.png','tricot_1024.png','vegetable_1024.png']
+	#list_img = ['TexturesCom_BrickSmallBrown0473_1_M_1024.png','CRW_3438_1024.png','tricot_1024.png','vegetable_1024.png']
 	
 	DrawAgain = False # Erase already synthesied image
 	print(list_img)
@@ -840,7 +841,7 @@ def generation_Texture_LossFct4Subset():
 	priorityIm = False
 	if priorityIm: # We will synthesis those texture in priority
 		list_img = ['BrickRound0122_1_seamless_S.png','TexturesCom_BrickSmallBrown0473_1_M_1024.png','lego_1024.png','TexturesCom_TilesOrnate0158_1_seamless_S.png'] + list_img 
-	list_img = ['TexturesCom_BrickSmallBrown0473_1_M_1024.png','CRW_3438_1024.png','tricot_1024.png','vegetable_1024.png']
+	#list_img = ['TexturesCom_BrickSmallBrown0473_1_M_1024.png','CRW_3438_1024.png','tricot_1024.png','vegetable_1024.png']
 	
 	DrawAgain = False # Erase already synthesied image
 	print(list_img)
