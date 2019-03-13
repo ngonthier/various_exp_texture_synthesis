@@ -14,7 +14,6 @@ import os.path
 from shutil import copyfile
 import pathlib
 
-moreSaveIm = '/home/gonthier/owncloud/These Gonthier Nicolas Partage/Images_Texturest_Résultats_More'
 moreSaveIm = ''
 
 
