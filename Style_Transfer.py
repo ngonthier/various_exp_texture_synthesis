@@ -656,47 +656,79 @@ def loss_autocorr(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
     total_style_loss =tf.to_float(total_style_loss)
     return(total_style_loss)
     
-#@tf.custom_gradient
-#def loss_autocorr_withGrad(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
-    #"""
-    #Computation of the autocorrelation of the filters
-    #"""
+def loss_autocorr_sqrt(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
+    """
+    Computation of the autocorrelation of the filters
+    """
+    # TODO : change the M value attention !!! different size between a and x maybe 
+    length_style_layers_int = len(style_layers)
+    length_style_layers = float(length_style_layers_int)
+    weight_help_convergence = (10**9)
+    total_style_loss = 0.
     
-    ## TODO : change the M value attention !!! different size between a and x maybe 
-    #length_style_layers_int = len(style_layers)
-    #length_style_layers = float(length_style_layers_int)
-    #weight_help_convergence = (10**9)
-    #total_style_loss = 0.
-    
-    #_, h_a, w_a, N = image_style.shape      
-    #sess.run(net['input'].assign(image_style))
+    _, h_a, w_a, N = image_style.shape      
+    sess.run(net['input'].assign(image_style))
         
-    #for layer, weight in style_layers:
-		#N = style_layers_size[layer[:5]]
-		#M = M_dict[layer]
-		#a = sess.run(net[layer])
-		#x = net[layer]
-		#x = tf.transpose(x, [0,3,1,2])
-		#a = tf.transpose(a, [0,3,1,2])
-		#F_x = tf.conj(tf.fft2d(tf.complex(x,0.)))
-		#R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
-		#R_x /= tf.to_float(M**2) # Normalisation du module de la TF
-		#F_a = tf.conj(tf.fft2d(tf.complex(a,0.)))
-		#R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
-		#R_a /= tf.to_float(M**2)
-		#@tf.custom_gradient
-		#def ma_loss_spectre(F_x,F_a):
-			#spdiff=tf.square(tf.abs(F_x))-tf.square(tf.abs(F_a))
-			#spdiff=spdiff/tf.to_float(M**2)
-			#def grad(dy):
-				#return 4*(dy*tf.real(tf.fft2d( tf.complex(spdiff,0.0)*ftc1 ) )  ),0*F_a
-			#style_loss = tf.nn.l2_loss(spdiff)  
-			#style_loss *=  gamma_autocorr* weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
-			#return style_loss,grad
+    for layer, weight in style_layers:
+        N = style_layers_size[layer[:5]]
+        M = M_dict[layer]
+        a = sess.run(net[layer])
+        x = net[layer]
+        x = tf.transpose(x, [0,3,1,2])
+        a = tf.transpose(a, [0,3,1,2])
+        F_x = tf.fft2d(tf.complex(x,0.))
+        R_x = tf.sqrt(tf.real(tf.multiply(F_x,tf.conj(F_x)))) # Module de la transformee de Fourrier : produit terme a terme
+        R_x /= tf.to_float(M) # Normalisation du module de la TF
+        F_a = tf.fft2d(tf.complex(a,0.))
+        R_a = tf.sqrt(tf.real(tf.multiply(F_a,tf.conj(F_a)))) # Module de la transformee de Fourrier
+        R_a /= tf.to_float(M)
+        style_loss = tf.nn.l2_loss(tf.subtract(R_x,R_a))  
+        style_loss *=  gamma_autocorr* weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+        total_style_loss += style_loss
+    total_style_loss =tf.to_float(total_style_loss)
+    return(total_style_loss)
+    
+@tf.custom_gradient
+def loss_autocorr_withGrad(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
+    """
+    Computation of the autocorrelation of the filters
+    """
+    length_style_layers_int = len(style_layers)
+    length_style_layers = float(length_style_layers_int)
+    weight_help_convergence = (10**9)
+    total_style_loss = 0.
+    grad_total_style_loss = 0.
+    
+    _, h_a, w_a, N = image_style.shape      
+    sess.run(net['input'].assign(image_style))
+        
+    for layer, weight in style_layers:
+        N = style_layers_size[layer[:5]]
+        M = M_dict[layer]
+        a = sess.run(net[layer])
+        x = net[layer]
+        x = tf.transpose(x, [0,3,1,2])
+        a = tf.transpose(a, [0,3,1,2])
+        F_x = tf.conj(tf.fft2d(tf.complex(x,0.)))
+        #R_x = tf.real(tf.multiply(F_x,tf.conj(F_x))) # Module de la transformee de Fourrier : produit terme a terme
+        #R_x /= tf.to_float(M**2) # Normalisation du module de la TF
+        #F_a = tf.conj(tf.fft2d(tf.complex(a,0.)))
+        #R_a = tf.real(tf.multiply(F_a,tf.conj(F_a))) # Module de la transformee de Fourrier
+        #R_a /= tf.to_float(M**2)
+        @tf.custom_gradient
+        def ma_loss_spectre(F_x,F_a):
+            spdiff=tf.square(tf.abs(F_x))-tf.square(tf.abs(F_a))
+            spdiff=spdiff/tf.to_float(M**2)
+            def grad(dy):
+                return 4*dy(*tf.real(tf.fft2d( tf.complex(spdiff,0.0)*ftc1 ) )  ),0*F_a
+            style_loss = tf.nn.l2_loss(spdiff)  
+            style_loss *=  gamma_autocorr* weight * weight_help_convergence  / (2.*(N**2)*length_style_layers)
+            return style_loss,grad
 
-        #total_style_loss += style_loss
-    #total_style_loss =tf.to_float(total_style_loss)
-    #return(total_style_loss)
+        total_style_loss += style_loss
+        grad_total_style_loss += grad[0]
+    total_style_loss =tf.to_float(total_style_loss)
+    return(total_style_loss,grad_total_style_loss)
     
     
     
@@ -2362,6 +2394,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          autocorr_loss = loss_autocorr(sess,net,image_style,M_dict,style_layers,args.gamma_autocorr)
          list_loss +=  [autocorr_loss]
          list_loss_name +=  ['autocorr_loss']
+    if('autocorr_sqrt'  in args.loss) or ('full' in args.loss): 
+         autocorr_sqrt_loss = loss_autocorr_sqrt(sess,net,image_style,M_dict,style_layers,args.gamma_autocorr)
+         list_loss +=  [autocorr_sqrt_loss]
+         list_loss_name +=  ['autocorr_sqrt_loss']
     if('autocorrLog'  in args.loss): 
          autocorr_lossLog = loss_autocorrLog(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [autocorr_lossLog]
@@ -2370,6 +2406,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          autocorr_rfft_loss =  loss_autocorr_rfft(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [autocorr_rfft_loss]
          list_loss_name +=  ['autocorr_rfft_loss']
+    if('autocorrTest'  in args.loss) or ('full' in args.loss):
+         autocorrTest_loss,_ = loss_autocorr_withGrad(sess,net,image_style,M_dict,style_layers,args.gamma_autocorr)
+         list_loss +=  [autocorrTest_loss]
+         list_loss_name +=  ['autocorrTest_loss'] 
     if('fft3D'  in args.loss) or ('full' in args.loss): 
          fft3D_loss = loss_fft3D(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [fft3D_loss]
@@ -2385,11 +2425,7 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
     if('spectrumTFabs'  in args.loss) or ('full' in args.loss):
          spectrumTFabs_loss = loss_spectrumTFabs(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
          list_loss +=  [spectrumTFabs_loss]
-         list_loss_name +=  ['spectrumTFabs_loss']  
-    if('spectrumTest'  in args.loss) or ('full' in args.loss):
-         spectrumTest_loss,_ = loss_spectrumTFabs_WithGrad(sess,net,image_style,M_dict,args.beta_spectrum,eps=args.eps)
-         list_loss +=  [spectrumTest_loss]
-         list_loss_name +=  ['spectrumTest_loss']  
+         list_loss_name +=  ['spectrumTFabs_loss']   
     if('variance'  in args.loss) or ('full' in args.loss):
          variance_loss = loss_variance(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [variance_loss]

@@ -1009,11 +1009,11 @@ def generation_Texture_LossFct5AutocorrInput():
 					src=output_img_name_full
 					dst = path_output_tmp+'/'+ output_img_name + '.png'
 					copyfile(src, dst)
-					if not(moreSaveIm==''):
-						path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
-						pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
-						name_out = path_out + output_img_name + '.png'
-						copyfile(src, name_out)
+					#if not(moreSaveIm==''):
+						#path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+						#pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+						#name_out = path_out + output_img_name + '.png'
+						#copyfile(src, name_out)
 	
 					
 def generation_Texture_LossFct2():
@@ -1137,7 +1137,7 @@ if __name__ == '__main__':
 	#generation_Texture_LossFctBetaSpectrum()
 	#generation_Texture_LossFctWeightMSContraint()
 	#generation_Texture_LossFct3()
-	generation_Texture_LossFct5AutocorrInput()
+	#generation_Texture_LossFct5AutocorrInput()
 	generation_Texture_LossFct3()
 	generation_Texture_LossFctHDimagesIntermadiateImage()
 	generation_Texture_LossFctHDimages()

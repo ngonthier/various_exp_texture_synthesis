@@ -130,7 +130,8 @@ def get_parser_args():
 			'autocorr_rfft','Lp','TV','TV1','fft3D','entropy','Gram',
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
-			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest','Gatys'],
+			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest','Gatys',
+			'autocorr_sqrt','autocorrTest'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',
@@ -166,7 +167,7 @@ def get_parser_args():
         default=[1.,1.,1.,1.,1.],
         help='Contributions (weights) of each style layer to loss. (default: %(default)s)') # TODO change that to be able to choose only one number, the same weight for all
         
-    parser.add_argument('--config_layers',type=str,default='GatysConfig',choices=['PoolConfig','FirstConvs','GatysConfig','Custom','DCor'],
+    parser.add_argument('--config_layers',type=str,default='Custom',choices=['PoolConfig','FirstConvs','GatysConfig','Custom','DCor'],
         help='Configuration already saved for the choice of the content and style layers and weights choosen, need to be None to allow user to change. (default: %(default)s)') 
         
     parser.add_argument('--alpha_phaseAlea',  type=float,default=0.01,
