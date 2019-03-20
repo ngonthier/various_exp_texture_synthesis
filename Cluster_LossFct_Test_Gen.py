@@ -158,15 +158,19 @@ def generation_Texture_LossFct5AutocorrInput():
 	#alpha = 0.01
 	list_img = get_list_of_images(path_origin)
 	
-	priorityIm = False
+	priorityIm = True
 	if priorityIm: # We will synthesis those texture in priority
-		list_img = ['BrickRound0122_1_seamless_S.png','TexturesCom_BrickSmallBrown0473_1_M_1024.png','lego_1024.png','TexturesCom_TilesOrnate0158_1_seamless_S.png'] + list_img 
-	#list_img = ['TexturesCom_BrickSmallBrown0473_1_M_1024.png','CRW_3438_1024.png','tricot_1024.png','vegetable_1024.png']
+		#list_img = ['BrickRound0122_1_seamless_S.png','TexturesCom_BrickSmallBrown0473_1_M_1024.png','lego_1024.png','TexturesCom_TilesOrnate0158_1_seamless_S.png'] + list_img 
+		list_img = ['BrickRound0122_1_seamless_S.png','bubble_1024.png','BubbleMarbel.png','CRW_3241_1024.png',\
+		'CRW_3444_1024.png','fabric_white_blue_1024.png','glass_1024.png','lego_1024.png','marbre_1024.png',\
+		'metal_ground_1024.png','Pierzga_2006_1024.png','rouille_1024.png','Scrapyard0093_1_seamless_S.png',\
+		'TexturesCom_BrickSmallBrown0473_1_M_1024.png','TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024.png',\
+		'TexturesCom_TilesOrnate0085_1_seamless_S.png','TexturesCom_TilesOrnate0158_1_seamless_S.png']
 	
 	DrawAgain = False # Erase already synthesied image
 	print(list_img)
 	eps=10**(-16)
-	losses_to_test = [['autocorr']]
+	losses_to_test = [['SpectrumOnFeatures'],['autocorr']]
 	scalesStrat = ['Init','']
 	padding = 'SAME'
 	style_layers = ['input','relu1_1','pool1','pool2','pool3','pool4']
@@ -195,6 +199,47 @@ def generation_Texture_LossFct5AutocorrInput():
 					optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
 					vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
 					eps=eps,data_folder=data_folder,style_layers=style_layers)
+				args = parser.parse_args()
+				output_img_name_full = path_output + output_img_name + '.png'
+				if DrawAgain or not(os.path.isfile(output_img_name_full)):
+					st.style_transfer(args)
+					src=output_img_name_full
+					dst = path_output_tmp+'/'+ output_img_name + '.png'
+					copyfile(src, dst)
+					if not(moreSaveIm==''):
+						path_out = moreSaveIm + '/' + name_img_wt_ext +'/'
+						pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
+						name_out = path_out + output_img_name + '.png'
+						copyfile(src, name_out)
+		
+	losses_to_test = [['SpectrumOnFeatures'],['autocorr','spectrumTFabs']]				
+	style_layers = ['relu1_1','pool1','pool2','pool3','pool4']
+	style_layer_weights = [1.,1.,1.,1.,1.]
+	beta = 1000
+	for loss in losses_to_test:
+		for MSS in scalesStrat:
+			for name_img in list_img:
+				MS_Strat = MSS
+				name_img_wt_ext,_ = name_img.split('.')
+				path_output_tmp = path_output+name_img_wt_ext
+				do_mkdir(path_output_tmp)
+				tf.reset_default_graph() # Necessity to use a new graph !! 
+				img_folder = path_origin
+				img_output_folder = path_origin
+				output_img_name = name_img_wt_ext + '_'+padding
+				#output_img_name += '_OnInput'
+				for loss_item in loss:
+					output_img_name += '_' + loss_item
+				if 'spectrumTFabs' in loss:
+					output_img_name += '_'+str(beta) +'_eps10m16'
+				if not(MSS==''):
+					output_img_name += '_MSS' +MSS
+				parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
+					img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
+					init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+					optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
+					vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
+					eps=eps,data_folder=data_folder,style_layers=style_layers,beta_spectrum=beta)
 				args = parser.parse_args()
 				output_img_name_full = path_output + output_img_name + '.png'
 				if DrawAgain or not(os.path.isfile(output_img_name_full)):
@@ -1135,4 +1180,4 @@ def generation_Texture_JustTexture_and_TexturePlusSpectrum():
 
 if __name__ == '__main__':
 	generation_Texture_LossFct5AutocorrInput()
-	generation_Texture_LossFctHDimages()
+	#generation_Texture_LossFctHDimages()

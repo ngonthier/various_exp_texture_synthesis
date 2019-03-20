@@ -633,6 +633,7 @@ def loss_autocorr(sess,net,image_style,M_dict,style_layers,gamma_autocorr=1.):
     length_style_layers = float(length_style_layers_int)
     weight_help_convergence = (10**9)
     total_style_loss = 0.
+
     
     _, h_a, w_a, N = image_style.shape      
     sess.run(net['input'].assign(image_style))
@@ -1256,13 +1257,15 @@ def loss_intercorr(sess,net,image_style,M_dict,style_layers):
     
 def loss_SpectrumOnFeatures(sess,net,image_style,M_dict,style_layers):
     """
-    In this loss function we impose the spectrum on each features 
+    In this loss function we impose the spectrum constraint on the features
+    maps at differents layers
     """
     # TODO : change the M value attention !!! different size between a and x maybe 
     length_style_layers_int = len(style_layers)
     length_style_layers = float(length_style_layers_int)
     weight_help_convergence = 10**9
     total_style_loss = 0.
+    eps = 10**(-16)
     sess.run(net['input'].assign(image_style))  
     for layer, weight in style_layers:
         N = style_layers_size[layer[:5]]
@@ -1273,14 +1276,20 @@ def loss_SpectrumOnFeatures(sess,net,image_style,M_dict,style_layers):
         a = tf.transpose(a, [0,3,1,2])
         F_x = tf.fft2d(tf.complex(x_transpose,0.))
         F_a = tf.fft2d(tf.complex(a,0.))
-        innerProd = tf.multiply(F_x,tf.conj(F_a))  # sum(ftIm .* conj(ftRef), 3);
-        module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
-        dephase = tf.divide(innerProd,module_InnerProd)
-        ftNew =  tf.multiply(dephase,F_x)
+        if not(test_version_sup('1.7')):
+            innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+        else:
+            innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+        if test_version_sup('1.4'):
+            module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
+        else:
+            module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
+        dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
+        ftNew =  tf.multiply(dephase,F_a)
         imF = tf.ifft2d(ftNew)
         imF =  tf.real(tf.transpose(imF, [0,2,3,1]))
         loss = tf.nn.l2_loss(tf.subtract(x,imF)) # sum (x**2)/2
-        loss *= weight * weight_help_convergence /(M*3*(2.*(N**2)*length_style_layers))
+        loss *= weight * weight_help_convergence /((M**2)*(N**2)*length_style_layers)
         total_style_loss += loss
     total_style_loss =tf.to_float(total_style_loss)
     return(total_style_loss)
@@ -1342,7 +1351,7 @@ def loss_spectrum(sess,net,image_style,M_dict,beta,eps = 0.001):
     F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
     # Element wise multiplication of FFT and conj of FFT
-    if not(test_version_sup('1.8')):
+    if not(test_version_sup('1.7')):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3);
     else:
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3);
@@ -1424,7 +1433,7 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     """
     #eps = 10**(-16)
     #
-    print('eps value :',eps)
+    #print('eps value :',eps)
     M = M_dict['input'] # Nombre de pixels
     
     x = net['input'] # Image en cours de synthese
@@ -1440,7 +1449,7 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     F_x = tf.fft2d(tf.complex(x_t,0.)) # Image en cours de synthese 
     
     # Element wise multiplication of FFT and conj of FFT
-    if not(test_version_sup('1.8')):
+    if not(test_version_sup('1.7')):
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
     else:
         innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
@@ -1450,6 +1459,7 @@ def loss_spectrumTFabs(sess,net,image_style,M_dict,beta,eps = 0.001):
     if test_version_sup('1.4'):
         module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
     else:
+        print("You nedd a version of TF superior to 1.4")
         raise(NotImplemented)
     #print(module_InnerProd)
     dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
@@ -2345,9 +2355,9 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
         list_loss_name +=  ['content_loss']
     if('texture'  in args.loss) or ('Gram' in args.loss) or('Gatys' in args.loss) or('GatysStyleTransfer' in args.loss)  or ('full' in args.loss):
         # Gatys, Gram and texture are the same loss : the one based on the Gram matrix from the feature maps
-        style_loss =  sum_style_losses(sess,net,dict_gram,M_dict,style_layers)
-        list_loss +=  [style_loss]
-        list_loss_name +=  ['style_loss']
+        gram_loss =  sum_style_losses(sess,net,dict_gram,M_dict,style_layers)
+        list_loss +=  [gram_loss]
+        list_loss_name +=  ['gram_loss']
     if('texMask'  in args.loss):
         mask_dict = pickle.load(open('mask_dict.pkl', 'rb'))
         texture_mask_loss = texture_loss_wt_mask(sess, net, dict_gram,M_dict,mask_dict,style_layers)
