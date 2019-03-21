@@ -131,7 +131,7 @@ def get_parser_args():
 			'spectrum','phaseAlea','phaseAleaSimple','SpectrumOnFeatures',
 			'texMask','intercorr','bizarre','HF','HFmany','variance','fftVect',
 			'TVronde','current','phaseAleaList','spectrumTFabs','spectrumTest','Gatys',
-			'autocorr_sqrt','autocorrTest'],
+			'autocorr_sqrt','autocorrTest','SpectrumOnFeaturesInFourrier'],
         help='Choice the term of the loss function. (default %(default)s)')
     
     parser.add_argument('--tv',  action='store_true',

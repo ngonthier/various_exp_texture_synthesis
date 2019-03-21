@@ -1294,6 +1294,43 @@ def loss_SpectrumOnFeatures(sess,net,image_style,M_dict,style_layers):
     total_style_loss =tf.to_float(total_style_loss)
     return(total_style_loss)
     
+def loss_SpectrumOnFeaturesInFourrier(sess,net,image_style,M_dict,style_layers):
+    """
+    In this loss function we impose the spectrum constraint on the features
+    maps at differents layers in the Fourrier domain
+    """
+    # TODO : change the M value attention !!! different size between a and x maybe 
+    length_style_layers_int = len(style_layers)
+    length_style_layers = float(length_style_layers_int)
+    weight_help_convergence = 10**9
+    total_style_loss = 0.
+    eps = 10**(-16)
+    sess.run(net['input'].assign(image_style))  
+    for layer, weight in style_layers:
+        N = style_layers_size[layer[:5]]
+        M = M_dict[layer]
+        a = sess.run(net[layer])
+        x = net[layer]
+        x_transpose = tf.transpose(x, [0,3,1,2])
+        a = tf.transpose(a, [0,3,1,2])
+        F_x = tf.fft2d(tf.complex(x_transpose,0.))
+        F_a = tf.fft2d(tf.complex(a,0.))
+        if not(test_version_sup('1.7')):
+            innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keep_dims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+        else:
+            innerProd = tf.reduce_sum(tf.multiply(F_x,tf.conj(F_a)), 1, keepdims=True)  # sum(ftIm .* conj(ftRef), 3); cad somme sur les channels 
+        if test_version_sup('1.4'):
+            module_InnerProd = tf.complex(tf.abs(innerProd),0.) # Possible with tensorflow 1.4
+        else:
+            module_InnerProd = tf.pow(tf.multiply(innerProd,tf.conj(innerProd)),0.5)
+        dephase = tf.divide(innerProd,tf.add(module_InnerProd,eps))
+        ftNew =  tf.multiply(dephase,F_a)
+        loss = tf.nn.l2_loss(tf.subtract(tf.real(F_x),tf.real(ftNew))) # sum (x**2)/2
+        loss *= weight * weight_help_convergence /((M**2)*(N**2)*length_style_layers)
+        total_style_loss += loss
+    total_style_loss =tf.to_float(total_style_loss)
+    return(total_style_loss)
+    
     
 def loss_fft3D(sess,net,image_style,M_dict,style_layers):
     """
@@ -2450,6 +2487,10 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
          SpectrumOnFeatures_loss = loss_SpectrumOnFeatures(sess,net,image_style,M_dict,style_layers)
          list_loss +=  [SpectrumOnFeatures_loss]
          list_loss_name +=  ['SpectrumOnFeatures_loss'] 
+    if('SpectrumOnFeaturesInFourrier'  in args.loss) or ('full' in args.loss):
+         SpectrumOnFeaturesInFourrier_loss = loss_SpectrumOnFeaturesInFourrier(sess,net,image_style,M_dict,style_layers)
+         list_loss +=  [SpectrumOnFeaturesInFourrier_loss]
+         list_loss_name +=  ['SpectrumOnFeaturesInFourrier_loss'] 
     if('phaseAlea' in args.loss) or ('full' in args.loss):
          image_style_Phase = compute_ImagePhaseAlea(sess,net,image_style,M_dict,style_layers)
          phaseAlea_loss = loss_PhaseAleatoire(sess,net,image_style,image_style_Phase,M_dict,style_layers,args.alpha_phaseAlea,args.gamma_phaseAlea)
