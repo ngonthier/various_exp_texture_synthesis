@@ -2340,7 +2340,13 @@ def get_losses(args,sess, net, dict_features_repr,M_dict,image_style,dict_gram,p
         list_loss_name +=  ['loss_total']
         return(loss_total,list_loss,list_loss_name)
     elif(args.config_layers=='Custom'):
+        if not(len(args.content_layers)==len(args.content_layer_weights)):
+            args.content_layer_weights = [1.]*len(args.content_layers)
+            print('The content_layer_weights is not the same length than the content_layers, we replace it by [1.]*len(args.content_layers)')
         content_layers =  list(zip(args.content_layers, args.content_layer_weights))
+        if not(len(args.style_layers)==len(args.style_layer_weights)):
+            args.style_layer_weights = [1.]*len(args.style_layers)
+            print('The style_layer_weights is not the same length than the style_layers, we replace it by [1.]*len(args.style_layers)')
         style_layers = list(zip(args.style_layers,args.style_layer_weights))
     if(args.verbose): print('content_layers',content_layers)
     if(args.verbose): print('style_layers',style_layers)
@@ -2672,12 +2678,16 @@ def style_transfer(args):
         padding = args.padding
         vgg_layers = get_vgg_layers(args.vgg_name)
         
-        # Precomputation Phase :
-        if args.MS_Strat in ['Init','Constr'] or args.GramLightComput:
-            if args.verbose: print("In those cases we will not use the precomputed gram matrix")
-            dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,args)
+        # Precomputation of the Gram Matrix :
+        
+        if ('texture' in args.loss) or ('Gram' in args.loss) or('Gatys' in args.loss) or('GatysStyleTransfer' in args.loss) or ('full' in args.loss) or ('texMask'  in args.loss):
+            if args.MS_Strat in ['Init','Constr'] or args.GramLightComput:
+                if args.verbose: print("In those cases we will not use the precomputed gram matrix")
+                dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,args)
+            else:
+                dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
         else:
-            dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
+            dict_gram = None
         if ('full' in args.loss) or('GatysStyleTransfer' in args.loss) or ('content' in args.loss):
             if not(padding=='Davy'):
                 dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)

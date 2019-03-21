@@ -198,7 +198,7 @@ def generation_Texture_LossFct5AutocorrInput():
 					init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
 					optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
 					vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
-					eps=eps,data_folder=data_folder,style_layers=style_layers)
+					eps=eps,data_folder=data_folder,style_layers=style_layers,style_layer_weights=style_layer_weights)
 				args = parser.parse_args()
 				output_img_name_full = path_output + output_img_name + '.png'
 				if DrawAgain or not(os.path.isfile(output_img_name_full)):
@@ -211,8 +211,44 @@ def generation_Texture_LossFct5AutocorrInput():
 						pathlib.Path(path_out).mkdir(parents=True, exist_ok=True)
 						name_out = path_out + output_img_name + '.png'
 						copyfile(src, name_out)
+
+
+def generation_Texture_LossFct6AutocorrSpectrum():
+	path_origin = 'dataImages2/'
+	#path_origin = '/home/gonthier/Travail_Local/Texture_Style/Implementation Autre Algos/Subset/'
+	path_output = 'dataImages2_output/'
+	data_folder= 'data/'
+	do_mkdir(path_output)
+	parser = get_parser_args()
+	max_iter = 2000
+	print_iter = 2000
+	start_from_noise = 1
+	init_noise_ratio = 1.0
+	optimizer = 'lbfgs'
+	init = 'Gaussian'
+	init_range = 0.0
+	maxcor = 20
+	clipping_type = 'ImageStyleBGR'
+	vgg_name = 'normalizedvgg.mat'
+	config_layers = 'Custom'
+	#beta_spectrum = 100
+	#alpha = 0.01
+	list_img = get_list_of_images(path_origin)
+	
+	priorityIm = True
+	if priorityIm: # We will synthesis those texture in priority
+		#list_img = ['BrickRound0122_1_seamless_S.png','TexturesCom_BrickSmallBrown0473_1_M_1024.png','lego_1024.png','TexturesCom_TilesOrnate0158_1_seamless_S.png'] + list_img 
+		list_img = ['BrickRound0122_1_seamless_S.png','bubble_1024.png','BubbleMarbel.png','CRW_3241_1024.png',\
+		'CRW_3444_1024.png','fabric_white_blue_1024.png','glass_1024.png','lego_1024.png','marbre_1024.png',\
+		'metal_ground_1024.png','Pierzga_2006_1024.png','rouille_1024.png','Scrapyard0093_1_seamless_S.png',\
+		'TexturesCom_BrickSmallBrown0473_1_M_1024.png','TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024.png',\
+		'TexturesCom_TilesOrnate0085_1_seamless_S.png','TexturesCom_TilesOrnate0158_1_seamless_S.png']
+	
+	DrawAgain = False # Erase already synthesied image
+	print(list_img)
+	eps=10**(-16)
 		
-	losses_to_test = [['SpectrumOnFeatures'],['autocorr','spectrumTFabs']]				
+	losses_to_test = [['autocorr','spectrumTFabs'],['SpectrumOnFeatures']]				
 	style_layers = ['relu1_1','pool1','pool2','pool3','pool4']
 	style_layer_weights = [1.,1.,1.,1.,1.]
 	beta = 1000
@@ -239,7 +275,7 @@ def generation_Texture_LossFct5AutocorrInput():
 					init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
 					optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
 					vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
-					eps=eps,data_folder=data_folder,style_layers=style_layers,beta_spectrum=beta)
+					eps=eps,data_folder=data_folder,style_layers=style_layers,style_layer_weights=style_layer_weights,beta_spectrum=beta)
 				args = parser.parse_args()
 				output_img_name_full = path_output + output_img_name + '.png'
 				if DrawAgain or not(os.path.isfile(output_img_name_full)):
@@ -1179,5 +1215,6 @@ def generation_Texture_JustTexture_and_TexturePlusSpectrum():
 	
 
 if __name__ == '__main__':
+	generation_Texture_LossFct6AutocorrSpectrum()
 	generation_Texture_LossFct5AutocorrInput()
 	#generation_Texture_LossFctHDimages()
