@@ -115,6 +115,9 @@ def get_parser_args():
     parser.add_argument('--pooling_type', type=str,default='avg',
         choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
     
+    parser.add_argument('--non_linearity_type', type=str,default='relu',
+        choices=['relu', 'leaky_relu','id'],help='Type of non linearity in convolutional neural network. (default: %(default)s)')
+    
     parser.add_argument('--padding', type=str,choices=['SAME','Circular','Davy','VALID'],
         default='SAME',help='Type of padding in the network. (default: %(default)s)')
         

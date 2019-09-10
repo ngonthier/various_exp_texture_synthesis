@@ -69,6 +69,8 @@ def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
     """
     Load the VGG 19 layers
     """
+    if not(VGG19_mat=='normalizedvgg.mat'):
+        print("Becareful, the precomputed Gram matrices used the normalizedvgg")
     if(VGG19_mat=='imagenet-vgg-verydeep-19.mat') or (VGG19_mat=='random_net.mat'):
         # The vgg19 network from http://www.vlfeat.org/matconvnet/pretrained/
         try:
@@ -90,7 +92,8 @@ def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
         print("The path to the VGG19_mat is unknown.")
     return(vgg_layers)
 
-def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
+def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME',
+                  non_linearity_type='relu'):
     """
     This function read the vgg layers and create the net architecture
     We need the input image to know the dimension of the input layer of the net
@@ -115,7 +118,7 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
             current = conv_layer(current, kernels, bias,name,padding) 
             # Update the  variable named current to have the right size
         elif(kind == 'relu'):
-            current = tf.nn.relu(current,name=name)
+            current = non_linearity(current,name,non_linearity_type)
         elif(kind == 'pool'):
             current = pool_layer(current,name,pooling_type,padding)
 
@@ -123,6 +126,15 @@ def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME'):
 
     assert len(net) == len(VGG19_LAYERS) +1 # Test if the length is right 
     return(net)
+
+def non_linearity(current,name,non_linearity_type):
+    if non_linearity_type=='relu':
+        current = tf.nn.relu(current,name=name)
+    elif non_linearity_type=='leaky_relu':
+        current = tf.nn.leaky_relu(current,name=name)
+    elif non_linearity_type=='id':
+        current = tf.identity(current,name=name)
+    return(current)
 
 def conv_layer(input, weights, bias,name,padding='SAME'):
     """
@@ -1867,7 +1879,7 @@ def gram_matrix(x,N,M):
   # That come from Control paper of Gatys et al.
   return(G)
  
-def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME',args=None):
+def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME',non_linearity_type='relu',args=None):
     """
     Computation of all the Gram matrices from one image thanks to the 
     vgg_layers
@@ -1883,7 +1895,7 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME',arg
         layers_to_use = VGG19_LAYERS 
     
     dict_gram = {}
-    net = net_preloaded(vgg_layers, image_style,pooling_type,padding) # net for the style image
+    net = net_preloaded(vgg_layers, image_style,pooling_type,padding,non_linearity_type=non_linearity_type) # net for the style image
     sess = tf.Session()
     sess.run(net['input'].assign(image_style))
     a = net['input']
@@ -1901,12 +1913,12 @@ def get_Gram_matrix(vgg_layers,image_style,pooling_type='avg',padding='SAME',arg
     tf.reset_default_graph() # To clear all operation and variable
     return(dict_gram)        
          
-def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME'):
+def get_features_repr(vgg_layers,image_content,pooling_type='avg',padding='SAME',non_linearity_type='relu'):
     """
     Compute the image content representation values according to the vgg
     19 net
     """
-    net = net_preloaded(vgg_layers, image_content,pooling_type,padding) # net for the content image
+    net = net_preloaded(vgg_layers, image_content,pooling_type,padding,non_linearity_type=non_linearity_type) # net for the content image
     sess = tf.Session()
     sess.run(net['input'].assign(image_content))
     dict_features_repr = {}
@@ -2207,7 +2219,7 @@ def get_lbfgs_bnds(init_img,clip_value_min,clip_value_max,BGR=False):
         bnds = (bnd_inf, bnd_sup)
     return(bnds)
 
-def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding='SAME'):
+def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding='SAME',non_linearity_type='relu'):
     _,image_h_art, image_w_art, _ = image_style.shape
     vgg_name = args.vgg_name
     stringAdd = ''
@@ -2217,7 +2229,11 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
         stringAdd = '_v' # Regular one
     elif(vgg_name=='random_net.mat'):
         stringAdd = '_r' # random
-    data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+stringAdd
+    if not(non_linearity_type=='relu'):
+        non_linearity_type_str = '_'+str(non_linearity_type)
+    else:
+        non_linearity_type_str =''
+    data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+non_linearity_type_str+stringAdd
     if args.GramLightComput:
         data_style_path += '_lightVersion'
     data_style_path += ".pkl"
@@ -2231,7 +2247,7 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
         dict_gram = pickle.load(open(data_style_path, 'rb'))
     except(FileNotFoundError):
         if(args.verbose): print("The Gram Matrices doesn't exist, we will generate them.")
-        dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,args)
+        dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,non_linearity_type,args)
         with open(data_style_path, 'wb') as output_gram_pkl:
             pickle.dump(dict_gram,output_gram_pkl)
         if(args.verbose): print("Pickle dumped")
@@ -2717,6 +2733,7 @@ def style_transfer(args):
         t1 = time.time()
         pooling_type = args.pooling_type
         padding = args.padding
+        non_linearity_type = args.non_linearity_type
         vgg_layers = get_vgg_layers(args.vgg_name)
         
         # Precomputation of the Gram Matrix :
@@ -2724,14 +2741,14 @@ def style_transfer(args):
         if ('texture' in args.loss) or ('Gram' in args.loss) or('Gatys' in args.loss) or('GatysStyleTransfer' in args.loss) or ('full' in args.loss) or ('texMask'  in args.loss):
             if args.MS_Strat in ['Init','Constr'] or args.GramLightComput:
                 if args.verbose: print("In those cases we will not use the precomputed gram matrix")
-                dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,args)
+                dict_gram = get_Gram_matrix(vgg_layers,image_style,pooling_type,padding,non_linearity_type,args)
             else:
-                dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding)
+                dict_gram = get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type,padding,non_linearity_type)
         else:
             dict_gram = None
         if ('full' in args.loss) or('GatysStyleTransfer' in args.loss) or ('content' in args.loss):
             if not(padding=='Davy'):
-                dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding)
+                dict_features_repr = get_features_repr_wrap(args,vgg_layers,image_content,pooling_type,padding,non_linearity_type)
             else:
                 raise(utils.MyError("It is not allowed to use Davy padding for doing Style Transfer, at least you find how to do. Good luck :)"))
         else: 
@@ -2750,7 +2767,7 @@ def style_transfer(args):
         else:       
             M_dict = get_M_dict(image_h,image_w)
             
-        net = net_preloaded(vgg_layers,image_content,pooling_type,padding) # The output image as the same size as the content one
+        net = net_preloaded(vgg_layers,image_content,pooling_type,padding,non_linearity_type=non_linearity_type) # The output image as the same size as the content one
         
         t2 = time.time()
         if(args.verbose): print("net loaded and gram computation after ",t2-t1," s")
