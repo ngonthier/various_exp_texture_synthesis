@@ -12,6 +12,7 @@ and https://github.com/leongatys/PytorchNeuralStyleTransfer/blob/master/NeuralSt
 """
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='0' # 1 to remove info, 2 to remove warning and 3 for all
+import os.path
 import tensorflow as tf
 import scipy.io
 from PIL import Image
@@ -69,6 +70,10 @@ def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
     """
     Load the VGG 19 layers
     """
+ 
+    if not(os.path.isfile(VGG19_mat)):
+        print(VGG19_mat,'is not found.')
+        raise(FileNotFoundError)
     if not(VGG19_mat=='normalizedvgg.mat'):
         print("Becareful, the precomputed Gram matrices used the normalizedvgg")
     if(VGG19_mat=='imagenet-vgg-verydeep-19.mat') or (VGG19_mat=='random_net.mat'):
@@ -89,7 +94,14 @@ def get_vgg_layers(VGG19_mat='normalizedvgg.mat'):
             print("You have to  get the weight from https://github.com/leongatys/DeepTextures and convert them to .mat format.")
             raise
     else:
-        print("The path to the VGG19_mat is unknown.")
+        print("VGG19_mat name is unknown but we will still try to read it")
+        try:
+            vgg_rawnet = scipy.io.loadmat(VGG19_mat)
+            vgg_layers = vgg_rawnet['net'][0]['layers'][0][0]
+        except(FileNotFoundError):
+            print("The path to the VGG19_mat is not right or the .mat is not here")
+            print("You have to  get the weight from https://github.com/leongatys/DeepTextures and convert them to .mat format.")
+            raise
     return(vgg_layers)
 
 def net_preloaded(vgg_layers, input_image,pooling_type='avg',padding='SAME',
@@ -2236,6 +2248,10 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
     data_style_path = args.data_folder + "gram_"+args.style_img_name+"_"+str(image_h_art)+"_"+str(image_w_art)+"_"+str(pooling_type)+"_"+str(padding)+non_linearity_type_str+stringAdd
     if args.GramLightComput:
         data_style_path += '_lightVersion'
+    if not(args.vgg_name=='normalizedvgg.mat'):
+        ext_vggname = args.vgg_name
+        ext_vggname = ext_vggname.split('.')[0]
+        data_style_path += '_' +ext_vggname
     data_style_path += ".pkl"
     if(vgg_name=='random_net.mat'):
         try:
@@ -2255,7 +2271,12 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
 
 def get_features_repr_wrap(args,vgg_layers,image_content,pooling_type='avg',padding='SAME'):
     _,image_h, image_w, number_of_channels = image_content.shape 
-    data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+"_"+str(pooling_type)+"_"+str(padding)+".pkl"
+    data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+"_"+str(pooling_type)+"_"+str(padding)
+    if not(args.vgg_name=='normalizedvgg.mat'):
+        ext_vggname = args.vgg_name
+        ext_vggname = ext_vggname.split('.')[0]
+        data_content_path +="_"+ext_vggname
+    data_content_path +=".pkl"
     try:
         dict_features_repr = pickle.load(open(data_content_path, 'rb'))
     except(FileNotFoundError):
