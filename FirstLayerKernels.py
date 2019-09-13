@@ -349,7 +349,7 @@ def modify_AllLayersWeight(filename='zero_net.mat',verbose=False):
     for i, name in enumerate(VGG19_LAYERS_modif):
         kind = name[:4]
         if(kind == 'conv'):
-            if verbose: print(name,index_in_vgg,i)
+            print(name,index_in_vgg,i)
             kernels = vgg_layers[index_in_vgg][0][0][2][0][0]
             bias = vgg_layers[index_in_vgg][0][0][2][0][1]
             number_of_kernels = kernels.shape[3]
