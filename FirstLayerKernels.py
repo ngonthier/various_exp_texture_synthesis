@@ -17,6 +17,15 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy import stats
+import  os.path
+from sklearn import decomposition
+from sklearn.feature_extraction.image import extract_patches_2d
+from numpy import linalg as LA
+
+from Style_Transfer import preprocess
+
+# Dictionnary learn : https://dictlearn.readthedocs.io/en/latest/tutorial.html
+import dictlearn as dl
 
 def plot_and_saveinPDF():
     path = 'Results/Filter_Rep/'
@@ -114,6 +123,187 @@ def plot_and_saveinPDF():
            
     pp.close()
     plt.clf()
+    
+def replace_FirstLayersWeight_byAtomOfSparseDict(filename='firstlayer_atomSparseDict_net.mat',\
+                                                 textureIm='TilesOrnate0158_1_S',\
+                                                 img_folder='images',ext='png'):
+    # https://sites.fas.harvard.edu/~cs278/papers/ksvd.pdf
+    VGG19_mat='normalizedvgg.mat'
+    vgg_rawnet = scipy.io.loadmat(VGG19_mat)
+    vgg_layers = vgg_rawnet['net'][0]['layers'][0][0]
+    index_in_vgg = 0
+    kernels = vgg_layers[index_in_vgg][0][0][2][0][0]
+    bias = vgg_layers[index_in_vgg][0][0][2][0][1]
+    number_of_kernels = kernels.shape[3]
+    kernels_norms = np.sqrt(np.sum(kernels**2,axis=(0,1,2)))
+    mean_norm_kernels = np.mean(kernels_norms)
+    print('mean_norm_kernels',mean_norm_kernels)
+    mean_bias = np.mean(bias)
+    itera = 0
+    patch_size = (kernels.shape[1],kernels.shape[2])
+    print('patch_size',patch_size)
+    # Kernel are [width, height, in_channels, out_channels]
+    V = np.moveaxis(kernels,3,0)
+    print(V.shape)
+    plot_kernels(V,patch_size=(3,3,3),title='Original Kernel')
+    
+    
+    image_path = os.path.join(img_folder,textureIm+'.'+ext)
+    img = scipy.misc.imread(image_path,mode='RGB')
+    img = preprocess(img.astype('float32'))[0,:,:,:]
+    print('img',img.shape)
+#    max_patches = img.shape[0]*img.shape[1]
+
+    #image_patches = dl.Patches(img, 3)
+    #trainer = dl.ImageTrainer(image_path, patch_size=3)
+    #trainer.dictionary = dictionary
+    #trainer.train(iters=100, n_nonzero=8, n_threads=4, verbose=True)
+
+    #dl.visualize_dictionary(trainer.dictionary, 8, 8)
+    
+    # The real maximmum number of patches is img.shape[0]*img.shape[1]
+    data = extract_patches_2d(img, patch_size)
+    print(data.shape)
+    data = data.reshape(data.shape[0], -1)
+    print(data.shape)
+    # Need to normalize them ???
+    
+    dico = decomposition.MiniBatchDictionaryLearning(n_components=number_of_kernels, alpha=1, n_iter=1000)
+#    dico = decomposition.DictionaryLearning(n_components=number_of_kernels,\
+#                                                   alpha=1, max_iter=100, tol=1e-08,\
+#                                                   fit_algorithm='lars',n_jobs=-1) 
+    # lars ou cd pour fit_algorithm
+    V = dico.fit(data).components_
+    print(V.shape)
+    title =  'Dictionary learned from face patches of ' + textureIm
+    plot_kernels(V,patch_size=(3,3,3),title=title)
+    for i in range(number_of_kernels): 
+        comp = V[i]
+        comp = comp.reshape((3,3,3))
+        comp_norm = np.sqrt(np.sum(comp**2))
+        comp = comp*mean_norm_kernels/comp_norm
+        vgg_rawnet['net'][0]['layers'][0][0][index_in_vgg][0][0][2][0][0][:,:,:,i] = comp
+        vgg_rawnet['net'][0]['layers'][0][0][index_in_vgg][0][0][2][0][1][i] = mean_bias
+        itera += 1
+    print("Number of kernels modifed :",itera)
+    scipy.io.savemat(filename,vgg_rawnet)
+
+def plot_kernels(V,patch_size,title=''):
+    plt.ion()
+    plt.figure(figsize=(4.2, 4))
+    numberelt = len(V)
+    sqrt = int(np.ceil(np.sqrt(numberelt)))
+    for i, comp in enumerate(V):
+        plt.subplot(sqrt, sqrt, i + 1)
+        comp_reshaped = comp.reshape(patch_size)
+        comp_reshaped = (comp_reshaped-np.min(comp_reshaped))/(np.max(comp_reshaped)-np.min(comp_reshaped))
+        plt.imshow(comp_reshaped, cmap=plt.cm.gray_r,
+                   interpolation='nearest')
+        plt.xticks(())
+        plt.yticks(())
+    plt.suptitle(title,
+                 fontsize=16)
+#    plt.suptitle('Dictionary learned from face patches\n' +
+#                 'Train time %.1fs on %d patches' % (dt, len(data)),
+#                 fontsize=16)
+    plt.subplots_adjust(0.08, 0.02, 0.92, 0.85, 0.08, 0.23)
+    plt.show()
+    
+def replace_AllLayersWeight_byAtomOfSparseDict(filename='firstlayer_atomSparseDict_net.mat',\
+                                                 textureIm='TilesOrnate0158_1_S',\
+                                                 img_folder='images',ext='png'):
+    # Pas fini du tout car il faut faire passer la texture dans le réseau
+    # https://sites.fas.harvard.edu/~cs278/papers/ksvd.pdf
+    VGG19_mat='normalizedvgg.mat'
+    vgg_rawnet = scipy.io.loadmat(VGG19_mat)
+    vgg_layers = vgg_rawnet['net'][0]['layers'][0][0].copy()
+    VGG19_LAYERS_modif =  VGG19_LAYERS
+    index_in_vgg = 0
+    for i, name in enumerate(VGG19_LAYERS_modif):
+        kind = name[:4]
+        if(kind == 'conv'):
+            print(name,index_in_vgg,i)
+            kernels = vgg_layers[index_in_vgg][0][0][2][0][0]
+            bias = vgg_layers[index_in_vgg][0][0][2][0][1]
+            number_of_kernels = kernels.shape[3]
+            kernels_norms = np.sqrt(np.sum(kernels**2,axis=(0,1,2)))
+            mean_norm_kernels = np.mean(kernels_norms)
+            print('mean_norm_kernels',mean_norm_kernels)
+            mean_bias = np.mean(bias)
+            itera = 0
+            patch_size = (kernels.shape[1],kernels.shape[2])
+            print('patch_size',patch_size)
+            
+            image_path = os.path.join(img_folder,textureIm+'.'+ext)
+            img = scipy.misc.imread(image_path,mode='RGB')
+            img = preprocess(img.astype('float32'))[0,:,:,:]
+            print('img',img.shape)
+#            max_patches = img.shape[0]*img.shape[1]
+        
+            #image_patches = dl.Patches(img, 3)
+            #trainer = dl.ImageTrainer(image_path, patch_size=3)
+            #trainer.dictionary = dictionary
+            #trainer.train(iters=100, n_nonzero=8, n_threads=4, verbose=True)
+        
+            #dl.visualize_dictionary(trainer.dictionary, 8, 8)
+            
+            # The real maximmum number of patches is img.shape[0]*img.shape[1]
+            data = extract_patches_2d(img, patch_size)
+            print(data.shape)
+            data = data.reshape(data.shape[0], -1)
+            print(data.shape)
+            # Need to normalize them ???
+            
+            dico = decomposition.MiniBatchDictionaryLearning(n_components=number_of_kernels, alpha=1, n_iter=500)
+        #    dico = decomposition.DictionaryLearning(n_components=number_of_kernels,\
+        #                                                   alpha=1, max_iter=100, tol=1e-08,\
+        #                                                   fit_algorithm='lars',n_jobs=-1) 
+            # lars ou cd pour fit_algorithm
+            V = dico.fit(data).components_
+            
+            for k in range(number_of_kernels): 
+                comp = V[k]
+                comp = comp.reshape((kernels.shape[0],kernels.shape[1],kernels.shape[2]))
+                comp_norm = np.sqrt(np.sum(comp**2))
+                comp = comp*mean_norm_kernels/comp_norm
+                vgg_rawnet['net'][0]['layers'][0][0][index_in_vgg][0][0][2][0][0][:,:,:,k] = comp
+                vgg_rawnet['net'][0]['layers'][0][0][index_in_vgg][0][0][2][0][1][k] = mean_bias
+            print("Number of kernels modifed :",itera)
+            
+        index_in_vgg += 1
+            
+    scipy.io.savemat(filename,vgg_rawnet)
+    
+def replace_FirstLayersWeight_byDCT(filename='firstlayer_DCT_net.mat',\
+                                                 img_folder='images',ext='png'):
+    VGG19_mat='normalizedvgg.mat'
+    vgg_rawnet = scipy.io.loadmat(VGG19_mat)
+    vgg_layers = vgg_rawnet['net'][0]['layers'][0][0]
+    index_in_vgg = 0
+    kernels = vgg_layers[index_in_vgg][0][0][2][0][0]
+    # kernels : [width, height, in_channels, out_channels]
+    number_of_kernels = kernels.shape[3]
+#    kernels_norms = LA.norm(kernels,axis=(0,1,2))
+    kernels_norms = np.sqrt(np.sum(kernels**2,axis=(0,1,2)))
+    mean_norm_kernels = np.mean(kernels_norms)
+    bias = vgg_layers[index_in_vgg][0][0][2][0][1]
+    mean_bias = np.mean(bias)
+    
+    dictionary = dl.dct_dict(number_of_kernels,kernels.shape[1])
+    #dictionary_norm = LA.norm(dictionary,axis=0) # ord=None : Frobenius norm ie sum (.)**2
+    #dictionary = dictionary*mean_norm_kernels/dictionary_norm
+    itera = 0
+    for i in range(number_of_kernels): 
+        new_kernel = dictionary[:,i]
+        new_kernel = new_kernel.reshape((3,3))
+        new_kernel = np.tile(new_kernel,(3,1,1))
+        new_kernel_norm = np.sqrt(np.sum(new_kernel**2,axis=(0,1,2))) 
+        new_kernel =  new_kernel*mean_norm_kernels/new_kernel_norm
+        vgg_rawnet['net'][0]['layers'][0][0][index_in_vgg][0][0][2][0][0][:,:,:,i] = new_kernel
+        vgg_rawnet['net'][0]['layers'][0][0][index_in_vgg][0][0][2][0][1][i] = mean_bias
+        itera += 1
+    print("Number of kernels modifed :",itera)
+    scipy.io.savemat(filename,vgg_rawnet)
     
 def modify_FirstLayersWeight(filename='zero_net.mat'):
     VGG19_mat='normalizedvgg.mat'
