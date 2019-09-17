@@ -2253,7 +2253,7 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
         ext_vggname = ext_vggname.split('.')[0]
         data_style_path += '_' +ext_vggname
     data_style_path += ".pkl"
-    if(vgg_name=='random_net.mat'):
+    if(vgg_name=='random_net.mat') or args.recomputePrepocess:
         try:
             os.remove(data_style_path)
         except:
@@ -2277,6 +2277,12 @@ def get_features_repr_wrap(args,vgg_layers,image_content,pooling_type='avg',padd
         ext_vggname = ext_vggname.split('.')[0]
         data_content_path +="_"+ext_vggname
     data_content_path +=".pkl"
+    vgg_name = args.vgg_name
+    if(vgg_name=='random_net.mat') or args.recomputePrepocess:
+        try:
+            os.remove(data_content_path)
+        except:
+            pass
     try:
         dict_features_repr = pickle.load(open(data_content_path, 'rb'))
     except(FileNotFoundError):

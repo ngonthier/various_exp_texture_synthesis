@@ -111,6 +111,10 @@ def get_parser_args():
     parser.add_argument('--GramLightComput',action="store_true",
         help='If True it will try to compute a light version of the Gram Matrix (default: %(default)s)')
     
+    # if true we recompute the Gram and content precomputed and stored data
+    parser.add_argument('--recomputePrepocess',action="store_true",
+        help='If True we recompute the Gram and content precomputed and store data (default: %(default)s)')
+    
     # VGG 19 info
     parser.add_argument('--pooling_type', type=str,default='avg',
         choices=['avg', 'max'],help='Type of pooling in convolutional neural network. (default: %(default)s)')
