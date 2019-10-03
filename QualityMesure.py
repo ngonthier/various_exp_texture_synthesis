@@ -25,14 +25,19 @@ import matplotlib.gridspec as gridspec
 from skimage.color import rgb2hsv
 import pathlib
 
+from scipy.stats import gennorm
+from scipy.special import gamma
+
 directory = "./im/References/"
 ResultsDir = "./im/"
 path_base  = os.path.join('C:\\','Users','gonthier')
+ownCloudname = 'ownCloud'
 if not(os.path.exists(path_base)):
 	path_base  = os.path.join(os.sep,'media','gonthier','HDD')
+	ownCloudname ='owncloud'
 if os.path.exists(path_base):
-	ResultsDir = os.path.join(path_base,'ownCloud','These Gonthier Nicolas Partage','Images Textures Résultats')
-	directory = os.path.join(path_base,'owncloud','These Gonthier Nicolas Partage','Images Textures References Subset')
+	ResultsDir = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Images Textures Résultats')
+	directory = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Images Textures References Subset')
 else:
 	print(path_base,'not found')
 	raise(NotImplementedError)
@@ -52,8 +57,8 @@ listNameMethod = ['Reference','Gatys','EfrosLeung','EfrosFreeman','Gatys + Spect
 #'Gatys + Spectrum + multi-scale Init','PhaseAlea'
 
 listofmethod = ['','_SAME_Gatys','_SAME_Gatys_spectrumTFabs_eps10m16','_SAME_autocorr']
-listofmethod = ['','_SAME_Gatys']
-listNameMethod = ['Reference','Gatys','Gatys + Spectrum TF','Autocorr']
+listofmethod = ['','_SAME_Gatys','_EfrosLeung']
+listNameMethod = ['Reference','Gatys','EfrosLeung','Gatys + Spectrum TF','Autocorr']
 
 cmap='viridis' 
 #cmap='plasma' 
@@ -76,9 +81,18 @@ def smoothed_hist_kl_distance(a, b, nbins=10, sigma=1):
 	return kl(asmooth, bsmooth)
 	
 def hist_kl_distance(a, b, nbins=10):
-	ahist, bhist = (np.histogram(a, bins=nbins)[0],
-					np.histogram(b, bins=nbins)[0])
+	ahist, bhist = (np.histogram(a, bins=nbins,density=True)[0],
+					np.histogram(b, bins=nbins,density=True)[0])
 	return kl(ahist, bhist)
+	
+def gennorm_kl_distance(a, b):
+	beta_a,loc_a,scale_a = gennorm.fit(a) # beta =  shape parameter and scale = alpha
+	beta_b,loc_b,scale_b = gennorm.fit(b)
+	print(beta_a,loc_a,scale_a )
+	print(beta_b,loc_b,scale_b )
+	D = np.log((beta_a*scale_b*gamma(1./beta_b)) / (beta_b*scale_a*gamma(1./beta_a))) +  (((scale_a/scale_b)**(beta_b)) * (gamma((beta_b+1)/beta_a)/gamma(1/beta_a))) - 1./beta_a
+
+	return D
 
 def main(args):
 	"""
@@ -115,8 +129,8 @@ def main(args):
 		
 		# Compute the metrics between the reference and the images
 		for method,nameMethod in zip(listofmethod,listNameMethod):
-			if nameMethod=='Reference': # Reference one
-				pass
+			# if nameMethod=='Reference': # Reference one
+				# continue
 			ref_img = dict_imgs['Reference']
 			syn_img = dict_imgs[nameMethod]
 			for s in range(number_of_scale): # scale
@@ -124,7 +138,7 @@ def main(args):
 					ref_img_s = ref_img
 					syn_img_s = syn_img
 				else:
-					ref_img_s = resize(ref_img, (ref_img_s.shape[0] // (2*i), ref_img.shape[1] // (2*i)),
+					ref_img_s = resize(ref_img, (ref_img.shape[0] // (2*i), ref_img.shape[1] // (2*i)),
 					   anti_aliasing=True)
 					syn_img_s = resize(syn_img, (syn_img.shape[0] // (2*i), syn_img.shape[1] //(2*i)),
 					   anti_aliasing=True)
@@ -132,8 +146,10 @@ def main(args):
 				for c in range(3): # color loop
 					ref_img_s_c = ref_img_s[:,:,c].ravel()
 					syn_img_s_c = syn_img_s[:,:,c].ravel()
-					kl_s_c = hist_kl_distance(ref_img_s_c, syn_img_s_c, nbins=10)
-					print(nameMethod,s,c,'kl = ',kl_s_c)
+					hist_kl_s_c = hist_kl_distance(ref_img_s_c, syn_img_s_c, nbins=10)
+					gennorm_kl_s_c = gennorm_kl_distance(ref_img_s_c, syn_img_s_c)
+					print(nameMethod,'scale :',s,'color :',c,'kl with hist = ',hist_kl_s_c)
+					print('kl with gennorm = ',gennorm_kl_s_c)
 			
 			
 
