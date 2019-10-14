@@ -25,6 +25,7 @@ import matplotlib.gridspec as gridspec
 from skimage.color import rgb2hsv
 import pathlib
 import pywt # Wavelet
+import pickle
 
 from scipy.stats import gennorm
 from scipy.special import gamma
@@ -57,15 +58,21 @@ listNameMethod = ['Reference','Gatys','EfrosLeung','EfrosFreeman','Gatys + Spect
 # listNameMethod = ['Reference','Gatys','EfrosLeung','EfrosFreeman','Gatys + Spectrum TF','Gatys + Spectrum TF eps10m16','Snelgorove','Deep Corr','Gang Spectrum Code','Gatys + MSInit','Gatys + Spectrum TF + MSInit','Gatys + Spectrum TF eps10m16 + MSInit','Gang code for MSInit','Autocorr','Autocorr + MSInit','PhaseAlea + MSInit']
 #'Gatys + Spectrum + multi-scale Init','PhaseAlea'
 
-listofmethod = ['','_SAME_Gatys','_SAME_Gatys_spectrumTFabs_eps10m16','_SAME_autocorr']
-listofmethod = ['','_SAME_Gatys','_EfrosLeung']
-listNameMethod = ['Reference','Gatys','EfrosLeung','Gatys + Spectrum TF','Autocorr']
+listofmethod = ['','_SAME_Gatys','_SAME_Gatys_MSSInit','_SAME_Gatys_spectrumTFabs_eps10m16','_SAME_Gatys_spectrumTFabs_eps10m16_MSSInit',\
+    '_SAME_autocorr','_SAME_autocorr_MSSInit','MultiScale_o5_l3_8_psame','_DCor','_EfrosLeung','_EfrosFreeman']
+listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit',\
+    'Autocorr','Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman']
+
+trucEnPlus = ['_SAME_OnInput_autocorr','_SAME_OnInput_autocorr_MSSInit','_SAME_OnInput_SpectrumOnFeatures']
+
+listofmethod += trucEnPlus
+listNameMethod += trucEnPlus
 
 cmap='viridis' 
 #cmap='plasma' 
 files_short = files
 #files_short = [files[-1]]
-files_short = ['TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024.png']
+files_short = ['BrickRound0122_1_seamless_S.png','TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024.png']
 
 def kl(p, q):
     p = np.asarray(p, dtype=np.float)
@@ -139,12 +146,25 @@ def main(args):
     """
     # path_output = os.path.join('Spectrum','Crops',str(dim))
     # pathlib.Path(path_output).mkdir(parents=True, exist_ok=True)
+    verbose = False
+    plot_hist = False
+    With_formula = True # If False we will use the histogram
     number_of_scale = 3
     
-    wavelet_db4 = pywt.Wavelet('db4') # DAubechies D4 : lenght filter = 8
+    name = 'Wavelets_KL_'+str(number_of_scale)+'Scale'
+    if With_formula:
+        name += '_ExplicitFormula'
+    else:
+        name +=  '_Hist'
+    name += '.pkl'
+    data_path_save = os.path.join('data',name)
+    
+    wavelet_db4 = pywt.Wavelet('db4') # Daubechies D4 : lenght filter = 8
     # In this experiment, we employed the conventional pyramid
     # wavelet decomposition with three levels using the Daubechies’
     # maximally flat orthogonal filters of length 8 ( filters)
+    dictTotal = {}
+    dictTotal_all = {}
     for file in files_short:
         filewithoutext = '.'.join(file.split('.')[:-1])
         print('Image :',filewithoutext)
@@ -154,10 +174,12 @@ def main(args):
         # Load the images
         for i,zipped in enumerate(zip(listofmethod,listNameMethod)):
             method,nameMethod = zipped
+            
             if method =='':
                 stringname = os.path.join(directory,filewithoutext + method)
             else:
                 stringname = os.path.join(ResultsDir,filewithoutext,filewithoutext + method)
+            #print(method,nameMethod)
             stringnamepng = stringname + '.png'
             stringnamejpg = stringname + '.jpg'
             if os.path.isfile(stringnamepng):
@@ -165,29 +187,39 @@ def main(args):
             elif os.path.isfile(stringnamejpg):
                 filename = stringnamejpg
             else:
-                print('The image does not exist')
-            
+                print('Neither',stringnamepng,' or ',stringnamejpg,'exist. Wrong path ?')
+            #print(filename)
             imagergb = io.imread(filename)
             
             # Multilevel 2D Discrete Wavelet Transform. if level = None take the maximum
             coeffs = pywt.wavedec2(imagergb, wavelet_db4, mode='symmetric', level=number_of_scale,\
                           axes=(0,1))
             
-            plot_hist_of_coeffs(coeffs,namestr=nameMethod)
+            if plot_hist:
+                plot_hist_of_coeffs(coeffs,namestr=nameMethod)
             # len(coeffs)  = level + 1 
             
             dict_imgs[nameMethod] = coeffs
         
 #        # Compute the metrics between the reference and the images
-        dict_scores = {}
-        dict_all_scores = {}
+
+        if With_formula:
+            dict_scores = {}
+            dict_all_scores = {}
+        else:
+            dict_all_scores_hist = {}
+            dict_scores_hist = {}
         for method,nameMethod in zip(listofmethod,listNameMethod):
-            # if nameMethod=='Reference': # Reference one
-                # continue
+            if nameMethod=='Reference': # Reference one
+                continue
             ref_coeff = dict_imgs['Reference']
             syn_coeff = dict_imgs[nameMethod]
-            dict_all_scores[nameMethod] = []
-            dict_scores[nameMethod] = 0.
+            if With_formula:
+                dict_all_scores[nameMethod] = []
+                dict_scores[nameMethod] = 0.
+            else:
+                dict_scores_hist[nameMethod] = 0.
+                dict_all_scores_hist[nameMethod] = []
 #            ref_img = dict_imgs['Reference']
 #            syn_img = dict_imgs[nameMethod]
             for s in range(number_of_scale+1): # scale
@@ -207,13 +239,51 @@ def main(args):
                         for c in range(3): # Color channet
                             ref_coeffs_s_o_c = ref_coeffs_s_o[:,:,c].ravel()
                             syn_coeffs_s_o_c = syn_coeffs_s_o[:,:,c].ravel()
-                            gennorm_kl_s_o_c = gennorm_kl_distance(ref_coeffs_s_o_c, syn_coeffs_s_o_c)
-                            print('kl with gennorm at s : ',s,'o : ',o,'c : ',c,' = ',gennorm_kl_s_o_c)
-                            dict_all_scores[nameMethod] += [gennorm_kl_s_o_c]
-                            dict_scores[nameMethod] += gennorm_kl_s_o_c
+                            
+                            if With_formula:
+                                # KL divergence with explicit formula
+                                gennorm_kl_s_o_c = gennorm_kl_distance(ref_coeffs_s_o_c, syn_coeffs_s_o_c,verbose=verbose)
+                                if verbose : print('kl with gennorm at s : ',s,'o : ',o,'c : ',c,' = ',gennorm_kl_s_o_c)
+                                dict_all_scores[nameMethod] += [gennorm_kl_s_o_c]
+                                dict_scores[nameMethod] += gennorm_kl_s_o_c
+                            else:
+                                # Use Histogram to estimate KL divergence
+                                hist_kl_s_c = hist_kl_distance(ref_coeffs_s_o_c, syn_coeffs_s_o_c, nbins=10)
+                                if verbose : print('kl with hist at s : ',s,'o : ',o,'c : ',c,' = ',hist_kl_s_c)
+                                dict_all_scores_hist[nameMethod] += [hist_kl_s_c]
+                                dict_scores_hist[nameMethod] += hist_kl_s_c
+                            
                         o += 1
-            # Print one global score = sum at different scale of the different orientation and for the 3 color            
-            print('Reference against ',nameMethod,dict_scores[nameMethod])
+            # Print one global score = sum at different scale of the different orientation and for the 3 color     
+            if With_formula:       
+                print('Reference against ',nameMethod,dict_scores[nameMethod])
+            else:
+                print('Reference against ',nameMethod,dict_scores_hist[nameMethod],' with hist')
+		if With_formula:
+			dictTotal[filewithoutext] = dict_scores
+			dictTotal_all[filewithoutext] = dict_all_scores
+		else:
+			dictTotal[filewithoutext] = dict_scores_hist
+			dictTotal_all[filewithoutext] = dict_all_scores_hist
+    
+    with open(data_path_save, 'wb') as pkl:
+        pickle.dump(data,pkl)
+
+def readData():
+    With_formula = True # If False we will use the histogram
+    number_of_scale = 3
+    
+    name = 'Wavelets_KL_'+str(number_of_scale)+'Scale'
+    if With_formula:
+        name += '_ExplicitFormula'
+    else:
+        name +=  '_Hist'
+    name += '.pkl'
+    data_path_save = os.path.join('data',name)
+    with open(data_path_save, 'rb') as pkl:
+         data = pickle.load(pkl)
+    dict_all_scores,dict_scores = data
+    print(dict_scores)
                         
 #                if s==0:
 #                    ref_img_s = ref_img
@@ -235,5 +305,7 @@ def main(args):
             
 
 if __name__ == '__main__':
-    import sys
-    sys.exit(main(sys.argv))
+    # main()
+    readData()
+    # import sys
+    # sys.exit(main(sys.argv))
