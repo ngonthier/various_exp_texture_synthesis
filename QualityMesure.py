@@ -21,6 +21,7 @@ import os.path
 from scipy import fftpack
 from skimage import io
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 import matplotlib.cm as mplcm
 import matplotlib.colors as colors
 import matplotlib.gridspec as gridspec
@@ -301,7 +302,7 @@ def readData():
 	dict_all_scores,dict_scores = data
 	print(dict_scores)
 	
-def readDataPlot():
+def readDataAndPlot():
 	
 	plt.ion()
 	With_formula = True # If False we will use the histogram
@@ -405,7 +406,8 @@ def readDataPlot():
 		fig_i_c+=1
 
 	title = 'KL div computed with Wavelets coeffs'
-	plt.xticks(x, listnameIm, rotation='vertical')
+	#plt.xticks(x, listnameIm, rotation='vertical')
+	plt.xticks(x, listnameIm, rotation=45)
 	plt.ylabel('KL score')
 	plt.ylim(bottom=0.)  # adjust the bottom leaving top unchanged
 	plt.title(title)
@@ -423,12 +425,80 @@ def readDataPlot():
 		fig_i_c+=1
 
 	title = 'Log KL div computed with Wavelets coeffs'
-	plt.xticks(x, listnameIm, rotation='vertical')
+	#plt.xticks(x, listnameIm, rotation='vertical')
+	plt.xticks(x, listnameIm, rotation=45)
 	plt.ylabel('log (KL score)')
 	plt.title(title)
 	plt.legend(loc='best')
 	plt.show() 
 	plt.pause(0.001)
+	
+	
+	# Mean of KL
+	plt.figure()    
+	list_KLs = []
+	for i,method in enumerate(list_methods): 
+		labelstr = method
+		# print(dicoOfMethods[method])
+		KLs = np.array(dicoOfMethods[method])
+		list_KLs += [KLs]
+		meanKL = np.mean(KLs)
+		stdKL = np.std(KLs)
+		plt.errorbar(i, meanKL, yerr=stdKL,label=labelstr,color=scalarMap.to_rgba(i),\
+						  marker=list_markers[i],linestyle='', markersize=8,uplims=True, lolims=True)
+
+	title = 'Mean and std of KL score per method.'
+	plt.xticks(list(range(0,len(list_methods))), list_methods, rotation=45)
+	plt.ylabel('Mean KL score')
+	plt.title(title)
+	plt.legend(loc='best')
+
+	
+	# Boxplots
+	fig, ax1 = plt.subplots(figsize=(10, 6))
+	fig.canvas.set_window_title('Boxplots of the KL distances.')
+	#fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
+#
+	bp = ax1.boxplot(list_KLs, notch=0, sym='+', vert=1, whis=1.5)
+	plt.setp(bp['boxes'], color='black')
+	plt.setp(bp['whiskers'], color='black')
+	plt.setp(bp['fliers'], color='black', marker='+')
+	# Hide these grid behind plot objects
+	ax1.set_axisbelow(True)
+	ax1.set_title('Comparison of KL distance for different methods')
+	ax1.set_xlabel('Method')
+	ax1.set_ylabel('KL')
+	
+	medians = np.empty(len(list_methods))
+	for i in range(len(list_methods)):
+		box = bp['boxes'][i]
+		boxX = []
+		boxY = []
+		for j in range(5):
+			boxX.append(box.get_xdata()[j])
+			boxY.append(box.get_ydata()[j])
+		box_coords = np.column_stack([boxX, boxY])
+		# Color of the box
+		ax1.add_patch(Polygon(box_coords, facecolor=scalarMap.to_rgba(i)))
+		# Now draw the median lines back over what we just filled in
+		med = bp['medians'][i]
+		medianX = []
+		medianY = []
+		for j in range(2):
+			medianX.append(med.get_xdata()[j])
+			medianY.append(med.get_ydata()[j])
+			ax1.plot(medianX, medianY, 'k')
+		# Finally, overplot the sample averages, with horizontal alignment
+		# in the center of each box
+		ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
+				 color='w', marker='*', markeredgecolor='k', markersize=8)
+	# X labels
+	ax1.set_xticklabels(list_methods,
+                    rotation=45, fontsize=8)	
+		
+		# 
+	
+	
 	input('Enter to close.')
 	plt.close()
 						
@@ -454,6 +524,6 @@ def readDataPlot():
 if __name__ == '__main__':
 	#main()
 	#readData()
-	readDataPlot()
+	readDataAndPlot()
 	# import sys
 	# sys.exit(main(sys.argv))
