@@ -520,6 +520,7 @@ def readDataAndPlot():
 #                    print('kl with gennorm = ',gennorm_kl_s_c)
 #            
 			
+# ce qu'il reste a faire dans les textures : tricot, vegetable et Electronique : en DCor et en Ulyanov puis les rajouter dans les dossiers pour avoir 18 textures au final
 
 if __name__ == '__main__':
 	#main()
