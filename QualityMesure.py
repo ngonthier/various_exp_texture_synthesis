@@ -30,7 +30,8 @@ import pathlib
 import pywt # Wavelet
 import pickle
 import Orange
-	
+import csv
+
 from scipy.stats import gennorm
 from scipy.special import gamma
 
@@ -324,10 +325,25 @@ def readDataAndPlot():
 		dict_scores,dict_all_scores = data
 	else:
 		dict_scores = data
+	print(dict_scores)
+
+	# Save to csv file 
+	firstLine = True
+
+	with open('KL_methods.csv', 'w') as csv_file:
+		writer = csv.writer(csv_file, delimiter=',')
+		for texture_name, dico in dict_scores.items():
+			if firstLine:
+				methodsname = list(dico.keys())
+				print(methodsname)
+				methodsname = [''] + methodsname
+				writer.writerow(methodsname)
+				firstLine = False
+			v = list(dico.values())
+			v = [texture_name] + v
+			writer.writerow(v)
 		
 	list_markers = ['o','s','X','*','v','^','<','>','d','1','2','3','4','8','h','H','p','d','$f$','P']
-	# Les 3 frozen : 'o','s','X'
-	# VGG : '*'
 		
 	dicoOfMethods = {}
 	list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
@@ -523,8 +539,8 @@ def readDataAndPlot():
 # ce qu'il reste a faire dans les textures : tricot, vegetable et Electronique : en DCor et en Ulyanov puis les rajouter dans les dossiers pour avoir 18 textures au final
 
 if __name__ == '__main__':
-	main()
+	#main()
 	#readData()
-	#readDataAndPlot()
+	readDataAndPlot()
 	# import sys
 	# sys.exit(main(sys.argv))
