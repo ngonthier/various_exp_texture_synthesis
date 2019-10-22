@@ -303,7 +303,10 @@ def readData():
 	dict_all_scores,dict_scores = data
 	print(dict_scores)
 	
-def readDataAndPlot():
+def readDataAndPlot(OnlyStructuredImages=False):
+	
+	listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
+		'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
 	
 	plt.ion()
 	With_formula = True # If False we will use the histogram
@@ -360,12 +363,18 @@ def readDataAndPlot():
 	
 	print(dict_scores)
 	listnameIm = []
-	numberImages = len(dict_scores.keys())
+	if OnlyStructuredImages:
+		numberImages = len(listStructuredImages)
+	else:
+		numberImages = len(dict_scores.keys())
 	number_of_methods = len(list_methods)
 	print('len(list_methods)',number_of_methods)
 	listOfRank = np.zeros((numberImages,number_of_methods))
 	ki = 0
 	for k in dict_scores.keys(): # Loop on images
+		if OnlyStructuredImages:
+			if not(k in listStructuredImages):
+				continue
 		dico = dict_scores[k]
 		#print(dico)
 		listnameIm += [k]
@@ -541,6 +550,6 @@ def readDataAndPlot():
 if __name__ == '__main__':
 	#main()
 	#readData()
-	readDataAndPlot()
+	readDataAndPlot(OnlyStructuredImages=True)
 	# import sys
 	# sys.exit(main(sys.argv))

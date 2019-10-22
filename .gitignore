@@ -44,3 +44,6 @@ data/*
 ###################
 .ipynb_checkpoints
 .ipynb_checkpoints/*
+Coeffs.txt
+Images1024_output/*
+KL_methods.csv
