@@ -98,17 +98,37 @@ def TEst():
 def generation_Texture():
 	path_base  = os.path.join('C:\\','Users','gonthier')
 	owncloud_str = 'Owncloud'
+	onCluster = False
 	if not(os.path.exists(path_base)):
 		path_base  = os.path.join(os.sep,'media','gonthier','HDD')
 		owncloud_str ='owncloud'
 	if os.path.exists(path_base):
 		RefDir = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Reference')
+		RefDir1024 = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Reference','1024')
+		RefDir2048 = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Reference','2048')
+		path_output_allresults1024 = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','Images Textures Résultats')
+		path_output_allresults2048 = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','HDImages_results')
 		path_output_owncloud = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Output')
+		path_output_save_aCopy1024 = os.path.join(path_output_owncloud,'1024')
+		path_output_save_aCopy1024Beta = os.path.join(path_output_owncloud,'1024_Beta')
+		path_output_save_aCopy2048 = os.path.join(path_base,owncloud_str,'2048')
+		path_output_save_aCopy2048Beta = os.path.join(path_base,owncloud_str,'2048_Beta')
+	else: # We certainly are on the cluster 
+		RefDir = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Reference')
+		RefDir1024 = os.path.join('Images1024')
+		RefDir2048 = os.path.join('HDImages2')
+		path_output_allresults1024 = os.path.join('Images1024_output')
+		path_output_allresults2048 = os.path.join('HDImages2_output')
+		onCluster = True
+		
 	#path_origin = '/media/gonthier/HDD2/Texture/ReferenceImage/'
 	#path_origin = '/home/gonthier/Travail_Local/Texture_Style/Implementation Autre Algos/Subset'
-	path_origin = RefDir
-	path_output = '/media/gonthier/HDD2/Texture/TexturesIM_output/AllResults/'
-	path_output_tmp = '/media/gonthier/HDD2/Texture/TexturesIM_output/CompLoss/' # Sortie final
+	path_origin = RefDir1024
+	if not(onCluster):
+		path_output = '/media/gonthier/HDD2/Texture/TexturesIM_output/AllResults/'
+	else: # On cluster
+		path_output = 'images_output'
+	#path_output_tmp = '/media/gonthier/HDD2/Texture/TexturesIM_output/CompLoss/' # Sortie final
 	do_mkdir(path_output)
 	parser = get_parser_args()
 	max_iter = 2000
@@ -124,7 +144,7 @@ def generation_Texture():
 	config_layers = 'GatysConfig'
 	beta_spectrum = 100
 	alpha = 0.01
-	list_img = get_list_of_images(RefDir)
+	list_img = get_list_of_images(RefDir1024)
 	DrawAgain = False # Erase already synthesied image
 	print(list_img)
 	
@@ -140,15 +160,19 @@ def generation_Texture():
 			for name_img in list_img:
 				if 'spectrumTFabs' in loss:
 					beta_list = [0.1,1,10,100,1000,10000,10**5,100000000] # 10**8
+					# beta_list = [10**5] # 10**8
 				else:
 					beta_list = [10**5]
 				for beta in beta_list:
 					MS_Strat = MSS
+					print(name_img)
 					name_img_wt_ext,_ = name_img.split('.')
-					#path_output_tmp = path_output+name_img_wt_ext
+					#path_output_tmp = os.path.join(path_output_owncloud1024,name_img_wt_ext)
+					#path_output_tmp = path_output
+					path_output_tmp = os.path.join(path_output_allresults1024,name_img_wt_ext)
 					do_mkdir(path_output_tmp)
 					tf.reset_default_graph() # Necessity to use a new graph !! 
-					img_folder = RefDir
+					img_folder = RefDir1024
 					img_output_folder = path_output
 					output_img_name = name_img_wt_ext + '_'+padding
 					if not(beta==10**5):
@@ -168,16 +192,99 @@ def generation_Texture():
 						vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
 						saveMS=saveMS,beta=beta)
 					args = parser.parse_args()
-					output_img_name_full = path_output + output_img_name + '.png'
+					whereImageCreated = os.path.join(path_output,output_img_name + '.png')
+					output_img_name_full =  os.path.join(path_output_allresults1024,name_img_wt_ext,output_img_name + '.png')
+					# output folder / name texture / new texture . png
 					if DrawAgain or not(os.path.isfile(output_img_name_full)):
 						st.style_transfer(args)
-						src=output_img_name_full
-						dst = path_output_tmp+'/'+ output_img_name + '.png'
-						copyfile(src, dst)
+						src=whereImageCreated
+						dst1 = output_img_name_full
+						copyfile(src, dst1)
+						if not(onCluster):
+							if 'spectrumTFabs' in loss:
+								if beta == 10**5:
+									dst2 = os.path.join(path_output_save_aCopy1024,name_img_wt_ext,output_img_name + '.png')
+									copyfile(src, dst2)
+									dst3 = os.path.join(path_output_save_aCopy1024Beta,name_img_wt_ext,output_img_name + '.png')
+									wholeName,ext = dst3.split('.')
+									wholeName += '_beta100000.png'
+									copyfile(src, wholeName)
+								else:
+									dst2 = os.path.join(path_output_save_aCopy1024Beta,name_img_wt_ext,output_img_name + '.png')
+									copyfile(src, dst2)
+							else:
+								dst2 = os.path.join(path_output_save_aCopy1024,name_img_wt_ext,output_img_name + '.png')
+								copyfile(src, dst2)
 					else:
 						print(output_img_name_full,'already exists')
 
 	# Run on the HD image in 2048*2048
+	saveMS = True
+	losses_to_test = [['Gatys'],['Gatys','spectrumTFabs']]
+	scalesStrat = ['Init']
+	padding = 'SAME'
+	K = 3
+	for loss in losses_to_test:
+		for MSS in scalesStrat:
+			for name_img in list_img:
+				if 'spectrumTFabs' in loss:
+					beta_list = [0.1,1,10,100,1000,10000,10**5,100000000] # 10**8
+					# beta_list = [10**5] # 10**8
+				else:
+					beta_list = [10**5]
+				for beta in beta_list:
+					MS_Strat = MSS
+					print(name_img)
+					name_img_wt_ext,_ = name_img.split('.')
+					#path_output_tmp = os.path.join(path_output_owncloud1024,name_img_wt_ext)
+					#path_output_tmp = path_output
+					path_output_tmp = os.path.join(path_output_allresults2048,name_img_wt_ext)
+					do_mkdir(path_output_tmp)
+					tf.reset_default_graph() # Necessity to use a new graph !! 
+					img_folder = RefDir2048
+					img_output_folder = path_output
+					output_img_name = name_img_wt_ext + '_'+padding
+					if not(beta==10**5):
+						output_img_name += '_beta'+str(beta)
+					for loss_item in loss:
+						output_img_name += '_' + loss_item
+					if 'spectrumTFabs' in loss:
+						output_img_name += '_eps10m16'
+					if not(MSS==''):
+						output_img_name += '_MSS' +MSS
+						if not(K==2):
+							output_img_name += 'K' +str(K)
+					parser.set_defaults(verbose=True,max_iter=max_iter,print_iter=print_iter,img_folder=path_origin,
+						img_output_folder=path_output,style_img_name=name_img_wt_ext,content_img_name=name_img_wt_ext,
+						init_noise_ratio=init_noise_ratio,start_from_noise=start_from_noise,output_img_name=output_img_name,
+						optimizer=optimizer,loss=loss,init=init,init_range=init_range,clipping_type=clipping_type,
+						vgg_name=vgg_name,maxcor=maxcor,config_layers=config_layers,padding=padding,MS_Strat=MS_Strat,
+						saveMS=saveMS,beta=beta)
+					args = parser.parse_args()
+					whereImageCreated = os.path.join(path_output,output_img_name + '.png')
+					output_img_name_full =  os.path.join(path_output_allresults2048,name_img_wt_ext,output_img_name + '.png')
+					if DrawAgain or not(os.path.isfile(output_img_name_full)):
+						st.style_transfer(args)
+						src=whereImageCreated
+						dst1 = output_img_name_full
+						copyfile(src, dst1)
+						if not(onCluster):
+							if 'spectrumTFabs' in loss:
+								if beta == 10**5:
+									dst2 = os.path.join(path_output_save_aCopy2048,name_img_wt_ext,output_img_name + '.png')
+									copyfile(src, dst2)
+									dst3 = os.path.join(path_output_save_aCopy2048Beta,name_img_wt_ext,output_img_name + '.png')
+									wholeName,ext = dst3.split('.')
+									wholeName += '_beta100000.png'
+									copyfile(src, wholeName)
+								else:
+									dst2 = os.path.join(path_output_save_aCopy2048Beta,name_img_wt_ext,output_img_name + '.png')
+									copyfile(src, dst2)
+							else:
+								dst2 = os.path.join(path_output_save_aCopy2048,name_img_wt_ext,output_img_name + '.png')
+								copyfile(src, dst2)
+					else:
+						print(output_img_name_full,'already exists')
 
 def CopyAndTestImages():
 	
@@ -280,6 +387,6 @@ def CopyAndTestImages():
 if __name__ == '__main__':
 	# A faire : une fonction pour synthetiser les textures qui nous interesse (les differentes loss et les differentes valeurs de beta)
 	# une fonction qui evalue les textures que nous n'avons pas encore faitees
-	CopyAndTestImages()
-	#generation_Texture()
+	#CopyAndTestImages()
+	generation_Texture()
 	#TEst()

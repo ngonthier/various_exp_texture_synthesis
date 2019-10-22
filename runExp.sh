@@ -1,7 +1,5 @@
-#!/usr/bin/env bash
-#python runExp_restarts_Lego.py
-#python LossFct_Test_Gen.py
-python LossFct_Test_Gen.py
-python LossFct_Test_Gen2.py
-python LossFct_Test_Gen3.py
+#!/bin/bash
+cd /ldaphome/gonthier/Texture/
+source /cal/softs/anaconda/anaconda3/bin/activate tf18
+python RunExp_ForPaper.py
 

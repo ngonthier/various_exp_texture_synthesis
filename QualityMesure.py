@@ -146,7 +146,7 @@ def plot_hist_of_coeffs(coeffs,namestr=''):
 
 def main(ReDo=False):
 	"""
-	compute the quality measure
+	compute the quality measure : KL between new and reference texture
 	"""
 	# path_output = os.path.join('Spectrum','Crops',str(dim))
 	# pathlib.Path(path_output).mkdir(parents=True, exist_ok=True)
@@ -160,7 +160,7 @@ def main(ReDo=False):
 		name += '_ExplicitFormula'
 	else:
 		name +=  '_Hist'
-	name += 'OnlySum'
+	#name += 'OnlySum'
 	name += '.pkl'
 	data_path_save = os.path.join('data',name)
 	if os.path.isfile(data_path_save):
@@ -175,7 +175,7 @@ def main(ReDo=False):
 		dictTotal = {}
 		dictTotal_all = {}
 		
-	data_path_save = data_path_save.replace('OnlySum','')		
+	#data_path_save = data_path_save.replace('OnlySum','')		
 	
 	wavelet_db4 = pywt.Wavelet('db4') # Daubechies D4 : lenght filter = 8
 	# In this experiment, we employed the conventional pyramid
@@ -523,8 +523,8 @@ def readDataAndPlot():
 # ce qu'il reste a faire dans les textures : tricot, vegetable et Electronique : en DCor et en Ulyanov puis les rajouter dans les dossiers pour avoir 18 textures au final
 
 if __name__ == '__main__':
-	#main()
+	main()
 	#readData()
-	readDataAndPlot()
+	#readDataAndPlot()
 	# import sys
 	# sys.exit(main(sys.argv))
