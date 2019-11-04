@@ -2269,9 +2269,11 @@ def get_Gram_matrix_wrap(args,vgg_layers,image_style,pooling_type='avg',padding=
         if(args.verbose): print("Pickle dumped")
     return(dict_gram)
 
-def get_features_repr_wrap(args,vgg_layers,image_content,pooling_type='avg',padding='SAME'):
+def get_features_repr_wrap(args,vgg_layers,image_content,pooling_type='avg',padding='SAME',non_linearity_type='relu'):
     _,image_h, image_w, number_of_channels = image_content.shape 
     data_content_path = args.data_folder +args.content_img_name+"_"+str(image_h)+"_"+str(image_w)+"_"+str(pooling_type)+"_"+str(padding)
+    if not(non_linearity_type=='relu'):
+        data_content_path += non_linearity_type
     if not(args.vgg_name=='normalizedvgg.mat'):
         ext_vggname = args.vgg_name
         ext_vggname = ext_vggname.split('.')[0]
@@ -2287,7 +2289,7 @@ def get_features_repr_wrap(args,vgg_layers,image_content,pooling_type='avg',padd
         dict_features_repr = pickle.load(open(data_content_path, 'rb'))
     except(FileNotFoundError):
         if(args.verbose): print("The dictionnary of features representation of content image doesn't exist, we will generate it.")
-        dict_features_repr = get_features_repr(vgg_layers,image_content,pooling_type,padding)
+        dict_features_repr = get_features_repr(vgg_layers,image_content,pooling_type,padding,non_linearity_type)
         with open(data_content_path, 'wb') as output_content_pkl:
             pickle.dump(dict_features_repr,output_content_pkl)
         if(args.verbose): print("Pickle dumped")
