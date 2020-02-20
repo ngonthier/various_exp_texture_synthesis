@@ -304,6 +304,11 @@ def readData():
 	print(dict_scores)
 	
 def readDataAndPlot(OnlyStructuredImages=False):
+	"""
+	This function will read the images synthesis and plot the quality 
+	measure based on Wavelet coefficients
+	For Texture paper
+	"""
 	
 	listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
 		'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
@@ -320,6 +325,7 @@ def readDataAndPlot(OnlyStructuredImages=False):
 	#name += 'OnlySum'
 	name += '.pkl'
 	data_path_save = os.path.join('data',name)
+	print('The wavelet KL score are store in ',data_path_save)
 	with open(data_path_save, 'rb') as pkl:
 		 data = pickle.load(pkl)
 	print(len(data))
@@ -429,10 +435,17 @@ def readDataAndPlot(OnlyStructuredImages=False):
 		plt.plot(x,dicoOfMethods[method],label=labelstr,color=scalarMap.to_rgba(fig_i_c),\
 						 marker=list_markers[fig_i_c],linestyle='')
 		fig_i_c+=1
+	
+	listnameIm_without1024 = []
+	for elt in listnameIm:
+		elt_wt1024 = elt.replace('_1024','')
+		elt_wt1024 = elt_wt1024.replace('_seamless_S','')
+		elt_wt1024 = elt_wt1024.replace('TexturesCom_','')
+		listnameIm_without1024+= [elt_wt1024]
 
 	title = 'KL div computed with Wavelets coeffs'
 	#plt.xticks(x, listnameIm, rotation='vertical')
-	plt.xticks(x, listnameIm, rotation=45)
+	plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
 	plt.ylabel('KL score')
 	plt.ylim(bottom=0.)  # adjust the bottom leaving top unchanged
 	plt.title(title)
@@ -451,7 +464,7 @@ def readDataAndPlot(OnlyStructuredImages=False):
 
 	title = 'Log KL div computed with Wavelets coeffs'
 	#plt.xticks(x, listnameIm, rotation='vertical')
-	plt.xticks(x, listnameIm, rotation=45)
+	plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
 	plt.ylabel('log (KL score)')
 	plt.title(title)
 	plt.legend(loc='best')
@@ -473,7 +486,7 @@ def readDataAndPlot(OnlyStructuredImages=False):
 						  marker=list_markers[i],linestyle='', markersize=8,uplims=True, lolims=True)
 
 	title = 'Mean and std of KL score per method.'
-	plt.xticks(list(range(0,len(list_methods))), list_methods, rotation=45)
+	plt.xticks(list(range(0,len(list_methods))), list_methods, rotation=45,fontsize=8)
 	plt.ylabel('Mean KL score')
 	plt.title(title)
 	plt.legend(loc='best')
@@ -551,5 +564,6 @@ if __name__ == '__main__':
 	#main()
 	#readData()
 	readDataAndPlot(OnlyStructuredImages=True)
+	#readDataAndPlot(OnlyStructuredImages=False)
 	# import sys
 	# sys.exit(main(sys.argv))
