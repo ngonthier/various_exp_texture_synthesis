@@ -94,6 +94,83 @@ def TEst():
 			st.style_transfer(args)
 		t1 = time.time()
 	print('Duration for',device,':',t1-t0,'s')  
+
+def correctionName_betaFiles():
+	"""
+	The goal is just to correct the beta files images name
+	"""
+	path_base  = os.path.join(os.sep,'media','gonthier','HDD')
+	owncloud_str ='owncloud'
+	RefDir = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Reference')
+	RefDir1024 = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Reference','1024')
+	RefDir2048 = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Reference','2048')
+	path_output_owncloud = os.path.join(path_base,owncloud_str,'These Gonthier Nicolas Partage','ForTexturePaper','Output')
+	path_output_save_aCopy1024 = os.path.join(path_output_owncloud,'1024')
+	path_output_save_aCopy1024Beta = os.path.join(path_output_owncloud,'1024_Beta')
+	path_output = '/media/gonthier/HDD2/Texture/TexturesIM_output/AllResults/'
+	loss = ['Gatys','spectrumTFabs']
+	scalesStrat = ['Init','']
+	#MSS = 'Init'
+	padding = 'SAME'
+	K = 2
+	list_img = get_list_of_images(RefDir1024)
+	for MSS in scalesStrat:
+		for name_img in list_img:
+			if 'spectrumTFabs' in loss:
+				beta_list = [0.1,1,10,100,1000,10000,10**5,100000000] # 10**8
+				# beta_list = [10**5] # 10**8
+			else:
+				beta_list = [10**5]
+			for beta in beta_list:
+				print('##',name_img)
+				name_img_wt_ext,_ = name_img.split('.')
+				#path_output_tmp = os.path.join(path_output_owncloud1024,name_img_wt_ext)
+				#path_output_tmp = path_output
+				#path_output_tmp = os.path.join(path_output_allresults1024,name_img_wt_ext)
+				#do_mkdir(path_output_tmp)
+				#tf.reset_default_graph() # Necessity to use a new graph !! 
+				#img_folder = RefDir1024
+				#img_output_folder = path_output
+				output_img_name = name_img_wt_ext + '_'+padding
+				potential_img_name = name_img_wt_ext + '_'+padding
+				output_img_name += '_beta'+str(beta)
+				for loss_item in loss:
+					output_img_name += '_' + loss_item
+					potential_img_name += '_' + loss_item
+				if 'spectrumTFabs' in loss:
+					output_img_name += '_eps10m16'
+					potential_img_name += '_eps10m16'
+				if not(MSS==''):
+					output_img_name += '_MSS' +MSS
+					if not(K==2):
+						output_img_name += 'K' +str(K)
+				if not(MSS==''):
+					potential_img_name += '_MSS' +MSS
+					if not(K==2):
+						potential_img_name += 'K' +str(K)
+				potential_img_name += '_beta'+str(beta)
+				
+				# All resultats Image
+				image_in_allres_Folder = os.path.join(path_output,name_img_wt_ext,potential_img_name + '.png')
+				image_in_allres_Folder_copyIm = os.path.join(path_output,name_img_wt_ext,output_img_name + '.png')
+				if os.path.exists(image_in_allres_Folder):
+					copyfile(image_in_allres_Folder, image_in_allres_Folder_copyIm)  # src,dst
+					if beta==10**5:
+						image_in_allres_Folder_copyIm = image_in_allres_Folder_copyIm.replace('_beta'+str(beta),'')
+						copyfile(image_in_allres_Folder, image_in_allres_Folder_copyIm) 
+						
+				# Folder for papers images
+				image_in_owncloud = os.path.join(path_output_save_aCopy1024Beta,name_img_wt_ext,potential_img_name + '.png')
+				image_in_owncloud_rename = os.path.join(path_output_save_aCopy1024Beta,name_img_wt_ext,output_img_name + '.png')
+				print('Potential name : ',image_in_owncloud)
+				print('new name :',image_in_owncloud_rename)
+				if os.path.exists(image_in_owncloud):
+					os.rename(image_in_owncloud, image_in_owncloud_rename)  # src,dst	
+			
+	
+	
+	
+	
 			
 def generation_Texture():
 	path_base  = os.path.join('C:\\','Users','gonthier')
@@ -206,8 +283,9 @@ def generation_Texture():
 									dst2 = os.path.join(path_output_save_aCopy1024,name_img_wt_ext,output_img_name + '.png')
 									copyfile(src, dst2)
 									dst3 = os.path.join(path_output_save_aCopy1024Beta,name_img_wt_ext,output_img_name + '.png')
-									wholeName,ext = dst3.split('.')
-									wholeName += '_beta100000.png'
+									destinationIm = dst3.replace(padding,padding+'_beta100000')
+									#wholeName,ext = dst3.split('.')
+									#wholeName += '_beta100000.png'
 									copyfile(src, wholeName)
 								else:
 									dst2 = os.path.join(path_output_save_aCopy1024Beta,name_img_wt_ext,output_img_name + '.png')
@@ -388,5 +466,6 @@ if __name__ == '__main__':
 	# A faire : une fonction pour synthetiser les textures qui nous interesse (les differentes loss et les differentes valeurs de beta)
 	# une fonction qui evalue les textures que nous n'avons pas encore faitees
 	#CopyAndTestImages()
-	generation_Texture()
+	#generation_Texture()
 	#TEst()
+	correctionName_betaFiles()
