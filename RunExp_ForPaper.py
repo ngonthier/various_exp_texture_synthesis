@@ -142,11 +142,9 @@ def correctionName_betaFiles():
 					potential_img_name += '_eps10m16'
 				if not(MSS==''):
 					output_img_name += '_MSS' +MSS
-					if not(K==2):
-						output_img_name += 'K' +str(K)
-				if not(MSS==''):
 					potential_img_name += '_MSS' +MSS
 					if not(K==2):
+						output_img_name += 'K' +str(K)
 						potential_img_name += 'K' +str(K)
 				potential_img_name += '_beta'+str(beta)
 				
@@ -466,6 +464,6 @@ if __name__ == '__main__':
 	# A faire : une fonction pour synthetiser les textures qui nous interesse (les differentes loss et les differentes valeurs de beta)
 	# une fonction qui evalue les textures que nous n'avons pas encore faitees
 	#CopyAndTestImages()
-	#generation_Texture()
+	generation_Texture()
 	#TEst()
-	correctionName_betaFiles()
+	#correctionName_betaFiles()

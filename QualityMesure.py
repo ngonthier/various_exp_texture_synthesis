@@ -145,6 +145,151 @@ def plot_hist_of_coeffs(coeffs,namestr=''):
 	plt.suptitle(titre)
 	plt.show()
 
+
+def computeKL_forbeta_images(ReDo=False):
+	"""
+	compute the quality measure : KL between new and reference texture
+	"""
+	# path_output = os.path.join('Spectrum','Crops',str(dim))
+	# pathlib.Path(path_output).mkdir(parents=True, exist_ok=True)
+	verbose = False
+	plot_hist = False
+	With_formula = True # If False we will use the histogram
+	number_of_scale = 3
+	
+	name = 'Wavelets_KL_'+str(number_of_scale)+'Scale'
+	if With_formula:
+		name += '_ExplicitFormula'
+	else:
+		name +=  '_Hist'
+	name += '_forBetaValue'
+	beta_list = [0.1,1,10,100,1000,10000,10**5,100000000]
+	#name += 'OnlySum'
+	name += '.pkl'
+	data_path_save = os.path.join('data',name)
+	if os.path.isfile(data_path_save):
+		with open(data_path_save, 'rb') as pkl:
+			data = pickle.load(pkl)
+		if len(data)==2:
+			dictTotal,dictTotal_all = data
+		else:
+			dictTotal = data
+			dictTotal_all = {}
+	else:
+		dictTotal = {}
+		dictTotal_all = {}
+		
+	#data_path_save = data_path_save.replace('OnlySum','')		
+	
+	wavelet_db4 = pywt.Wavelet('db4') # Daubechies D4 : lenght filter = 8
+	# In this experiment, we employed the conventional pyramid
+	# wavelet decomposition with three levels using the Daubechies’
+	# maximally flat orthogonal filters of length 8 ( filters)
+
+	for file in files_short:
+		filewithoutext = '.'.join(file.split('.')[:-1])
+		print('Image :',filewithoutext)
+		filewithoutextreplaced = filewithoutext.replace('_','$\_$')
+		dict_imgs = {}
+		
+		# Load the images
+		for i,zipped in enumerate(zip(listofmethod,listNameMethod)):
+			method,nameMethod = zipped
+			
+			if method =='':
+				stringname = os.path.join(directory,filewithoutext + method)
+			else:
+				stringname = os.path.join(ResultsDir,filewithoutext,filewithoutext + method)
+			#print(method,nameMethod)
+			stringnamepng = stringname + '.png'
+			stringnamejpg = stringname + '.jpg'
+			if os.path.isfile(stringnamepng):
+				filename = stringnamepng
+			elif os.path.isfile(stringnamejpg):
+				filename = stringnamejpg
+			else:
+				print('Neither',stringnamepng,' or ',stringnamejpg,'exist. Wrong path ?')
+			#print(filename)
+			imagergb = io.imread(filename)
+			
+			# Multilevel 2D Discrete Wavelet Transform. if level = None take the maximum
+			coeffs = pywt.wavedec2(imagergb, wavelet_db4, mode='symmetric', level=number_of_scale,\
+						  axes=(0,1))
+			
+			if plot_hist:
+				plot_hist_of_coeffs(coeffs,namestr=nameMethod)
+			# len(coeffs)  = level + 1 
+			
+			dict_imgs[nameMethod] = coeffs
+		
+#        # Compute the metrics between the reference and the images
+
+		dict_all_scores = {}
+		dict_scores = {}
+		for method,nameMethod in zip(listofmethod,listNameMethod):
+			if nameMethod=='Reference': # Reference one
+				continue
+			# Check if the score already exist
+			if filewithoutext in  dictTotal.keys():
+				dict_scores_local =  dictTotal[filewithoutext]
+				if nameMethod in list(dict_scores_local.keys()):
+					print('Already computed :',filewithoutext,nameMethod)
+					dict_scores[nameMethod] = dict_scores_local[nameMethod]
+					if filewithoutext in list(dictTotal_all.keys()):
+						dict_all_scores_local = dictTotal_all[filewithoutext]
+						if nameMethod in dict_all_scores_local.keys():
+							dict_all_scores[nameMethod] = dict_all_scores_local[nameMethod]
+					continue
+
+			ref_coeff = dict_imgs['Reference']
+			syn_coeff = dict_imgs[nameMethod]
+			dict_all_scores[nameMethod] = []
+			dict_scores[nameMethod] = 0.
+#            ref_img = dict_imgs['Reference']
+#            syn_img = dict_imgs[nameMethod]
+			for s in range(number_of_scale+1): # scale
+				if s==0:
+					# Average case : cAn : ie approximation at rank n 
+					# we will pass it 
+					cAn = ref_coeff[s]
+					continue
+				else:
+					# (cHn, cVn, cDn) : the coefficient are provide in the decreasing
+					# order
+					(ref_cHn, ref_cVn, ref_cDn) = ref_coeff[s]
+					(syn_cHn, syn_cVn, syn_cDn) = syn_coeff[s]
+					# We will extract 2 * 9  parameters (2 per generalised gaussian, for 3 scale times 3 orientations)
+					o = 0
+					for ref_coeffs_s_o,syn_coeffs_s_o in zip([ref_cHn, ref_cVn, ref_cDn],[syn_cHn, syn_cVn, syn_cDn]):
+						for c in range(3): # Color channet
+							ref_coeffs_s_o_c = ref_coeffs_s_o[:,:,c].ravel()
+							syn_coeffs_s_o_c = syn_coeffs_s_o[:,:,c].ravel()
+							
+							if With_formula:
+								# KL divergence with explicit formula
+								gennorm_kl_s_o_c = gennorm_kl_distance(ref_coeffs_s_o_c, syn_coeffs_s_o_c,verbose=verbose)
+								if verbose : print('kl with gennorm at s : ',s,'o : ',o,'c : ',c,' = ',gennorm_kl_s_o_c)
+								dict_all_scores[nameMethod] += [gennorm_kl_s_o_c]
+								dict_scores[nameMethod] += gennorm_kl_s_o_c
+							else:
+								# Use Histogram to estimate KL divergence
+								hist_kl_s_c = hist_kl_distance(ref_coeffs_s_o_c, syn_coeffs_s_o_c, nbins=10)
+								if verbose : print('kl with hist at s : ',s,'o : ',o,'c : ',c,' = ',hist_kl_s_c)
+								dict_all_scores[nameMethod] += [hist_kl_s_c]
+								dict_scores[nameMethod] += hist_kl_s_c
+							
+						o += 1
+			# Print one global score = sum at different scale of the different orientation and for the 3 color     
+			if With_formula:       
+				print('Reference against ',nameMethod,dict_scores[nameMethod])
+			else:
+				print('Reference against ',nameMethod,dict_scores_hist[nameMethod],' with hist')
+		dictTotal[filewithoutext] = dict_scores
+		dictTotal_all[filewithoutext] = dict_all_scores
+	data = dictTotal,dictTotal_all
+	with open(data_path_save, 'wb') as pkl:
+		pickle.dump(data,pkl)
+		
 def main(ReDo=False):
 	"""
 	compute the quality measure : KL between new and reference texture
