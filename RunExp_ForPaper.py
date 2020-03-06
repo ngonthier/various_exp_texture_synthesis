@@ -252,6 +252,7 @@ def generation_Texture():
 					output_img_name = name_img_wt_ext + '_'+padding
 					if not(beta==10**5):
 						output_img_name += '_beta'+str(beta)
+						print('==> beta value',beta)
 					for loss_item in loss:
 						output_img_name += '_' + loss_item
 					if 'spectrumTFabs' in loss:
@@ -269,6 +270,7 @@ def generation_Texture():
 					args = parser.parse_args()
 					whereImageCreated = os.path.join(path_output,output_img_name + '.png')
 					output_img_name_full =  os.path.join(path_output_allresults1024,name_img_wt_ext,output_img_name + '.png')
+					# C'est dans ce dossier la que l'on verifie si les images existent ou pas : path_output_allresults1024
 					# output folder / name texture / new texture . png
 					if DrawAgain or not(os.path.isfile(output_img_name_full)):
 						st.style_transfer(args)
@@ -284,7 +286,9 @@ def generation_Texture():
 									destinationIm = dst3.replace(padding,padding+'_beta100000')
 									#wholeName,ext = dst3.split('.')
 									#wholeName += '_beta100000.png'
-									copyfile(src, wholeName)
+									#copyfile(src, wholeName)
+									copyfile(src, destinationIm)
+									
 								else:
 									dst2 = os.path.join(path_output_save_aCopy1024Beta,name_img_wt_ext,output_img_name + '.png')
 									copyfile(src, dst2)
@@ -295,6 +299,7 @@ def generation_Texture():
 						print(output_img_name_full,'already exists')
 
 	# Run on the HD image in 2048*2048
+	list_img = get_list_of_images(RefDir2048)
 	saveMS = True
 	losses_to_test = [['Gatys'],['Gatys','spectrumTFabs']]
 	scalesStrat = ['Init']
@@ -318,6 +323,7 @@ def generation_Texture():
 					do_mkdir(path_output_tmp)
 					tf.reset_default_graph() # Necessity to use a new graph !! 
 					img_folder = RefDir2048
+					path_origin = RefDir2048
 					img_output_folder = path_output
 					output_img_name = name_img_wt_ext + '_'+padding
 					if not(beta==10**5):

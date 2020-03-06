@@ -152,7 +152,7 @@ def computeKL_forbeta_images(ReDo=False):
     compute the quality measure : KL between new and reference texture
     """
     
-    files_short = ['BrickRound0122_1_seamless_S.png']
+    files_short = ['TexturesCom_TilesOrnate0085_1_seamless_S.png']
     # path_output = os.path.join('Spectrum','Crops',str(dim))
     # pathlib.Path(path_output).mkdir(parents=True, exist_ok=True)
     verbose = False
@@ -788,6 +788,9 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
         list_methodsMSINIt += [nameMethod + str(beta)]
     
     beta_list_plusZero = [10**(-9)]+beta_list
+    labellist = ['$-\infty$']
+    for beta in beta_list:
+        labellist += ['{}'.format(int(np.log10(beta)))]
     
     for method in list_methods:
         dicoOfMethods[method] = []
@@ -825,7 +828,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
                 list_beta_local += [beta]
         print(list_scores)
         if len(list_scores)>0:
-            plt.plot(np.log(np.array(list_beta_local)),np.log(np.array(list_scores)),'bo',label='Gatys + Spectrum TF')
+            plt.plot(np.log10(np.array(list_beta_local)),np.log(np.array(list_scores)),'bo',label='Gatys + Spectrum TF')
             
         # Avec MSInit
         list_scores = []
@@ -839,12 +842,13 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
                 list_beta_local += [beta]
         print(list_scores)
         if len(list_scores)>0:
-            plt.plot(np.log(np.array(list_beta_local)),np.log(np.array(list_scores)),'ro',label='Gatys + Spectrum TF + MSInit')
+            plt.plot(np.log10(np.array(list_beta_local)),np.log(np.array(list_scores)),'ro',label='Gatys + Spectrum TF + MSInit')
             
                 
         title = 'log KL div computed with Wavelets coeffs ' +k 
-        plt.xlabel('log beta')
+        plt.xlabel('log10 beta')
         plt.ylabel('log KL score')
+        plt.xticks(np.log10(np.array(list_beta_local)),labellist)
         #plt.ylim(bottom=0.)  # adjust the bottom leaving top unchanged
         plt.title(title)
         plt.legend(loc='best')
@@ -860,5 +864,5 @@ if __name__ == '__main__':
     #readDataAndPlot(OnlyStructuredImages=False)
     # import sys
     # sys.exit(main(sys.argv))
-    #computeKL_forbeta_images()
+    computeKL_forbeta_images()
     Plot_KL_forDiffBetaValues()
