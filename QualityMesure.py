@@ -31,12 +31,14 @@ import pywt # Wavelet
 import pickle
 import Orange
 import csv
-
+import matplotlib.image as mpimg
+    
 from scipy.stats import gennorm
 from scipy.special import gamma
 
 directory = "./im/References/"
 ResultsDir = "./im/"
+#if os.environ.get('OS','') == 'Windows_NT':
 path_base  = os.path.join('C:\\','Users','gonthier')
 ownCloudname = 'ownCloud'
 if not(os.path.exists(path_base)):
@@ -169,7 +171,9 @@ def computeKL_forbeta_images(ReDo=False):
     beta_list = [0.1,1,10,100,1000,10000,10**5,100000000]
     #name += 'OnlySum'
     name += '.pkl'
-    data_path_save = os.path.join('data',name)
+
+    local_path = pathlib.Path(__file__).parent.absolute()
+    data_path_save = os.path.join(local_path,'data',name)
     if os.path.isfile(data_path_save):
         with open(data_path_save, 'rb') as pkl:
             data = pickle.load(pkl)
@@ -727,6 +731,9 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     This function will plot the quality  measure based on Wavelet coefficients
     For different beta values 
     """
+    
+    flatten = lambda l: [item for axes in l for item in axes]
+    
     beta_list = [0.1,1,10,100,1000,10000,10**5,100000000]
     
     listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
@@ -744,7 +751,8 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     name += '_forBetaValue'
     #name += 'OnlySum'
     name += '.pkl'
-    data_path_save = os.path.join('data',name)
+    local_path = pathlib.Path(__file__).parent.absolute()
+    data_path_save = os.path.join(local_path,'data',name)
     print('The wavelet KL score are store in ',data_path_save)
     with open(data_path_save, 'rb') as pkl:
          data = pickle.load(pkl)
@@ -779,13 +787,22 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
         'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
     
     list_methodsGatysPlusSpectrum = ['Gatys']
+    list_methodsGatysPlusSpectrum_ext = ['_SAME_Gatys']
+    
     nameMethod = 'Gatys + Spectrum TF'
+    nameMethodextBegin = '_SAME'
+    nameMethodextEnd = '_Gatys_spectrumTFabs_eps10m16'
     for beta in beta_list:
         list_methodsGatysPlusSpectrum += [nameMethod + str(beta)]
+        list_methodsGatysPlusSpectrum_ext += [nameMethodextBegin +'_'+ str(beta)+nameMethodextEnd]
     list_methodsMSINIt = ['Gatys + MSInit']
+    list_methodsMSINIt_ext = ['_SAME_Gatys_MSSInit']
     nameMethod = 'Gatys + Spectrum TF + MSInit'
+    nameMethodextBegin = '_SAME'
+    nameMethodextEnd = '_Gatys_spectrumTFabs_eps10m16_MSSInit'
     for beta in beta_list:
         list_methodsMSINIt += [nameMethod + str(beta)]
+        list_methodsMSINIt_ext += [nameMethodextBegin +'_'+ str(beta)+nameMethodextEnd]
     
     beta_list_plusZero = [10**(-9)]+beta_list
     labellist = ['$-\infty$']
@@ -817,7 +834,16 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
         listnameIm += [k]
         list_scores = []
         list_beta_local = []
+        fig, axs = plt.subplots(3,3)
+        axs_flatten = flatten(axs)
+        i = 0
+        for method,beta in zip(list_methodsGatysPlusSpectrum,beta_list_plusZero):
+            #print(method,method in dico.keys())
+            if method in dico.keys():
+                list_scores  += [dico[method]]
+        argmin = np.amin(np.array(list_scores))
         # Sans MSInit
+        list_scores = []
         for method,beta in zip(list_methodsGatysPlusSpectrum,beta_list_plusZero):
             #print(method,method in dico.keys())
             if method in dico.keys():
@@ -826,13 +852,37 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
                 #dicoOfMethods[method] += [score]
                 list_scores  += [score]
                 list_beta_local += [beta]
+                if beta==10**(-9):
+                    directoryloacl = ResultsDir
+                else:
+                    directoryloacl = directory_betaTexture
+                name_image = os.path.join(directoryloacl,k,k+list_methodsGatysPlusSpectrum_ext[i]+'.png')
+                img = mpimg.imread(name_image)
+                axs_flatten[i].imshow(img)
+                title = r'$log \beta : {0:2f} log KL : {1:2f}$'.format(np.log(beta),np.log(dico[method]))
+                title_obj = axs_flatten[i].set_title(title)
+                if i==argmin:
+                    plt.setp(title_obj, color='r')         #set the color of title to red
+                i += 1 
+        #plt.show()
         print(list_scores)
         if len(list_scores)>0:
             plt.plot(np.log10(np.array(list_beta_local)),np.log(np.array(list_scores)),'bo',label='Gatys + Spectrum TF')
             
+        fig, axs = plt.subplots(3,3)
+        axs_flatten = flatten(axs)
         # Avec MSInit
         list_scores = []
         list_beta_local = []
+        for method,beta in zip(list_methodsMSINIt,beta_list_plusZero):
+            #print(method,method in dico.keys())
+            if method in dico.keys():
+                list_scores  += [dico[method]]
+        argmin = np.amin(np.array(list_scores))
+        # Sans MSInit
+        list_scores = []
+        i = 0
+        argmin = np.amin(np.array(list_scores))
         for method,beta in zip(list_methodsMSINIt,beta_list_plusZero):
             #print(method)
             if method in dico.keys():
@@ -840,10 +890,22 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
                 #dicoOfMethods[method] += [dico[method]]
                 list_scores  += [dico[method]]
                 list_beta_local += [beta]
+                if beta==10**(-9):
+                    directoryloacl = ResultsDir
+                else:
+                    directoryloacl = directory_betaTexture
+                name_image = os.path.join(directoryloacl,k,k+list_methodsMSINIt_ext[i]+'.png')
+                img = mpimg.imread(name_image)
+                axs_flatten[i].imshow(img)
+                title = r'$log \beta : {0:2f} log KL : {1:2f}$'.format(np.log(beta),np.log(dico[method]))
+                title_obj = axs_flatten[i].set_title(title)
+                if i==argmin:
+                    plt.setp(title_obj, color='r')         #set the color of title to red
+                i += 1 
         print(list_scores)
         if len(list_scores)>0:
             plt.plot(np.log10(np.array(list_beta_local)),np.log(np.array(list_scores)),'ro',label='Gatys + Spectrum TF + MSInit')
-            
+        plt.show()  
                 
         title = 'log KL div computed with Wavelets coeffs ' +k 
         plt.xlabel('log10 beta')
@@ -853,6 +915,9 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
         plt.title(title)
         plt.legend(loc='best')
         plt.show()
+        
+        
+        
     input('Enter to close.')
     plt.close()
                 
@@ -864,5 +929,5 @@ if __name__ == '__main__':
     #readDataAndPlot(OnlyStructuredImages=False)
     # import sys
     # sys.exit(main(sys.argv))
-    computeKL_forbeta_images()
+    #computeKL_forbeta_images()
     Plot_KL_forDiffBetaValues()
