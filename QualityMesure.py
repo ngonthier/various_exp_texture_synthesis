@@ -864,5 +864,5 @@ if __name__ == '__main__':
     #readDataAndPlot(OnlyStructuredImages=False)
     # import sys
     # sys.exit(main(sys.argv))
-    computeKL_forbeta_images()
+    #computeKL_forbeta_images()
     Plot_KL_forDiffBetaValues()
