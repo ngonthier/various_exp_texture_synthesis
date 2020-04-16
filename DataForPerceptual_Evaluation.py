@@ -14,6 +14,8 @@ import pathlib
 from shutil import copyfile
 import cv2
 from itertools import permutations
+import random
+import math
 
 directory = "./im/References/"
 ResultsDir = "./im/"
@@ -32,6 +34,7 @@ if os.path.exists(path_base):
     output_merge_folder = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','ForPerceptualTestMerge')
     ForPerceptualTestAllMerge = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','ForPerceptualTestAllMerge')
     output_Ref_folder = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','ForPerceptualRef')
+    ForPerceptualTestPsyToolkitSurvey = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','PsyToolkitSurvey')
 else:
     print(path_base,'not found')
     raise(NotImplementedError)
@@ -174,6 +177,78 @@ def Resize_and_crop_center():
             
             path_merge_img = os.path.join(ForPerceptualTestAllMerge,output_name)
             cv2.imwrite(path_merge_img,big_white_Image)
+            
+            
+def create_survey_for_PsyToolkit():
+    """
+    This function create the script of the 
+    """
+    pathlib.Path(ForPerceptualTestPsyToolkitSurvey).mkdir(parents=True, exist_ok=True)
+    
+    # First we will create the 400 possibles questions 
+    
+#    l: examplequestion1
+#    t: radio
+#    #o: random # You can use the option line o: random to randomize the order of the items.
+#    i: {center} https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualTestAllMerge/BrickRound0122_1_seamless_S_DCor_SAME_Gatys_MSSInit.png
+#    /BrickRound0122_1_seamless_S_SAME_Gatys_MSSInit.png
+#    q: Which one is closer to the <a href="https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualRef/BrickRound0122_1_seamless_S.png">Reference Image</a>?
+#    - <a href="https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualRef/BrickRound0122_1_seamless_S_DCor.png">Left Image</a> 
+#    - <a href="https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualRef/BrickRound0122_1_seamless_S_SAME_Gatys_MSSInit.png">Right Image</a>  
+#        
+    template_of_question = 'l: {0} \n t: radio \n i: {{ center }} https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualTestAllMerge/{1} \n q: Which one is closer to the <a href=https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualRef/{2}>Reference Image</a>? \n - <a href=https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualRef/{3}>Left Image</a>  \n - <a href=https://perso.telecom-paristech.fr/gonthier/data/ForPerceptualRef/{4}>Right Image</a> \n' 
+        
+    list_all_questions = []
+    
+    for file in files_short:
+        filewithoutext = '.'.join(file.split('.')[:-1])
+        #print('Image :',filewithoutext)
+            
+        # All the possible pairs
+        all_pairs = permutations(listofmethod_onlySynth, 2) # [['_DCor','_SAME_Gatys_MSSInit']]
+        for pair in all_pairs:
+            #print(pair)
+            
+            methodA, methodB = pair
+            name_question = filewithoutext + methodA + methodB
+            main_image_name = filewithoutext + methodA + methodB +'.png'
+            ref_image_name = filewithoutext +'.png'
+            methodA_img_nam = filewithoutext + methodA  +'.png'
+            methodB_img_nam = filewithoutext + methodB +'.png'
+            
+            question_for_this_pair = template_of_question.format(name_question,\
+                                        main_image_name,ref_image_name,methodA_img_nam,methodB_img_nam)
+            
+            list_all_questions += [question_for_this_pair]
+            
+    number_of_questions_per_survey = 40 
+    total_number_of_ques = len(list_all_questions)
+    nb_surveys = math.ceil(total_number_of_ques/number_of_questions_per_survey)
+    beginning_survey = 'random: begin \n \n'
+    ending = 'random: end \n'
+    
+    for survey_id in range(nb_surveys):
+        txt_survey = '# Survey number {0} \n \n'.format(survey_id)
+        txt_survey += beginning_survey
+        random.seed(survey_id)
+        random.shuffle(list_all_questions)
+        first_questions = list_all_questions[0:number_of_questions_per_survey]
+        list_all_questions = list_all_questions[number_of_questions_per_survey:]
+        for ques in first_questions:
+            txt_survey += ques
+            txt_survey += '\n'
+        txt_survey += ending
+        
+        # Save the txt file
+        survey_txt_file_name = os.path.join(ForPerceptualTestPsyToolkitSurvey,'Survey_'+str(survey_id)+'.txt')
+        text_file = open(survey_txt_file_name, "w")
+        n = text_file.write(txt_survey)
+        text_file.close()
+        
+        
+    
+    
 
 if __name__ == '__main__':
-    Resize_and_crop_center()
+#    Resize_and_crop_center()
+    create_survey_for_PsyToolkit()
