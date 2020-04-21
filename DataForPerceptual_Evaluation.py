@@ -125,14 +125,15 @@ def Resize_and_crop_center():
 #            path_merge_img = os.path.join(output_merge_folder,merge_img_name)
 #            cv2.imwrite(path_merge_img,vis)
             
-    ImWidth = 256*2+26
+    with_space_size = 26
+    ImWidth = 256*2+with_space_size # Size of the couple image
     ImHeight = 256
     for file in files_short:
         filewithoutext = '.'.join(file.split('.')[:-1])
         print('Image :',filewithoutext)
             
         # Load the images
-        all_pairs = permutations(listofmethod_onlySynth, 2) # [['_DCor','_SAME_Gatys_MSSInit']]
+        all_pairs = permutations(listofmethod_onlySynth, 2) # 
         for pair in all_pairs:
             print(pair)
             
@@ -152,26 +153,26 @@ def Resize_and_crop_center():
             stringname_B= os.path.join(output_merge_folder,filewithoutext_with_methodB+'_merge.png')
             imgB = cv2.imread(stringname_B) 
             
-            WIDTH = 256*4+26*4
-            HEIGHT=256*2+26*2
+            WIDTH = 256*4+with_space_size*6 # Also two band on the border
+            HEIGHT=256*2+with_space_size*4 # Also border around
             big_white_Image = np.uint8(255*np.ones((HEIGHT,WIDTH,3)))
             
-            y0_ref = int((WIDTH-ImWidth)/2)
-            y1_ref = y0_ref + ImWidth
-            x0_ref = 0
-            x1_ref = ImHeight
+            y0_ref = int((WIDTH-ImWidth)/2) 
+            y1_ref = y0_ref + ImWidth 
+            x0_ref = with_space_size
+            x1_ref = ImHeight + x0_ref
             big_white_Image[x0_ref:x1_ref,y0_ref:y1_ref,:] = imgRef
             
-            y0_A = 0
-            y1_A = ImWidth
-            x0_A= ImHeight + 26*2
-            x1_A = ImHeight*2 + 26*2
+            y0_A = with_space_size
+            y1_A = ImWidth + y0_A
+            x0_A= ImHeight + with_space_size*3
+            x1_A = x0_A + ImHeight
             big_white_Image[x0_A:x1_A,y0_A:y1_A,:] = imgA
             
-            y0_B = ImWidth + 26*2
-            y1_B = ImWidth*2 +26*2
-            x0_B= ImHeight + 26*2
-            x1_B = ImHeight*2 + 26*2
+            y0_B = ImWidth + with_space_size*3
+            y1_B = ImWidth + y0_B
+            x0_B= ImHeight + with_space_size*3
+            x1_B = ImHeight + x0_B
             big_white_Image[x0_B:x1_B,y0_B:y1_B,:] = imgB
             
             
@@ -250,5 +251,5 @@ def create_survey_for_PsyToolkit():
     
 
 if __name__ == '__main__':
-#    Resize_and_crop_center()
-    create_survey_for_PsyToolkit()
+    Resize_and_crop_center()
+#    create_survey_for_PsyToolkit()
