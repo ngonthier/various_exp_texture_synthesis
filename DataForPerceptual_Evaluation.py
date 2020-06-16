@@ -13,10 +13,12 @@ import os.path
 import pathlib
 from shutil import copyfile
 import cv2
-from itertools import permutations
+from itertools import permutations,combinations
 import random
 import math
 from PIL import Image, ImageDraw, ImageFont
+
+import pandas as pd
 
 directory = "./im/References/"
 ResultsDir = "./im/"
@@ -419,7 +421,197 @@ def create_survey_for_PsyToolkit_4ques():
         n = text_file.write(txt_survey)
         text_file.close()
 
+def regrouper_resultats_psytoolkit():
+    
+    #pathlib.Path(ForPerceptualTestPsyToolkitSurvey).mkdir(parents=True, exist_ok=True)
+
+#    Value = =
+#    1 : Global 1 - Local 1 
+#    2 : Global 2 - Local 2
+#    3 : Global 1 - Local 2
+#    4 : Global 2 - Local 1
+
+    dict_data =  {}
+
+    all_df = None
+    
+    number_answer_per_participant = None
+    
+    for i in range(0,10):
+        folder_name = 'data_'+str(i)
+        print(folder_name)
+        path_folder = os.path.join(ForPerceptualTestPsyToolkitSurvey,folder_name)
+        name_csv_file = 'data.csv'
+        path_csv_file = os.path.join(path_folder,name_csv_file)
+        df_i = pd.read_csv(path_csv_file,sep=',',index_col=False)
+        # Il va falloir filtrer les dates ici car certaines réponses peuvent dater des tests !
+        # Toutes les réponses avant le 4 mai sont a retirer
+        date_start = np.datetime64('2020-05-04').astype('datetime64[ns]')
+        df_i['TIME_start'] =  pd.to_datetime(df_i['TIME_start'], format='%Y-%m-%d-%H-%M').astype('datetime64[ns]')
+        #df_i['TIME_start'].astype('datetime64[ns]')
+        #print(len(df_i))
+        #print(df_i['TIME_start'])
+        #print(df_i['TIME_end'])
+        df_i = df_i[df_i['TIME_start']>date_start]
+        #print(len(df_i))
+        
+        df_i = df_i.drop(columns=['participant','TIME_start', 'TIME_end', 'TIME_total'])
+        
+        local_number_answer_per_participant = 40 - df_i.isna().sum(axis=1) 
+        df_i = df_i[local_number_answer_per_participant!=0]
+        dict_data[i] = df_i
+        
+        if number_answer_per_participant is None:
+            number_answer_per_participant = local_number_answer_per_participant
+        else:
+            number_answer_per_participant = number_answer_per_participant.append(local_number_answer_per_participant,ignore_index=True)
+    
+    print('=======================')
+    print("On all the participants we have :")
+    print("A mean of number of answer of :",number_answer_per_participant.mean())
+    print("A std of number of answer of :",number_answer_per_participant.std())
+    print("A median of number of answer of :",number_answer_per_participant.median())
+    Not_all_anwser = number_answer_per_participant[number_answer_per_participant!=40]
+    print('On ',len(number_answer_per_participant),'participants',len(Not_all_anwser),'don t answer all the 40 questions')
+    print("A mean of number of answer of :",number_answer_per_participant.mean())
+    print("On this subset of incomplete answers we have")
+    print("A mean of number of answer of :",Not_all_anwser.mean())
+    print("A std of number of answer of :",Not_all_anwser.std())
+    print("A median of number of answer of :",Not_all_anwser.median())
+    print("A maximum of number of answer of :",Not_all_anwser.max())
+    print("A minimum of number of answer of :",Not_all_anwser.min())
+    print('=======================')
+    
+    diff_case=['global','local','both']
+    for case in diff_case:
+    
+        number_win_all_images = pd.DataFrame(columns=['image','methodA','methodB','winA','winB'])
+        dict_number_win = {}  
+        
+        dict_correspondance = {}
+        dict_correspondance_order = {}
+        
+        for j,file in enumerate(files_short):
+            filewithoutext = '.'.join(file.split('.')[:-1])
+            all_pairs = combinations(listofmethod_onlySynth, 2) # Without repetition 
+            for i,pair in enumerate(all_pairs):
+                methodA, methodB = pair
+                index = j + i*len(files_short)
+                number_win_all_images.loc[index] = [filewithoutext,methodA,methodB,0,0]
+                dict_correspondance[filewithoutext+methodA + methodB] = index
+                dict_correspondance_order[filewithoutext+methodA + methodB] = True
+                dict_correspondance[filewithoutext+methodB + methodA] = index
+                dict_correspondance_order[filewithoutext+methodB + methodA] = False
+
+        for i in range(0,10): 
+            df = dict_data[i]
+            #df = df.drop(columns=['participant','TIME_start', 'TIME_end', 'TIME_total'])
+            for row in df.iterrows():
+                row_values = row[1]
+                for c,value in zip(df.columns,row_values):
+                    if np.isnan(value):
+                        continue
+                    assert(value > 0)
+                    assert(value <= 4)
+                    
+                    c = c.split(':')[0]
+                    index = dict_correspondance[c]
+                    right_order = dict_correspondance_order[c]
+                    if case=='global': # Global winning
+                        if value==1.0 or value==3.0:
+                            if right_order:
+                                number_win_all_images.loc[index,'winA'] += 1
+                            else:
+                                number_win_all_images.loc[index,'winB'] += 1
+                        else:
+                            if right_order:
+                                number_win_all_images.loc[index,'winB'] += 1
+                            else:
+                                number_win_all_images.loc[index,'winA'] += 1
+                    elif case=='local': # Local winning
+                        if value==1.0 or value==4.0:
+                            if right_order:
+                                number_win_all_images.loc[index,'winA'] += 1
+                            else:
+                                number_win_all_images.loc[index,'winB'] += 1
+                        else:
+                            if right_order:
+                                number_win_all_images.loc[index,'winB'] += 1
+                            else:
+                                number_win_all_images.loc[index,'winA'] += 1
+                    elif case=='both': # Local winning
+                        if value==1.0:
+                            if right_order:
+                                number_win_all_images.loc[index,'winA'] += 1
+                            else:
+                                number_win_all_images.loc[index,'winB'] += 1
+                        elif value==2.0:
+                            if right_order:
+                                number_win_all_images.loc[index,'winB'] += 1
+                            else:
+                                number_win_all_images.loc[index,'winA'] += 1
+                        else: # Tie
+                            number_win_all_images.loc[index,'winB'] += 0.5
+                            number_win_all_images.loc[index,'winA'] += 0.5
+        
+        # Number of votes for each given question 
+        number_win_all_images['NumberVote'] = number_win_all_images['winA'] + number_win_all_images['winB']
+        print('===',case,'===')
+        print("Per question (we gather the two possible question : image A on right and image B on left and the opposite we have :")
+        print("A maximum of number of answer of :",number_win_all_images['NumberVote'].max())
+        print("A minimum of number of answer of :",number_win_all_images['NumberVote'].min())
+        print("A mean of number of answer of :",number_win_all_images['NumberVote'].mean())
+        print("A median of number of answer of :",number_win_all_images['NumberVote'].median())
+        print("A std of number of answer of :",number_win_all_images['NumberVote'].std())
+                
+        path_df = os.path.join(ForPerceptualTestPsyToolkitSurvey,'Number_of_wins_'+case+'.csv')
+        number_win_all_images.to_csv(path_df,sep=',',index=False)
+        
+        
+#    =======================
+#    On all the participants we have :
+#    A mean of number of answer of : 34.086021505376344
+#    A std of number of answer of : 13.064768350147315
+#    A median of number of answer of : 40.0
+#    On  93 participants 17 don t answer all the 40 questions
+#    A mean of number of answer of : 34.086021505376344
+#    On this subset of incomplete answers we have
+#    A mean of number of answer of : 7.647058823529412
+#    A std of number of answer of : 8.52159885577956
+#    A median of number of answer of : 6.0
+#    A maximum of number of answer of : 27
+#    A minimum of number of answer of : 0
+#    =======================
+#    === global ===
+#    Per question (we gather the two possible question : image A on right and image B on left and the opposite we have :
+#    A maximum of number of answer of : 23
+#    A minimum of number of answer of : 9
+#    A mean of number of answer of : 15.85
+#    A median of number of answer of : 16.0
+#    A std of number of answer of : 3.303340778894533
+       
+#def convert_pd_df_to_list_wins
+        
+def run_statistical_study():
+        
+    diff_case=['global','local','both']
+    for case in diff_case:
+        path_df = os.path.join(ForPerceptualTestPsyToolkitSurvey,'Number_of_wins_'+case+'.csv')
+        number_win_all_images =  pd.read_csv(path_df,sep=',')
+        
+        # Per images
+        for j,file in enumerate(files_short):
+            filewithoutext = '.'.join(file.split('.')[:-1])
+            sub_part = number_win_all_images[number_win_all_images['image']==filewithoutext]
+            
+            
+            
+
+            
+    
+    
+
 
 if __name__ == '__main__':
-    Resize_and_crop_center()
-    #create_survey_for_PsyToolkit_4ques()
+    #Resize_and_crop_center()
+    create_survey_for_PsyToolkit_4ques()
