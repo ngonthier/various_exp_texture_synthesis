@@ -17,8 +17,15 @@ from itertools import permutations,combinations
 import random
 import math
 from PIL import Image, ImageDraw, ImageFont
-
+import matplotlib.pyplot as plt
+import matplotlib
+from matplotlib.table import Table
+matplotlib.rcParams['text.usetex'] = True
 import pandas as pd
+
+import choix
+import pickle
+import scipy
 
 directory = "./im/References/"
 ResultsDir = "./im/"
@@ -50,11 +57,26 @@ listofmethod_onlySynth = ['_SAME_Gatys','_SAME_Gatys_MSSInit','_SAME_Gatys_spect
 
 listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
     'Snelgorove','Deep Corr']
+listNameMethod_onlySynth = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
+    'Snelgorove','Deep Corr']
 
 extension = ".png"
 files = [file for file in os.listdir(directory) if file.lower().endswith(extension)]
 files_short = files
 #files_short = [files[0],files[-1]]
+
+# List of regular images decided with Yann on 12/06/20 : 11 elements
+listRegularImages = ['BrickRound0122_1_seamless_S',
+                     'CRW_5751_1024',
+                     'Pierzga_2006_1024',
+                     'fabric_white_blue_1024',
+                     'lego_1024',
+                     'TexturesCom_BrickSmallBrown0473_1_M_1024',
+                     'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024',
+                     'TexturesCom_TilesOrnate0085_1_seamless_S',
+                     'TexturesCom_TilesOrnate0158_1_seamless_S',
+                     'metal_ground_1024']
+    
 
 
 def Resize_and_crop_center():
@@ -422,6 +444,10 @@ def create_survey_for_PsyToolkit_4ques():
         text_file.close()
 
 def regrouper_resultats_psytoolkit():
+    """
+    This fct helps to regroup all the votes of the pystoolkit questionnary 
+    Remove old answers (testing time) + empty answer
+    """
     
     #pathlib.Path(ForPerceptualTestPsyToolkitSurvey).mkdir(parents=True, exist_ok=True)
 
@@ -542,17 +568,17 @@ def regrouper_resultats_psytoolkit():
                     elif case=='both': # Local winning
                         if value==1.0:
                             if right_order:
-                                number_win_all_images.loc[index,'winA'] += 1
+                                number_win_all_images.loc[index,'winA'] += 2
                             else:
-                                number_win_all_images.loc[index,'winB'] += 1
+                                number_win_all_images.loc[index,'winB'] += 2
                         elif value==2.0:
                             if right_order:
-                                number_win_all_images.loc[index,'winB'] += 1
+                                number_win_all_images.loc[index,'winB'] += 2
                             else:
-                                number_win_all_images.loc[index,'winA'] += 1
+                                number_win_all_images.loc[index,'winA'] += 2
                         else: # Tie
-                            number_win_all_images.loc[index,'winB'] += 0.5
-                            number_win_all_images.loc[index,'winA'] += 0.5
+                            number_win_all_images.loc[index,'winB'] += 1
+                            number_win_all_images.loc[index,'winA'] += 1
         
         # Number of votes for each given question 
         number_win_all_images['NumberVote'] = number_win_all_images['winA'] + number_win_all_images['winB']
@@ -590,28 +616,749 @@ def regrouper_resultats_psytoolkit():
 #    A median of number of answer of : 16.0
 #    A std of number of answer of : 3.303340778894533
        
-#def convert_pd_df_to_list_wins
+def convert_pd_df_to_list_wins_lost(df):
+    data = []
+            
+    for row in df.iterrows():
+        methodA = row[1]['methodA']
+        winA = row[1]['winA']
+        methodB = row[1]['methodB']
+        winB = row[1]['winB']
+        methodA_index = listofmethod_onlySynth.index(methodA)
+        methodB_index = listofmethod_onlySynth.index(methodB)
+        data += [(methodA_index,methodB_index)]*int(winA)
+        data += [(methodB_index,methodA_index)]*int(winB)
+
+    return(data)
+    
+def get_Wi_Ei(sub_part):
+    """
+    Return a list of winning probabilty per method and the standard
+    deviation of the winning probability 
+    """
+    n_method = len(listofmethod_onlySynth)
+    W_list = []
+    E_list = []
+    for i,method in enumerate(listofmethod_onlySynth):
+        pij_A = sub_part[sub_part['methodA']==method]['pA'].values
+        pij_B = sub_part[sub_part['methodB']==method]['pB'].values
+        pij = np.concatenate([pij_A,pij_B])
+        assert(len(pij)==n_method-1)
+        sum_pij = np.sum(pij)
+        #print(sum_pij)
+        Wi = sum_pij / (n_method-1)
+        assert(Wi<=1.0)
+        #print(Wi)
+        W_list += [Wi]  
+        Ei = np.sqrt(np.mean((pij-Wi)**2))
+        E_list += [Ei]
         
-def run_statistical_study():
+    # Wi represents the probability that a candidate i was preferred over all other candidates.
+    return(W_list,E_list)
+    
+def get_Wi_Ei_fromParams(params):
+    """
+    Return a list of winning probabilty per method and the standard
+    deviation of the winning probability 
+    """
+    n_method = len(listofmethod_onlySynth)
+    W_list = []
+    E_list = []
+    for i,method in enumerate(listofmethod_onlySynth):
+        pij_tab = []
+        for j,_ in enumerate(listofmethod_onlySynth):
+            if not(i==j):
+                pij, pji = choix.probabilities([i,j],params)
+                #print(i,j,pij, pji)
+                pij_tab += [pij]
         
+#        pij_A = sub_part[sub_part['methodA']==method]['pA'].values
+#        pij_B = sub_part[sub_part['methodB']==method]['pB'].values
+#        pij_tab = np.concatenate([pij_A,pij_B])
+        assert(len(pij_tab)==n_method-1)
+        sum_pij = np.sum(pij_tab)
+        #print(sum_pij)
+        Wi = sum_pij / (n_method-1)
+        assert(Wi<=1.0)
+        #print(Wi)
+        W_list += [Wi]
+        
+        Ei = np.sqrt(np.mean((pij_tab-Wi)**2)) # Cela n a pas vraiment de realite quelconque en fait
+        E_list += [Ei]
+        
+    # Wi represents the probability that a candidate i was preferred over all other candidates.
+    return(W_list,E_list)
+    
+def test_if_sparsity(sub_part):
+    """
+    Return True if one method always wins or always loss : sparsity case
+    """
+    
+    for i,method in enumerate(listofmethod_onlySynth):
+        pij_A = sub_part[sub_part['methodA']==method]['pA'].values
+        pij_B = sub_part[sub_part['methodB']==method]['pB'].values
+        pij_tab = np.concatenate([pij_A,pij_B]) 
+        pi = np.mean(pij_tab)
+        #print(pi)
+        if pi==0.0 or pi==1.0:
+            return(True)
+            
+    return(False)
+
+def get_Wi_Betaij_stdij_fromDF(sub_part,estimation_method='mm',std_estimation='hessian',max_iter=100000,tol=10**(-8)):
+    n_method = len(listofmethod_onlySynth)
+    
+    sub_part.loc[:,'pA'] = sub_part['winA'] /  sub_part['NumberVote']
+    sub_part.loc[:,'pB'] = sub_part['winB'] /  sub_part['NumberVote'] 
+#            hand_p_list,hand_e_list = get_Wi_Ei(sub_part)
+
+#    print(sub_part['pA'])
+#    print(sub_part['pB'])
+    
+    data = convert_pd_df_to_list_wins_lost(sub_part)
+    
+    sparsity = test_if_sparsity(sub_part)
+    if sparsity:
+        print('In a sparsity case !')
+        alpha = 10**(-4)
+    else:
+        alpha = 0.0
+    
+#            if filewithoutext=='marbre_1024':
+#                tol=10**(-5)
+#            else:
+#                tol =1e-8
+    if estimation_method=='mm':
+        params = choix.mm_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+    elif estimation_method=='ilsr':
+        params = choix.ilsr_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+    elif estimation_method=='opt_pairwise':
+        params = choix.opt_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+    # Provide de si : the score per method
+    #  maximum-likelihood estimate of params with minorization-maximization (MM) algorithm [Hun04]_
+   
+    n_method = len(listofmethod_onlySynth)
+    W_list = []
+    for i,method in enumerate(listofmethod_onlySynth):
+        pij_tab = []
+        for j,_ in enumerate(listofmethod_onlySynth):
+            if not(i==j):
+                pij, pji = choix.probabilities([i,j],params)
+                pij, pji = choix.probabilities([i,j],params)
+                #print(i,j,pij, pji)
+                pij_tab += [pij]
+        assert(len(pij_tab)==n_method-1)
+        sum_pij = np.sum(pij_tab)
+        Wi = sum_pij / (n_method-1)
+        assert(Wi<=1.0)
+        W_list += [Wi]
+    
+    if std_estimation=='hessian':
+        f = choix.opt.PairwiseFcts(data, alpha)
+        # provides methods to compute the negative log-likelihood 
+        hessian = f.hessian(params)
+#        gradient = f.gradient(params)
+#        objective = f.objective(params)
+#        print('hessian',hessian)
+#        print('gradient',gradient)
+#        print('objective',objective)
+#        print(np.linalg.cond(hessian))
+        
+        Iy = hessian # as we compute the negative log-likelihood
+        # It is the Fisher Information
+        if np.linalg.cond(Iy) > np.finfo(Iy.dtype).eps: 
+            # Pseudo inverse
+            #print('pinv')
+            #Iy_inv = np.linalg.pinv(Iy) # uses the linalg.lstsq
+            Iy_inv = scipy.linalg.pinv2(Iy) # Use SVD 
+        else:
+            Iy_inv = np.linalg.inv(Iy)
+
+        #print('Iy_inv',Iy_inv)
+        std_matrix = np.zeros_like(hessian)
+        for i,_ in enumerate(listofmethod_onlySynth):
+            for j,_ in enumerate(listofmethod_onlySynth):
+                if not(i==j):
+                    stdij = np.sqrt(Iy_inv[i,i]+Iy_inv[j,j]-2*Iy_inv[i,j])
+                    assert(stdij >= 0.)
+                    std_matrix[i,j] = stdij
+        #print('std_matrix',std_matrix)
+                    
+                    
+    return(W_list,params,std_matrix)
+    
+def get_Wi_Ei_fromDF(sub_part,estimation_method='mm',max_iter=100000,tol=10**(-8)):
+    n_method = len(listofmethod_onlySynth)
+    
+    sub_part.loc[:,'pA'] = sub_part['winA'] /  sub_part['NumberVote']
+    sub_part.loc[:,'pB'] = sub_part['winB'] /  sub_part['NumberVote'] 
+#            hand_p_list,hand_e_list = get_Wi_Ei(sub_part)
+
+#    print(sub_part['pA'])
+#    print(sub_part['pB'])
+    
+    data = convert_pd_df_to_list_wins_lost(sub_part)
+    
+    sparsity = test_if_sparsity(sub_part)
+    if sparsity:
+        print('In a sparsity case !')
+        alpha = 10**(-4)
+    else:
+        alpha = 0.0
+    
+#            if filewithoutext=='marbre_1024':
+#                tol=10**(-5)
+#            else:
+#                tol =1e-8
+    if estimation_method=='mm':
+       params = choix.mm_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+    elif estimation_method=='ilsr':
+        params = choix.ilsr_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+    # Provide de si : the score per method
+    #  maximum-likelihood estimate of params with minorization-maximization (MM) algorithm [Hun04]_
+   
+    W_list,E_list = get_Wi_Ei_fromParams(params)
+    
+    return(W_list,E_list)
+    
+def run_statistical_study(estimation_method='mm',
+                          std_estimation='hessian',
+                          protocol='all_together'):
+    """
+    In this function we will compute the mean score per method per image + all image 
+    together but also the near convergence consistency metric (kind of std)
+    @param estimation_method : mm or ilsr or opt_pairwise
+    @param protocol : all_together : We compute all the pij (prob i>j) with 
+                                        all the images together 
+           Individual_image : we consider each reference images as an independant study
+    """
+    
+    # A propos du cas Tie : 
+#    For our next experiment we choose the equal-split method: if an observer chooses “no-
+#    preference”, we split the vote in two and add a half-vote to each condition. This may result in a
+#    non-integer number of votes,
+    
+    # En fait il semble y avoir plusieurs cas a considerer :
+    # Le cas ou l on regroupe toutes les images ensemble differemment
+    # Le cas ou l'on considère chacune des images de référence comme une étude 
+    # et que l'on calcule ensuite  he winning probabilities for one candidate across different studies,
+    # And thus the near convergence consistency metric 
+    
+    
+    n_method = len(listofmethod_onlySynth) # Number of methods    
+    
     diff_case=['global','local','both']
+#    diff_case=['global','local']
+#    diff_case=['both']
+    
+    # TODO solve problem :  BubbleMarbel seem to be a absorbing class : need to check what it is 
+    # TODO : need to find a way to have statistical test between the winning probability 
+    
+    dict_couple_W_E = {}
+    
+    max_iter = 500000
+    tol = 10**(-8)
+    
     for case in diff_case:
+        print("===",case,"===")
+#        if case=='global':
+#            tol=10**(-5)
+#        elif case=='local':
+#            tol=10**(-2)
+#        else:
+#            tol=10**(-5)
         path_df = os.path.join(ForPerceptualTestPsyToolkitSurvey,'Number_of_wins_'+case+'.csv')
         number_win_all_images =  pd.read_csv(path_df,sep=',')
         
-        # Per images
-        for j,file in enumerate(files_short):
-            filewithoutext = '.'.join(file.split('.')[:-1])
-            sub_part = number_win_all_images[number_win_all_images['image']==filewithoutext]
+        
+        if protocol=='Individual_image':
             
-            
-            
+            W_per_image_all = np.zeros([len(files_short),n_method])
+            W_per_image_Reg = np.zeros([len(listRegularImages),n_method])
+            W_per_image_Irreg = np.zeros([len(files_short)-len(listRegularImages),n_method])
+            stdW_per_image_all = np.zeros([len(files_short),n_method])
+            stdW_per_image_Reg = np.zeros([len(listRegularImages),n_method])
+            stdW_per_image_Irreg = np.zeros([len(files_short)-len(listRegularImages),n_method])
 
+            # Per images
+            j_reg = 0
+            j_irreg = 0 
+            for j,file in enumerate(files_short):
+                filewithoutext = '.'.join(file.split('.')[:-1])
+                print(j,filewithoutext)
+                sub_part = number_win_all_images[number_win_all_images['image']==filewithoutext]
+                 
+                W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=sub_part,
+                                                           estimation_method=estimation_method,
+                                                           std_estimation=std_estimation,
+                                                           max_iter=max_iter,tol=tol)
+                stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+                #print(j,stdW_list)
+                dict_couple_W_E[filewithoutext] = [W_list,stdW_list,params,std_matrix]
+                
+                W_per_image_all[j,:] = W_list
+                stdW_per_image_all[j,:] = stdW_list
+                #print(listRegularImages)
+                if filewithoutext in listRegularImages:
+                     W_per_image_Reg[j_reg,:] = W_list
+                     stdW_per_image_Reg[j_reg,:] = stdW_list
+                     j_reg +=1
+                else:
+                     W_per_image_Irreg[j_irreg,:] = W_list
+                     stdW_per_image_Irreg[j_irreg,:] = stdW_list
+                     j_irreg += 1
+            #print('stdW_per_image_all',stdW_per_image_all)
+            #print('np.mean(W_per_image_all,axis=0),np.std(W_per_image_all,axis=0),np.mean(stdW_per_image_all,axis=0)')
+            print(np.mean(W_per_image_all,axis=0),np.std(W_per_image_all,axis=0),np.mean(stdW_per_image_all,axis=0))
+            # Now we will compute the mean of the winning probabilities and the near-convergene metric
+            # And then the std of the Wi
+            dict_couple_W_E['All'] = [np.mean(W_per_image_all,axis=0),np.std(W_per_image_all,axis=0),np.mean(stdW_per_image_all,axis=0)]
+            dict_couple_W_E['Reg'] = [np.mean(W_per_image_Reg,axis=0),np.std(W_per_image_Reg,axis=0),np.mean(stdW_per_image_Reg,axis=0)]
+            dict_couple_W_E['Irreg'] = [np.mean(W_per_image_Irreg,axis=0),np.std(W_per_image_Irreg,axis=0),np.mean(stdW_per_image_Irreg,axis=0)]
+            
+        if protocol=='all_together':
+            # We will regroup all the images (20) together 
+            print('All together')
+            df_all = number_win_all_images.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
+            W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_all,
+                                                           estimation_method=estimation_method,
+                                                           std_estimation=std_estimation,
+                                                           max_iter=max_iter,tol=tol)
+            stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+            dict_couple_W_E['All'] = [W_list,stdW_list,params,std_matrix]
+            
+            # We will work on the two subsets : regular and non-regular image 
+            print("Regular")
+            sub_part_reg = number_win_all_images[number_win_all_images['image'].isin(listRegularImages)]
+            df_reg = sub_part_reg.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
+            W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_reg,
+                                                           estimation_method=estimation_method,
+                                                           std_estimation=std_estimation,
+                                                           max_iter=max_iter,tol=tol)
+            stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+            dict_couple_W_E['Reg'] = [W_list,stdW_list,params,std_matrix]
+            
+            print("Irregular")
+            sub_part_irreg = number_win_all_images[~number_win_all_images['image'].isin(listRegularImages)]
+            df_irreg = sub_part_irreg.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
+            W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_irreg,
+                                                           estimation_method=estimation_method,
+                                                           std_estimation=std_estimation,
+                                                           max_iter=max_iter,tol=tol)
+            stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+            dict_couple_W_E['Irreg'] = [W_list,stdW_list,params,std_matrix]
+
+        # Save the data :
+        data_path_save = os.path.join(ForPerceptualTestPsyToolkitSurvey,'WBS_'+case+'_'+protocol+'_'+estimation_method+'_'+std_estimation+'.pkl')
+        with open(data_path_save, 'wb') as pkl:
+            pickle.dump(dict_couple_W_E,pkl)
+            
+            
+def run_statistical_study_old(estimation_method='mm',protocol='all_together'):
+    """
+    In this function we will compute the mean score per method per image + all image 
+    together but also the near convergence consistency metric (kind of std)
+    @param estimation_method : mm or ilsr or opt_pairwise
+    @param protocol : all_together : We compute all the pij (prob i>j) with 
+                                        all the images together 
+           Individual_image : we consider each reference images as an independant study
+    """
+    
+    # A propos du cas Tie : 
+#    For our next experiment we choose the equal-split method: if an observer chooses “no-
+#    preference”, we split the vote in two and add a half-vote to each condition. This may result in a
+#    non-integer number of votes,
+    
+    # En fait il semble y avoir plusieurs cas a considerer :
+    # Le cas ou l on regroupe toutes les images ensemble differemment
+    # Le cas ou l'on considère chacune des images de référence comme une étude 
+    # et que l'on calcule ensuite  he winning probabilities for one candidate across different studies,
+    # And thus the near convergence consistency metric 
+    
+    
+    n_method = len(listofmethod_onlySynth) # Number of methods    
+    
+    diff_case=['global','local','both']
+#    diff_case=['global','local']
+#    diff_case=['both']
+    
+    # TODO solve problem :  BubbleMarbel seem to be a absorbing class : need to check what it is 
+    # TODO : need to find a way to have statistical test between the winning probability 
+    
+    dict_couple_W_E = {}
+    
+    max_iter = 500000
+    tol = 10**(-5)
+    
+    for case in diff_case:
+        print("===",case,"===")
+#        if case=='global':
+#            tol=10**(-5)
+#        elif case=='local':
+#            tol=10**(-2)
+#        else:
+#            tol=10**(-5)
+        path_df = os.path.join(ForPerceptualTestPsyToolkitSurvey,'Number_of_wins_'+case+'.csv')
+        number_win_all_images =  pd.read_csv(path_df,sep=',')
+        
+        
+        if protocol=='Individual_image':
+            
+            W_per_image_all = np.zeros([len(files_short),n_method])
+            W_per_image_Reg = np.zeros([len(listRegularImages),n_method])
+            W_per_image_Irreg = np.zeros([len(files_short)-len(listRegularImages),n_method])
+
+            # Per images
+            j_reg = 0
+            j_irreg = 0 
+            for j,file in enumerate(files_short):
+                filewithoutext = '.'.join(file.split('.')[:-1])
+                print(j,filewithoutext)
+                sub_part = number_win_all_images[number_win_all_images['image']==filewithoutext]
+                 
+                W_list,E_list = get_Wi_Ei_fromDF(sub_part=sub_part,estimation_method=estimation_method,max_iter=max_iter,tol=tol)
+                
+                dict_couple_W_E[filewithoutext] = [W_list,E_list]
+                
+                W_per_image_all[j,:] = W_list
+                #print(listRegularImages)
+                if filewithoutext in listRegularImages:
+                     W_per_image_Reg[j_reg,:] = W_list
+                     j_reg +=1
+                else:
+                     print('irrge',filewithoutext)
+                     W_per_image_Irreg[j_irreg,:] = W_list
+                     j_irreg += 1
+                
+            # Now we will compute the mean of the winning probabilities and the near-convergene metric
+            dict_couple_W_E['All'] = [np.mean(W_per_image_all,axis=0),np.std(W_per_image_all,axis=0)]
+            dict_couple_W_E['Reg'] = [np.mean(W_per_image_Reg,axis=0),np.std(W_per_image_Reg,axis=0)]
+            dict_couple_W_E['Irreg'] = [np.mean(W_per_image_Irreg,axis=0),np.std(W_per_image_Irreg,axis=0)]
+            
+        if protocol=='all_together':
+            # We will regroup all the images (20) together 
+            print('All together')
+            df_all = number_win_all_images.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
+            W_list,E_list = get_Wi_Ei_fromDF(sub_part=df_all,estimation_method=estimation_method,max_iter=max_iter,tol=tol)
+            dict_couple_W_E['All'] = [W_list,E_list]
+            
+            # We will work on the two subsets : regular and non-regular image 
+            print("Regular")
+            sub_part_reg = number_win_all_images[number_win_all_images['image'].isin(listRegularImages)]
+            df_reg = sub_part_reg.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
+            W_list,E_list = get_Wi_Ei_fromDF(sub_part=df_reg,estimation_method=estimation_method,max_iter=max_iter,tol=tol)
+            dict_couple_W_E['Reg'] = [W_list,E_list]
+            
+            print("Irregular")
+            sub_part_irreg = number_win_all_images[~number_win_all_images['image'].isin(listRegularImages)]
+            df_irreg = sub_part_irreg.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
+            W_list,E_list = get_Wi_Ei_fromDF(sub_part=df_irreg,estimation_method=estimation_method,max_iter=max_iter,tol=tol)
+            dict_couple_W_E['Irreg'] = [W_list,E_list]
+
+        # Save the data :
+        data_path_save = os.path.join(ForPerceptualTestPsyToolkitSurvey,'WinningProb_'+case+'_'+protocol+'.pkl')
+        with open(data_path_save, 'wb') as pkl:
+            pickle.dump(dict_couple_W_E,pkl)
+ 
+def create_save_bar_plot(heights,error,path='',ext_name='',subset='',title=''):
+    # Build the plot
+    x_pos = np.arange(len(listofmethod_onlySynth))
+    CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
+                  '#f781bf', '#a65628', '#984ea3',
+                  '#999999', '#e41a1c', '#dede00']
+    fig, ax = plt.subplots()
+    ax.bar(x_pos, heights, yerr=error, align='center', alpha=0.5,color=CB_color_cycle, ecolor='black', capsize=10)
+    ax.set_ylabel('Winning Prob')
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(listNameMethod_onlySynth, rotation=45,fontsize=8)
+    ax.set_title(title)
+    ax.yaxis.grid(True)
+    
+    # Save the figure and show
+    plt.tight_layout()
+    path_fig = os.path.join(path,'Bar_plot_'+ext_name+'_'+subset+'.png')
+    plt.savefig(path_fig,bbox_inches='tight')
+    #plt.show()
+    plt.close()
+           
+def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',title='',zalpha=1.):
+    
+    
+    fig, ax = plt.subplots()
+    ax.set_axis_off()
+    tb = Table(ax) # , bbox=[0,0,1,1]
+    tb.auto_set_font_size(False)
+    tb.set_fontsize(18)
+
+    color_win = 'lightgreen'
+    color_loss = 'lightcoral'
+    color_neutral = 'white'
+
+    nrows, ncols = len(params),len(params)
+    width, height = 1.0 / ncols, 1.0 / nrows
+
+    # Add cells
+    for i in range(len(params)):
+        for j in range(len(params)):
+            if not(i==j):
+                #print(i,j)
+                b_ij = params[i]-params[j]
+                std_ij = std_matrix[i,j]
+                text_ij = '{0:.2e}\n({1:.2e})'.format(b_ij,zalpha*std_ij)
+                if b_ij > 0:
+                    if b_ij - zalpha*std_ij > 0:
+                        color = color_win
+                    else:
+                        color= color_neutral
+                else:
+                    if b_ij + zalpha*std_ij < 0:
+                        color = color_loss
+                    else:
+                        color = color_neutral
+                tb.add_cell(i, j, width, height, text=text_ij, 
+                    loc='center', facecolor=color)
+
+    # Row Labels...
+    for i, label_raw in enumerate(listNameMethod_onlySynth):
+        label = label_raw.replace('_',' ')
+        tb.add_cell(i, -1, width, height, text=label, loc='right', 
+                    edgecolor='none', facecolor='none')
+    # Column Labels...
+    for j, label_raw in enumerate(listNameMethod_onlySynth):
+        label = label_raw.replace('_',' ')
+        tb.add_cell(-1, j, width, height/2, text=label, loc='center', 
+                           edgecolor='none', facecolor='none')
+    ax.add_table(tb)
+    
+#    
+#    fig, ax = plt.subplots()
+#    
+#    dict_ij = {}
+#    
+#    image = np.zeros(nrows*ncols)
+#
+#
+#    
+#    for i in range(len(params)):
+#        for j in range(len(params)):
+#            if not(i==j):
+#                print(i,j)
+#                b_ij = params[i]-params[j]
+#                std_ij = std_matrix[i,j]
+#                text_ij = '{0:.2e} ({1:.2e})'.format(b_ij,std_ij)
+#                dict_ij[[i,j]] =  text_ij
+#                
+#                ax.text(i+1/2, j+1/2, text_ij, va='center', ha='center')
+#    
+#    plt.xticks(range(len(params)), listNameMethod_onlySynth,rotation=45)
+#    plt.yticks(range(len(params)), listNameMethod_onlySynth)
+#    
+#    for tick in ax.xaxis.get_minor_ticks():
+#        tick.tick1line.set_markersize(0)
+#        tick.tick2line.set_markersize(0)
+#        tick.label1.set_horizontalalignment('center')
+#    for tick in ax.yaxis.get_minor_ticks():
+#        tick.tick1line.set_markersize(0)
+#        tick.tick2line.set_markersize(0)
+#        tick.label1.set_horizontalalignment('center')
+#    
+#    ax.grid()
+    
+    ax.set_title(title)
+
+    # Save the figure and show
+    plt.tight_layout()
+    if not(zalpha==1.0):
+        name_fig = 'BetaValue_plot_'+ext_name+'_'+subset+'_zalpha'+str(zalpha).replace('.','')+'.png'
+    else:
+        name_fig = 'BetaValue_plot_'+ext_name+'_'+subset+'.png'
+    path_fig = os.path.join(path,name_fig)
+    plt.savefig(path_fig,bbox_inches='tight',dpi=300)
+    plt.close()
+   
+def get_std_Wi(std_Bi_minus_Bj):
+    std_pij_matrix = get_std_pij(std_Bi_minus_Bj)
+    n_method = len(listNameMethod_onlySynth)
+    list_std_Wi = []
+    for i,_ in enumerate(listofmethod_onlySynth):
+        std_pij_tab = []
+        for j,_ in enumerate(listofmethod_onlySynth):
+            if not(i==j):
+                std_pij = std_pij_matrix[i,j]
+                #print(i,j,pij, pji)
+                std_pij_tab += [std_pij]
+#        std_pij_tab = np.concatenate(std_pij_tab)
+        assert(len(std_pij_tab)==n_method-1)
+        sum_std_pij = np.sum(std_pij_tab)
+        #print(sum_pij)
+        std_Wi = sum_std_pij / (n_method-1)
+        list_std_Wi += [std_Wi]
+    return(list_std_Wi)
+ 
+def _safe_exp(x):
+    x = np.clip(x,-np.inf,500)
+    return np.exp(x)
+    
+def get_std_pij(std_Bi_minus_Bj):
+    std_pij = _safe_exp(std_Bi_minus_Bj)/(1+_safe_exp(std_Bi_minus_Bj))
+    return(std_pij)
+    
+def plot_evaluation(estimation_method='mm',std_estimation='hessian'):
+    """
+    This function will plot the differents images 
+    """        
+    print("== Start Plotting the bar plot ==")
+    matplotlib.use('Agg') # To avoid to have the figure that's pop up during execution
+    
+    diff_case=['global','local','both']
+    #diff_case=['local','both']
+    protocol_tab = ['all_together','Individual_image']  
+    protocol_tab = ['Individual_image']  
+
+    output_im_path = os.path.join(ForPerceptualTestPsyToolkitSurvey,'BarPlot_score')
+    pathlib.Path(output_im_path).mkdir(parents=True, exist_ok=True)
+    for protocol in protocol_tab:
+        print('=',protocol,'=')
+        if protocol=='all_together':
+            protocol_str = 'All images together'
+        if protocol=='Individual_image':
+            protocol_str = 'Each image as a study'
+            
+        for case in diff_case:
+            print("=",case,"=")
+            if case=='global':
+                case_str = 'Global'
+            elif case=='local':
+                case_str = 'Local'
+            else:
+                case_str = 'Both'
+            
+            ext_name = protocol + '_'+case+'_'+estimation_method+'_'+std_estimation
+            
+            data_path_save =os.path.join(ForPerceptualTestPsyToolkitSurvey,'WBS_'+case+'_'+protocol+'_'+estimation_method+'_'+std_estimation+'.pkl')
+            if not(os.path.exists(data_path_save)):
+                print(data_path_save,'does not exist')
+                break
+            with open(data_path_save, 'rb') as pkl:
+                dict_couple_W_E = pickle.load(pkl)
+            
+            if protocol=='Individual_image':
+                # Per images
+#                for j,file in enumerate(files_short):
+#                    filewithoutext = '.'.join(file.split('.')[:-1])    
+#                    print(j,filewithoutext)
+#                    [W_list,stdW_list,params,std_matrix] = dict_couple_W_E[filewithoutext]
+#                    create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset=filewithoutext,title='')
+#                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset=filewithoutext,title='')
+#                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset=filewithoutext,zalpha=1.96,title='')
+
+                print('All, Reg, Irreg')
+                [W_list,E_list,stdW_list] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='All',title='')
+#                print('stdW_list',stdW_list)
+#                print('E_list',E_list)
+#                print('W_list',W_list)
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='All',title='')
+                [W_list,E_list,stdW_list] = dict_couple_W_E['Reg'] # All images together
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Reg',title='')
+                [W_list,E_list,stdW_list] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Irreg',title='')
+
+
+            if protocol=='all_together':
+                print('All, Reg, Irreg')
+                [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='All',title='')
+                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',title='')
+                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',zalpha=1.96,title='')
+                [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['Reg'] # All images together
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='')
+                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',title='')
+                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',zalpha=1.96,title='')
+                [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='')
+                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',title='')
+                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',zalpha=1.96,title='')
             
     
+def plot_evaluation_old():
+    """
+    This function will plot the differents images 
+    """        
+    print("== Start Plotting the bar plot ==")
+    matplotlib.use('Agg') # To avoid to have the figure that's pop up during execution
+    
+    diff_case=['global','local','both']
+    protocol_tab = ['all_together','Individual_image']
+    
+
+    output_im_path = os.path.join(ForPerceptualTestPsyToolkitSurvey,'BarPlot_score')
+    pathlib.Path(output_im_path).mkdir(parents=True, exist_ok=True)
+    for protocol in protocol_tab:
+        print('=',protocol,'=')
+        if protocol=='all_together':
+            protocol_str = 'All images together'
+        if protocol=='Individual_image':
+            protocol_str = 'Each image as a study'
+            
+        for case in diff_case:
+            print("=",case,"=")
+            if case=='global':
+                case_str = 'Global'
+            elif case=='local':
+                case_str = 'Local'
+            else:
+                case_str = 'Both'
+            
+            ext_name = protocol + '_'+case
+            
+            data_path_save = os.path.join(ForPerceptualTestPsyToolkitSurvey,'WinningProb_'+case+'_'+protocol+'.pkl')
+            with open(data_path_save, 'rb') as pkl:
+                dict_couple_W_E = pickle.load(pkl)
+            
+            if protocol=='Individual_image':
+                # Per images
+                for j,file in enumerate(files_short):
+                    filewithoutext = '.'.join(file.split('.')[:-1])    
+                    print(j,filewithoutext)
+                    [W_list,E_list] = dict_couple_W_E[filewithoutext]
+                    create_save_bar_plot(W_list,None,path=output_im_path,ext_name=ext_name,subset=filewithoutext,\
+                                         title=filewithoutext+' '+case_str+' '+protocol_str)
+                print('All, Reg, Irreg')
+                [W_list,E_list] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='All',title='All images'+' '+case_str+' '+protocol_str)
+                [W_list,E_list] = dict_couple_W_E['Reg'] # All images together
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='Regular images'+' '+case_str+' '+protocol_str)
+                [W_list,E_list] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='Irregular images'+' '+case_str+' '+protocol_str)
+
+            if protocol=='all_together':
+                print('All, Reg, Irreg')
+                [W_list,E_lis] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,None,path=output_im_path,ext_name=ext_name,subset='All',title='All images'+' '+case_str+' '+protocol_str)
+                [W_list,E_lis] = dict_couple_W_E['Reg'] # All images together
+                create_save_bar_plot(W_list,None,path=output_im_path,ext_name=ext_name,subset='Reg',title='Regular images'+' '+case_str+' '+protocol_str)
+                [W_list,E_lis] = dict_couple_W_E['All'] # All images together
+                create_save_bar_plot(W_list,None,path=output_im_path,ext_name=ext_name,subset='Irreg',title='Irregular images'+' '+case_str+' '+protocol_str)
+            
     
 
 
 if __name__ == '__main__':
     #Resize_and_crop_center()
-    create_survey_for_PsyToolkit_4ques()
+    #create_survey_for_PsyToolkit_4ques()
+    #regrouper_resultats_psytoolkit()
+    #run_statistical_study(estimation_method='mm',protocol='Individual_image')
+    run_statistical_study(estimation_method='opt_pairwise',
+                          protocol='Individual_image',
+                          std_estimation='hessian')
+    run_statistical_study(estimation_method='opt_pairwise',
+                          protocol='all_together',
+                          std_estimation='hessian')
+    
+    plot_evaluation(estimation_method='opt_pairwise')
+    
+#    run_statistical_study(estimation_method='mm',protocol='all_together')
+#    plot_evaluation()

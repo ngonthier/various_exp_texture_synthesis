@@ -71,6 +71,18 @@ listofmethod = ['','_SAME_Gatys','_SAME_Gatys_MSSInit','_SAME_Gatys_spectrumTFab
 listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit',\
     'Autocorr','Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
 
+
+listRegularImages = ['BrickRound0122_1_seamless_S',
+                     'CRW_5751_1024',
+                     'Pierzga_2006_1024',
+                     'fabric_white_blue_1024',
+                     'lego_1024',
+                     'TexturesCom_BrickSmallBrown0473_1_M_1024',
+                     'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024',
+                     'TexturesCom_TilesOrnate0085_1_seamless_S',
+                     'TexturesCom_TilesOrnate0158_1_seamless_S',
+                     'metal_ground_1024']
+
 #trucEnPlus = ['_SAME_OnInput_autocorr','_SAME_OnInput_autocorr_MSSInit','_SAME_OnInput_SpectrumOnFeatures']
 
 #listofmethod += trucEnPlus
