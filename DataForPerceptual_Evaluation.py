@@ -892,7 +892,7 @@ def run_statistical_study(estimation_method='mm',
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-                stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+                stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
                 #print(j,stdW_list)
                 dict_couple_W_E[filewithoutext] = [W_list,stdW_list,params,std_matrix]
                 
@@ -924,7 +924,7 @@ def run_statistical_study(estimation_method='mm',
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-            stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+            stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
             dict_couple_W_E['All'] = [W_list,stdW_list,params,std_matrix]
             
             # We will work on the two subsets : regular and non-regular image 
@@ -935,7 +935,7 @@ def run_statistical_study(estimation_method='mm',
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-            stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+            stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
             dict_couple_W_E['Reg'] = [W_list,stdW_list,params,std_matrix]
             
             print("Irregular")
@@ -945,7 +945,7 @@ def run_statistical_study(estimation_method='mm',
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-            stdW_list = get_std_Wi(std_Bi_minus_Bj=std_matrix)
+            stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
             dict_couple_W_E['Irreg'] = [W_list,stdW_list,params,std_matrix]
 
         # Save the data :
@@ -1071,6 +1071,7 @@ def create_save_bar_plot(heights,error,path='',ext_name='',subset='',title=''):
     ax.set_ylabel('Winning Prob')
     ax.set_xticks(x_pos)
     ax.set_xticklabels(listNameMethod_onlySynth, rotation=45,fontsize=8)
+    plt.ylim((0,1))
     ax.set_title(title)
     ax.yaxis.grid(True)
     
@@ -1121,11 +1122,13 @@ def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',titl
     # Row Labels...
     for i, label_raw in enumerate(listNameMethod_onlySynth):
         label = label_raw.replace('_',' ')
+        label = label.replace('+','+\n')
         tb.add_cell(i, -1, width, height, text=label, loc='right', 
                     edgecolor='none', facecolor='none')
     # Column Labels...
     for j, label_raw in enumerate(listNameMethod_onlySynth):
         label = label_raw.replace('_',' ')
+        label = label.replace('+','+\n')
         tb.add_cell(-1, j, width, height/2, text=label, loc='center', 
                            edgecolor='none', facecolor='none')
     ax.add_table(tb)
@@ -1176,8 +1179,8 @@ def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',titl
     plt.savefig(path_fig,bbox_inches='tight',dpi=300)
     plt.close()
    
-def get_std_Wi(std_Bi_minus_Bj):
-    std_pij_matrix = get_std_pij(std_Bi_minus_Bj)
+def get_std_Wi(params,std_Bi_minus_Bj):
+    std_pij_matrix = get_std_pij(params,std_Bi_minus_Bj)
     n_method = len(listNameMethod_onlySynth)
     list_std_Wi = []
     for i,_ in enumerate(listofmethod_onlySynth):
@@ -1189,7 +1192,26 @@ def get_std_Wi(std_Bi_minus_Bj):
                 std_pij_tab += [std_pij]
 #        std_pij_tab = np.concatenate(std_pij_tab)
         assert(len(std_pij_tab)==n_method-1)
-        sum_std_pij = np.sum(std_pij_tab)
+        sum_std_pij = np.sqrt(np.sum(np.array(std_pij_tab)**2))
+        #print(sum_pij)
+        std_Wi = sum_std_pij / (n_method-1)
+        list_std_Wi += [std_Wi]
+    return(list_std_Wi)
+    
+def get_std_Wi_old(std_Bi_minus_Bj):
+    std_pij_matrix = get_std_pij_old(std_Bi_minus_Bj)
+    n_method = len(listNameMethod_onlySynth)
+    list_std_Wi = []
+    for i,_ in enumerate(listofmethod_onlySynth):
+        std_pij_tab = []
+        for j,_ in enumerate(listofmethod_onlySynth):
+            if not(i==j):
+                std_pij = std_pij_matrix[i,j]
+                #print(i,j,pij, pji)
+                std_pij_tab += [std_pij]
+#        std_pij_tab = np.concatenate(std_pij_tab)
+        assert(len(std_pij_tab)==n_method-1)
+        sum_std_pij = np.sqrt(np.sum(std_pij_tab**2))
         #print(sum_pij)
         std_Wi = sum_std_pij / (n_method-1)
         list_std_Wi += [std_Wi]
@@ -1199,9 +1221,19 @@ def _safe_exp(x):
     x = np.clip(x,-np.inf,500)
     return np.exp(x)
     
-def get_std_pij(std_Bi_minus_Bj):
-    std_pij = _safe_exp(std_Bi_minus_Bj)/(1+_safe_exp(std_Bi_minus_Bj))
-    return(std_pij)
+def get_std_pij(params,std_Bi_minus_Bj):
+    bij_matrix = np.zeros((len(params),len(params)))
+    for i in range(len(params)):
+        for j in range(len(params)):
+            b_ij = params[i]-params[j]
+            bij_matrix[i,j] = b_ij
+    
+    std_pij_matrix = (_safe_exp(bij_matrix)/((1+_safe_exp(bij_matrix))**2))*std_Bi_minus_Bj
+    return(std_pij_matrix)
+    
+def get_std_pij_old(std_Bi_minus_Bj):
+    std_pij_matrix = _safe_exp(std_Bi_minus_Bj)/(1+_safe_exp(std_Bi_minus_Bj))
+    return(std_pij_matrix)
     
 def plot_evaluation(estimation_method='mm',std_estimation='hessian'):
     """
@@ -1213,7 +1245,7 @@ def plot_evaluation(estimation_method='mm',std_estimation='hessian'):
     diff_case=['global','local','both']
     #diff_case=['local','both']
     protocol_tab = ['all_together','Individual_image']  
-    protocol_tab = ['Individual_image']  
+    #protocol_tab = ['Individual_image']  
 
     output_im_path = os.path.join(ForPerceptualTestPsyToolkitSurvey,'BarPlot_score')
     pathlib.Path(output_im_path).mkdir(parents=True, exist_ok=True)
@@ -1351,12 +1383,12 @@ if __name__ == '__main__':
     #create_survey_for_PsyToolkit_4ques()
     #regrouper_resultats_psytoolkit()
     #run_statistical_study(estimation_method='mm',protocol='Individual_image')
-    run_statistical_study(estimation_method='opt_pairwise',
-                          protocol='Individual_image',
-                          std_estimation='hessian')
-    run_statistical_study(estimation_method='opt_pairwise',
-                          protocol='all_together',
-                          std_estimation='hessian')
+#    run_statistical_study(estimation_method='opt_pairwise',
+#                          protocol='Individual_image',
+#                          std_estimation='hessian')
+#    run_statistical_study(estimation_method='opt_pairwise',
+#                          protocol='all_together',
+#                          std_estimation='hessian')
     
     plot_evaluation(estimation_method='opt_pairwise')
     
