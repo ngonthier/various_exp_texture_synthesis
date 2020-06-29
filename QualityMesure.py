@@ -794,7 +794,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     nameMethodextEnd = '_Gatys_spectrumTFabs_eps10m16'
     for beta in beta_list:
         list_methodsGatysPlusSpectrum += [nameMethod + str(beta)]
-        list_methodsGatysPlusSpectrum_ext += [nameMethodextBegin +'_'+ str(beta)+nameMethodextEnd]
+        list_methodsGatysPlusSpectrum_ext += [nameMethodextBegin +'_beta'+ str(beta)+nameMethodextEnd]
     list_methodsMSINIt = ['Gatys + MSInit']
     list_methodsMSINIt_ext = ['_SAME_Gatys_MSSInit']
     nameMethod = 'Gatys + Spectrum TF + MSInit'
@@ -802,9 +802,10 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     nameMethodextEnd = '_Gatys_spectrumTFabs_eps10m16_MSSInit'
     for beta in beta_list:
         list_methodsMSINIt += [nameMethod + str(beta)]
-        list_methodsMSINIt_ext += [nameMethodextBegin +'_'+ str(beta)+nameMethodextEnd]
+        list_methodsMSINIt_ext += [nameMethodextBegin +'_beta'+ str(beta)+nameMethodextEnd]
     
-    beta_list_plusZero = [10**(-9)]+beta_list
+    minimum_beta =10**(-9)
+    beta_list_plusZero = [minimum_beta]+beta_list
     labellist = ['$-\infty$']
     for beta in beta_list:
         labellist += ['{}'.format(int(np.log10(beta)))]
@@ -827,7 +828,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
             if not(k in listStructuredImages):
                 continue
             
-        plt.figure() 
+        #plt.figure() 
         dico = dict_scores[k]
         print(dico)
         #print(dico.keys())
@@ -841,7 +842,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
             #print(method,method in dico.keys())
             if method in dico.keys():
                 list_scores  += [dico[method]]
-        argmin = np.amin(np.array(list_scores))
+        argmin = np.argmin(np.array(list_scores))
         # Sans MSInit
         list_scores = []
         for method,beta in zip(list_methodsGatysPlusSpectrum,beta_list_plusZero):
@@ -852,14 +853,17 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
                 #dicoOfMethods[method] += [score]
                 list_scores  += [score]
                 list_beta_local += [beta]
-                if beta==10**(-9):
+                if beta==minimum_beta:
                     directoryloacl = ResultsDir
                 else:
                     directoryloacl = directory_betaTexture
                 name_image = os.path.join(directoryloacl,k,k+list_methodsGatysPlusSpectrum_ext[i]+'.png')
                 img = mpimg.imread(name_image)
                 axs_flatten[i].imshow(img)
-                title = r'$log \beta : {0:2f} log KL : {1:2f}$'.format(np.log(beta),np.log(dico[method]))
+                if beta==minimum_beta:
+                    title = r'$log10 \  \beta \ : \ -\infty \  log10 \  KL \ :\ {0:.2f}$'.format(np.log10(dico[method]))
+                else:
+                    title = r'$log10  \ \beta \ : \ {0:d} \  log10 \  KL \ : \ {1:.2f}$'.format(int(np.log10(beta)),np.log10(dico[method]))
                 title_obj = axs_flatten[i].set_title(title)
                 if i==argmin:
                     plt.setp(title_obj, color='r')         #set the color of title to red
@@ -867,6 +871,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
         #plt.show()
         print(list_scores)
         if len(list_scores)>0:
+            plt.figure()
             plt.plot(np.log10(np.array(list_beta_local)),np.log(np.array(list_scores)),'bo',label='Gatys + Spectrum TF')
             
         fig, axs = plt.subplots(3,3)
@@ -878,11 +883,10 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
             #print(method,method in dico.keys())
             if method in dico.keys():
                 list_scores  += [dico[method]]
-        argmin = np.amin(np.array(list_scores))
-        # Sans MSInit
+        argmin = np.argmin(np.array(list_scores))
+        print('argmin',argmin)
         list_scores = []
         i = 0
-        argmin = np.amin(np.array(list_scores))
         for method,beta in zip(list_methodsMSINIt,beta_list_plusZero):
             #print(method)
             if method in dico.keys():
@@ -890,20 +894,24 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
                 #dicoOfMethods[method] += [dico[method]]
                 list_scores  += [dico[method]]
                 list_beta_local += [beta]
-                if beta==10**(-9):
+                if beta==minimum_beta:
                     directoryloacl = ResultsDir
                 else:
                     directoryloacl = directory_betaTexture
                 name_image = os.path.join(directoryloacl,k,k+list_methodsMSINIt_ext[i]+'.png')
                 img = mpimg.imread(name_image)
                 axs_flatten[i].imshow(img)
-                title = r'$log \beta : {0:2f} log KL : {1:2f}$'.format(np.log(beta),np.log(dico[method]))
+                if beta==minimum_beta:
+                    title = r'$log10 \  \beta \ : \ -\infty \  log10 \  KL \ :\ {0:.2f}$'.format(np.log10(dico[method]))
+                else:
+                    title = r'$log10  \ \beta \ : \ {0:d} \  log10 \  KL \ : \ {1:.2f}$'.format(int(np.log10(beta)),np.log10(dico[method]))
                 title_obj = axs_flatten[i].set_title(title)
                 if i==argmin:
                     plt.setp(title_obj, color='r')         #set the color of title to red
                 i += 1 
-        print(list_scores)
+
         if len(list_scores)>0:
+            plt.figure()
             plt.plot(np.log10(np.array(list_beta_local)),np.log(np.array(list_scores)),'ro',label='Gatys + Spectrum TF + MSInit')
         plt.show()  
                 
