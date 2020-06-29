@@ -549,8 +549,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
         print('The wavelet KL score are store in ',data_path_save)
         with open(data_path_save, 'rb') as pkl:
              data = pickle.load(pkl)
-        print(len(data))
-        print(data)
+        # print(len(data))
+        # print(data)
         if len(data)==2:
             dict_scores,dict_all_scores = data
         else:
@@ -626,13 +626,14 @@ def readDataAndPlot(OnlyStructuredImages=False,
             if not(k in listRegularImages):
                 continue
         dico = dict_scores[k]
-        #print(dico)
+        # print(k,dico)
+        # print(dico.keys())
         listnameIm += [k]
         list_scores = []
         for method in list_methods:
-            #print(method)
+            # print(method)
             if method in dico.keys():
-                #print(dico.keys())
+                
                 dicoOfMethods[method] += [dico[method]]
                 list_scores  += [dico[method]]
         indice = np.argsort(list_scores)
@@ -1028,7 +1029,7 @@ def score_decalage(matrix):
     where_1_hor = np.where(abs_diff_hor<=1)
     sum_where_1_vert = np.sum(where_1_vert[2])/ (abs_diff_vert.shape[0]*abs_diff_vert.shape[1])
     sum_where_1_hor = np.sum(where_1_hor[2])/ (abs_diff_hor.shape[0]*abs_diff_hor.shape[1])
-    sum_v_h = (sum_where_1_vert + sum_where_1_hor)/2
+    sum_v_h = 1 - (sum_where_1_vert + sum_where_1_hor)/2
     return(sum_v_h)
 
 def compute_deplacements_score():
@@ -1053,11 +1054,12 @@ def compute_deplacements_score():
                 continue
             else:
                 data_pickle_path = os.path.join(dir_deplacement_carte,filewithoutext,filewithoutext + method+ext_displ)
+            data_pickle_path = data_pickle_path.replace('TextureNets','Ulyanov') 
+               
             #print(method,nameMethod)
             if os.path.isfile(data_pickle_path):
                 with open(data_pickle_path, 'rb') as pkl:
                     data = pickle.load(pkl) # It is a list of the two matrices coordinate X and Y
-                    return(data)
             else:
                 print(data_pickle_path,' does not exist. Wrong path ?')
                 raise(ValueError(data_pickle_path))
@@ -1066,7 +1068,10 @@ def compute_deplacements_score():
             # The simplest way to compute a score is to compute the 
             matrix = np.stack(data,axis=-1) # h,w,pixel coord
             sum_v_h =  score_decalage(matrix)
-            dict_scores[method] = sum_v_h
+            
+            print(nameMethod,sum_v_h)
+            
+            dict_scores[nameMethod] = sum_v_h
             
         dictTotal[filewithoutext] = dict_scores
             
@@ -1084,10 +1089,11 @@ if __name__ == '__main__':
     #readData()
     
     compute_deplacements_score()
-    
+    tab = ['KL','DisplacementScore']
+    tab = ['DisplacementScore']
     for OnlyStructuredImages in [True,False]:
         for OnlySubset_of_methods in [True,False]:
-            for ReadWhat in ['KL','DisplacementScore']:
+            for ReadWhat in tab:
                 readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
                                 OnlySubset_of_methods=OnlySubset_of_methods,
                                 ReadWhat=ReadWhat)
