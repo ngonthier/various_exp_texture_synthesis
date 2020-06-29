@@ -1234,6 +1234,7 @@ def get_std_pij(params,std_Bi_minus_Bj):
 def get_std_pij_old(std_Bi_minus_Bj):
     std_pij_matrix = _safe_exp(std_Bi_minus_Bj)/(1+_safe_exp(std_Bi_minus_Bj))
     return(std_pij_matrix)
+            
     
 def plot_evaluation(estimation_method='mm',std_estimation='hessian'):
     """

@@ -7,12 +7,9 @@ Created on Fri Jun 26 16:06:36 2020
 
 import os
 import os.path
-
+import pandas as pd
 import pickle
 
-directory = "./im/References/"
-ResultsDir = "./im/"
-#if os.environ.get('OS','') == 'Windows_NT':
 path_base  = os.path.join('C:\\','Users','gonthier')
 ownCloudname = 'ownCloud'
 
@@ -37,9 +34,27 @@ listNameMethod_onlySynth = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSIn
     'Snelgorove','Deep Corr']
 
 extension = ".png"
-files = [file for file in os.listdir(directory) if file.lower().endswith(extension)]
-files_short = files
-#files_short = [files[0],files[-1]]
+files_short = ['BrickRound0122_1_seamless_S.png',
+                 'BubbleMarbel.png',
+                 'bubble_1024.png',
+                 'CRW_3241_1024.png',
+                 'CRW_3444_1024.png',
+                 'CRW_5751_1024.png',
+                 'fabric_white_blue_1024.png',
+                 'glass_1024.png',
+                 'lego_1024.png',
+                 'marbre_1024.png',
+                 'metal_ground_1024.png',
+                 'Pierzga_2006_1024.png',
+                 'rouille_1024.png',
+                 'Scrapyard0093_1_seamless_S.png',
+                 'TexturesCom_BrickSmallBrown0473_1_M_1024.png',
+                 'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024.png',
+                 'TexturesCom_TilesOrnate0085_1_seamless_S.png',
+                 'TexturesCom_TilesOrnate0158_1_seamless_S.png',
+                 'tricot_1024.png',
+                 'vegetable_1024.png']
+
 
 # List of regular images decided with Yann on 12/06/20 : 11 elements
 listRegularImages = ['BrickRound0122_1_seamless_S',
@@ -52,6 +67,26 @@ listRegularImages = ['BrickRound0122_1_seamless_S',
                      'TexturesCom_TilesOrnate0085_1_seamless_S',
                      'TexturesCom_TilesOrnate0158_1_seamless_S',
                      'metal_ground_1024']
+
+def read_duels_data(case='global'):
+    """
+    @param case : the scale (global local or both)   
+    @return : pandas dataframe with the following columns :
+        'image' : name of the image 
+        'methodA' : name of the first method (A)
+        'methodB' : name of the secon method (B)
+        'winA' : number of votes for the method A
+        'winB' : number of votes for the method B
+        'NumberVote' : total number of votes
+        
+    """
+
+    path_df = os.path.join(ForPerceptualTestPsyToolkitSurvey,\
+                           'Number_of_wins_'+case+'.csv')
+    number_win_all_images =  pd.read_csv(path_df,sep=',')
+    
+    return(number_win_all_images)
+    
 
 def read_data_standalone(protocol='all_together',
                          case='global',
@@ -135,3 +170,8 @@ if __name__ == '__main__':
     print('Liste parameters beta i for the first regular images in the case local',list_Beta_i)
     print('seij for the first regular images in the case local',seij_matrix)
     
+    df_global_votes = read_duels_data(case='global')
+    print(df_global_votes.head())
+    
+    # Si l'on souhaite regrouper ensemble les votes de la méthode A et de la méthode B pour toutes les images 
+    df_all = df_global_votes.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
