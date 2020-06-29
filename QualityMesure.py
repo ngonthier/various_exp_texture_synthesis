@@ -32,6 +32,7 @@ import pickle
 import Orange
 import csv
 import matplotlib.image as mpimg
+import matplotlib 
     
 from scipy.stats import gennorm
 from scipy.special import gamma
@@ -48,6 +49,7 @@ if os.path.exists(path_base):
     ResultsDir = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Images Textures Résultats')
     directory = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Images Textures References Subset')
     directory_betaTexture = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','1024_Beta')
+    dir_for_quality_measure = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','QualityMeasure')
 else:
     print(path_base,'not found')
     raise(NotImplementedError)
@@ -82,6 +84,13 @@ listRegularImages = ['BrickRound0122_1_seamless_S',
                      'TexturesCom_TilesOrnate0085_1_seamless_S',
                      'TexturesCom_TilesOrnate0158_1_seamless_S',
                      'metal_ground_1024']
+
+# La difference entre la liste structured et la liste Regular est que la premiere contient tricot et la seconde CRW_5751_1024
+
+listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
+    'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
+
+
 
 #trucEnPlus = ['_SAME_OnInput_autocorr','_SAME_OnInput_autocorr_MSSInit','_SAME_OnInput_SpectrumOnFeatures']
 
@@ -501,16 +510,20 @@ def readData():
     dict_all_scores,dict_scores = data
     print(dict_scores)
     
-def readDataAndPlot(OnlyStructuredImages=False):
+def readDataAndPlot(OnlyStructuredImages=False,
+                    OnlySubset_of_methods=False,
+                    save_or_show=True):
     """
     This function will read the images synthesis and plot the quality 
     measure based on Wavelet coefficients
     For Texture paper
+    @param : if save_or_show = True we save the figure, otherwise we only show it
     """
     
-    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
-        'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
-    
+#    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
+#        'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
+   
+    pathlib.Path(dir_for_quality_measure).mkdir(parents=True, exist_ok=True)
     plt.ion()
     With_formula = True # If False we will use the histogram
     number_of_scale = 3
@@ -553,8 +566,13 @@ def readDataAndPlot(OnlyStructuredImages=False):
     list_markers = ['o','s','X','*','v','^','<','>','d','1','2','3','4','8','h','H','p','d','$f$','P']
         
     dicoOfMethods = {}
-    list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
-        'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
+    
+    if OnlySubset_of_methods: 
+        list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
+                                    'Snelgorove','Deep Corr']
+    else:
+        list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
+                        'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
     
     NUM_COLORS = len(list_methods)
     color_number_for_frozen = [0,NUM_COLORS//2,NUM_COLORS-1]
@@ -568,16 +586,24 @@ def readDataAndPlot(OnlyStructuredImages=False):
     print(dict_scores)
     listnameIm = []
     if OnlyStructuredImages:
-        numberImages = len(listStructuredImages)
+        numberImages = len(listRegularImages)
     else:
         numberImages = len(dict_scores.keys())
     number_of_methods = len(list_methods)
     print('len(list_methods)',number_of_methods)
     listOfRank = np.zeros((numberImages,number_of_methods))
     ki = 0
+    if OnlyStructuredImages:
+        ext_name = 'Struct_'
+    else:
+        ext_name = ''
+        
+    if OnlySubset_of_methods:
+        ext_name += 'SubsetOfMethods_'
+    
     for k in dict_scores.keys(): # Loop on images
         if OnlyStructuredImages:
-            if not(k in listStructuredImages):
+            if not(k in listRegularImages):
                 continue
         dico = dict_scores[k]
         #print(dico)
@@ -620,7 +646,15 @@ def readDataAndPlot(OnlyStructuredImages=False):
     # Critical Diagram 
     cd = Orange.evaluation.compute_CD(meanRank, numberImages) #tested on numberImages images
     Orange.evaluation.graph_ranks(meanRank, list_methods, cd=cd, width=8, textspace=1.5)
-    plt.show()
+    if save_or_show:
+        matplotlib.use('Agg')
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+'CD.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+    
     
     
             
@@ -648,6 +682,13 @@ def readDataAndPlot(OnlyStructuredImages=False):
     plt.ylim(bottom=0.)  # adjust the bottom leaving top unchanged
     plt.title(title)
     plt.legend(loc='best')
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+'KL.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
     
     # Log(x)
     plt.figure()    
@@ -666,8 +707,14 @@ def readDataAndPlot(OnlyStructuredImages=False):
     plt.ylabel('log (KL score)')
     plt.title(title)
     plt.legend(loc='best')
-    plt.show() 
-    plt.pause(0.001)
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+'logKL.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show() 
+        plt.pause(0.001)
     
     
     # Mean of KL
@@ -688,7 +735,13 @@ def readDataAndPlot(OnlyStructuredImages=False):
     plt.ylabel('Mean KL score')
     plt.title(title)
     plt.legend(loc='best')
-
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+'MeanStd_per_method.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
     
     # Boxplots
     fig, ax1 = plt.subplots(figsize=(10, 6))
@@ -730,13 +783,16 @@ def readDataAndPlot(OnlyStructuredImages=False):
                  color='w', marker='*', markeredgecolor='k', markersize=8)
     # X labels
     ax1.set_xticklabels(list_methods,
-                    rotation=45, fontsize=8)    
-        
-        # 
-    
-    
-    input('Enter to close.')
-    plt.close()
+                    rotation=45, fontsize=8)  
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+'Boxplots_per_method.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+        input('Enter to close.')
+        plt.close()
     
 def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     """
@@ -748,9 +804,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     
     beta_list = [0.1,1,10,100,1000,10000,10**5,100000000]
     
-    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
-        'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
-    
+
     plt.ion()
     With_formula = True # If False we will use the histogram
     number_of_scale = 3
@@ -827,7 +881,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     print(dict_scores)
     listnameIm = []
     if OnlyStructuredImages:
-        numberImages = len(listStructuredImages)
+        numberImages = len(listRegularImages)
     else:
         numberImages = len(dict_scores.keys())
     number_of_methods = len(list_methods)
@@ -836,7 +890,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     ki = 0
     for k in dict_scores.keys(): # Loop on images
         if OnlyStructuredImages:
-            if not(k in listStructuredImages):
+            if not(k in listRegularImages):
                 continue
             
         plt.figure() 
@@ -937,9 +991,13 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
 if __name__ == '__main__':
     #main()
     #readData()
-    #readDataAndPlot(OnlyStructuredImages=True)
-    #readDataAndPlot(OnlyStructuredImages=False)
+    readDataAndPlot(OnlyStructuredImages=True)
+    readDataAndPlot(OnlyStructuredImages=False)
+    readDataAndPlot(OnlyStructuredImages=False,
+                    OnlySubset_of_methods=True)
+    readDataAndPlot(OnlyStructuredImages=True,
+                    OnlySubset_of_methods=True)
     # import sys
     # sys.exit(main(sys.argv))
     #computeKL_forbeta_images()
-    Plot_KL_forDiffBetaValues()
+    #Plot_KL_forDiffBetaValues()
