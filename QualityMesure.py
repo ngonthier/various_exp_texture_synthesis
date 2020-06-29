@@ -32,6 +32,7 @@ import pickle
 import Orange
 import csv
 import matplotlib.image as mpimg
+import matplotlib 
     
 from scipy.stats import gennorm
 from scipy.special import gamma
@@ -48,6 +49,8 @@ if os.path.exists(path_base):
     ResultsDir = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Images Textures Résultats')
     directory = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Images Textures References Subset')
     directory_betaTexture = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','1024_Beta')
+    dir_for_quality_measure = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','ForTexturePaper','Output','QualityMeasure')
+    dir_deplacement_carte = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Cartes_de_deplacements_SAID','Resultats_textures')
 else:
     print(path_base,'not found')
     raise(NotImplementedError)
@@ -70,6 +73,25 @@ listofmethod = ['','_SAME_Gatys','_SAME_Gatys_MSSInit','_SAME_Gatys_spectrumTFab
     '_SAME_autocorr','_SAME_autocorr_MSSInit','MultiScale_o5_l3_8_psame','_DCor','_EfrosLeung','_EfrosFreeman','_TextureNets']
 listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit',\
     'Autocorr','Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
+
+
+listRegularImages = ['BrickRound0122_1_seamless_S',
+                     'CRW_5751_1024',
+                     'Pierzga_2006_1024',
+                     'fabric_white_blue_1024',
+                     'lego_1024',
+                     'TexturesCom_BrickSmallBrown0473_1_M_1024',
+                     'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024',
+                     'TexturesCom_TilesOrnate0085_1_seamless_S',
+                     'TexturesCom_TilesOrnate0158_1_seamless_S',
+                     'metal_ground_1024']
+
+# La difference entre la liste structured et la liste Regular est que la premiere contient tricot et la seconde CRW_5751_1024
+
+listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
+    'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
+
+
 
 #trucEnPlus = ['_SAME_OnInput_autocorr','_SAME_OnInput_autocorr_MSSInit','_SAME_OnInput_SpectrumOnFeatures']
 
@@ -489,43 +511,66 @@ def readData():
     dict_all_scores,dict_scores = data
     print(dict_scores)
     
-def readDataAndPlot(OnlyStructuredImages=False):
+def readDataAndPlot(OnlyStructuredImages=False,
+                    OnlySubset_of_methods=False,
+                    ReadWhat='KL',
+                    save_or_show=True):
     """
     This function will read the images synthesis and plot the quality 
     measure based on Wavelet coefficients
     For Texture paper
+    @param : OnlyStructuredImages : we will only plot the regular images
+    @param ReadWhat == KL plot the KL method 
+    @param ReadWhat == DisplacementScore plot the DisplacementScore of the methods
+    @param : if save_or_show = True we save the figure, otherwise we only show it
     """
     
-    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
-        'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
+#    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
+#        'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
+   
+    pathlib.Path(dir_for_quality_measure).mkdir(parents=True, exist_ok=True)
+    if not(save_or_show):
+        plt.ion()
     
-    plt.ion()
-    With_formula = True # If False we will use the histogram
-    number_of_scale = 3
-    
-    name = 'Wavelets_KL_'+str(number_of_scale)+'Scale'
-    if With_formula:
-        name += '_ExplicitFormula'
-    else:
-        name +=  '_Hist'
-    #name += 'OnlySum'
-    name += '.pkl'
-    data_path_save = os.path.join('data',name)
-    print('The wavelet KL score are store in ',data_path_save)
-    with open(data_path_save, 'rb') as pkl:
-         data = pickle.load(pkl)
-    print(len(data))
-    print(data)
-    if len(data)==2:
-        dict_scores,dict_all_scores = data
-    else:
+    if ReadWhat=='KL':
+        case_str = 'KL'
+        leg_str = 'KL'
+        With_formula = True # If False we will use the histogram
+        number_of_scale = 3
+        
+        name = 'Wavelets_KL_'+str(number_of_scale)+'Scale'
+        if With_formula:
+            name += '_ExplicitFormula'
+        else:
+            name +=  '_Hist'
+        #name += 'OnlySum'
+        name += '.pkl'
+        data_path_save = os.path.join('data',name)
+        print('The wavelet KL score are store in ',data_path_save)
+        with open(data_path_save, 'rb') as pkl:
+             data = pickle.load(pkl)
+        print(len(data))
+        print(data)
+        if len(data)==2:
+            dict_scores,dict_all_scores = data
+        else:
+            dict_scores = data
+        print(dict_scores)
+        save_name_csv = 'KL_methods.csv'
+    elif ReadWhat=='DisplacementScore':
+        case_str = 'DS'
+        leg_str = 'Displacement'
+        name = 'Displacements_Score'
+        name += '.pkl'
+        data_path_save = os.path.join('data',name)
+        with open(data_path_save, 'rb') as pkl:
+             data = pickle.load(pkl)
         dict_scores = data
-    print(dict_scores)
-
+        save_name_csv = 'DS_methods.csv'
     # Save to csv file 
     firstLine = True
 
-    with open('KL_methods.csv', 'w') as csv_file:
+    with open(save_name_csv, 'w') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
         for texture_name, dico in dict_scores.items():
             if firstLine:
@@ -541,8 +586,13 @@ def readDataAndPlot(OnlyStructuredImages=False):
     list_markers = ['o','s','X','*','v','^','<','>','d','1','2','3','4','8','h','H','p','d','$f$','P']
         
     dicoOfMethods = {}
-    list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
-        'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
+    
+    if OnlySubset_of_methods: 
+        list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
+                                    'Snelgorove','Deep Corr']
+    else:
+        list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
+                        'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
     
     NUM_COLORS = len(list_methods)
     color_number_for_frozen = [0,NUM_COLORS//2,NUM_COLORS-1]
@@ -556,16 +606,24 @@ def readDataAndPlot(OnlyStructuredImages=False):
     print(dict_scores)
     listnameIm = []
     if OnlyStructuredImages:
-        numberImages = len(listStructuredImages)
+        numberImages = len(listRegularImages)
     else:
         numberImages = len(dict_scores.keys())
     number_of_methods = len(list_methods)
     print('len(list_methods)',number_of_methods)
     listOfRank = np.zeros((numberImages,number_of_methods))
     ki = 0
+    if OnlyStructuredImages:
+        ext_name = 'Struct_'
+    else:
+        ext_name = ''
+        
+    if OnlySubset_of_methods:
+        ext_name += 'SubsetOfMethods_'
+    
     for k in dict_scores.keys(): # Loop on images
         if OnlyStructuredImages:
-            if not(k in listStructuredImages):
+            if not(k in listRegularImages):
                 continue
         dico = dict_scores[k]
         #print(dico)
@@ -608,7 +666,15 @@ def readDataAndPlot(OnlyStructuredImages=False):
     # Critical Diagram 
     cd = Orange.evaluation.compute_CD(meanRank, numberImages) #tested on numberImages images
     Orange.evaluation.graph_ranks(meanRank, list_methods, cd=cd, width=8, textspace=1.5)
-    plt.show()
+    if save_or_show:
+        matplotlib.use('Agg')
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_CD.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+    
     
     
             
@@ -629,13 +695,20 @@ def readDataAndPlot(OnlyStructuredImages=False):
         elt_wt1024 = elt_wt1024.replace('TexturesCom_','')
         listnameIm_without1024+= [elt_wt1024]
 
-    title = 'KL div computed with Wavelets coeffs'
+    title = leg_str+' score computed with Wavelets coeffs'
     #plt.xticks(x, listnameIm, rotation='vertical')
     plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
-    plt.ylabel('KL score')
+    plt.ylabel(leg_str+' score')
     plt.ylim(bottom=0.)  # adjust the bottom leaving top unchanged
     plt.title(title)
     plt.legend(loc='best')
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
     
     # Log(x)
     plt.figure()    
@@ -648,14 +721,20 @@ def readDataAndPlot(OnlyStructuredImages=False):
                          marker=list_markers[fig_i_c],linestyle='')
         fig_i_c+=1
 
-    title = 'Log KL div computed with Wavelets coeffs'
+    title = 'Log '+leg_str+'score computed with Wavelets coeffs'
     #plt.xticks(x, listnameIm, rotation='vertical')
     plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
-    plt.ylabel('log (KL score)')
+    plt.ylabel('log ('+leg_str+' score)')
     plt.title(title)
     plt.legend(loc='best')
-    plt.show() 
-    plt.pause(0.001)
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show() 
+        plt.pause(0.001)
     
     
     # Mean of KL
@@ -671,12 +750,18 @@ def readDataAndPlot(OnlyStructuredImages=False):
         plt.errorbar(i, meanKL, yerr=stdKL,label=labelstr,color=scalarMap.to_rgba(i),\
                           marker=list_markers[i],linestyle='', markersize=8,uplims=True, lolims=True)
 
-    title = 'Mean and std of KL score per method.'
+    title = 'Mean and std of '+leg_str+' score per method.'
     plt.xticks(list(range(0,len(list_methods))), list_methods, rotation=45,fontsize=8)
-    plt.ylabel('Mean KL score')
+    plt.ylabel('Mean '+leg_str+' score')
     plt.title(title)
     plt.legend(loc='best')
-
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
     
     # Boxplots
     fig, ax1 = plt.subplots(figsize=(10, 6))
@@ -689,9 +774,9 @@ def readDataAndPlot(OnlyStructuredImages=False):
     plt.setp(bp['fliers'], color='black', marker='+')
     # Hide these grid behind plot objects
     ax1.set_axisbelow(True)
-    ax1.set_title('Comparison of KL distance for different methods')
+    ax1.set_title('Comparison of '+leg_str+' score for different methods')
     ax1.set_xlabel('Method')
-    ax1.set_ylabel('KL')
+    ax1.set_ylabel(leg_str)
     
     medians = np.empty(len(list_methods))
     for i in range(len(list_methods)):
@@ -718,13 +803,16 @@ def readDataAndPlot(OnlyStructuredImages=False):
                  color='w', marker='*', markeredgecolor='k', markersize=8)
     # X labels
     ax1.set_xticklabels(list_methods,
-                    rotation=45, fontsize=8)    
-        
-        # 
-    
-    
-    input('Enter to close.')
-    plt.close()
+                    rotation=45, fontsize=8)  
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_Boxplots_per_method.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+        input('Enter to close.')
+        plt.close()
     
 def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     """
@@ -736,9 +824,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     
     beta_list = [0.1,1,10,100,1000,10000,10**5,100000000]
     
-    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
-        'TexturesCom_FloorsCheckerboard0046_4_seamless_S_1024','TexturesCom_TilesOrnate0085_1_seamless_S','TexturesCom_TilesOrnate0158_1_seamless_S','tricot_1024']
-    
+
     plt.ion()
     With_formula = True # If False we will use the histogram
     number_of_scale = 3
@@ -816,7 +902,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     print(dict_scores)
     listnameIm = []
     if OnlyStructuredImages:
-        numberImages = len(listStructuredImages)
+        numberImages = len(listRegularImages)
     else:
         numberImages = len(dict_scores.keys())
     number_of_methods = len(list_methods)
@@ -825,7 +911,7 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     ki = 0
     for k in dict_scores.keys(): # Loop on images
         if OnlyStructuredImages:
-            if not(k in listStructuredImages):
+            if not(k in listRegularImages):
                 continue
             
         #plt.figure() 
@@ -928,14 +1014,84 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
         
     input('Enter to close.')
     plt.close()
+   
+def score_decalage(matrix):
+    """
+    @input : a matrix of the pixel coordinate
+    """
+    diff_vert = np.diff(matrix,axis=0)
+    diff_hor = np.diff(matrix,axis=1)
+    #  Calcul des différences entre les coordinonnés en verticals et en horizontales
+    abs_diff_vert = np.abs(diff_vert)
+    abs_diff_hor = np.abs(diff_hor)
+    where_1_vert = np.where(abs_diff_vert<=1)
+    where_1_hor = np.where(abs_diff_hor<=1)
+    sum_where_1_vert = np.sum(where_1_vert[2])/ (abs_diff_vert.shape[0]*abs_diff_vert.shape[1])
+    sum_where_1_hor = np.sum(where_1_hor[2])/ (abs_diff_hor.shape[0]*abs_diff_hor.shape[1])
+    sum_v_h = (sum_where_1_vert + sum_where_1_hor)/2
+    return(sum_v_h)
+
+def compute_deplacements_score():
+    """
+    Le but de cette fonction est de calculer un score de deplacement a partir des
+    cartes de deplacements calculees par Said 
+    """
+    ext_displ = '_X_Y_displacements.pickle'
+    dir_deplacement_carte
+    dictTotal = {}
+    for file in files_short:
+        filewithoutext = '.'.join(file.split('.')[:-1])
+        print('Image :',filewithoutext)
+        #filewithoutextreplaced = filewithoutext.replace('_','$\_$')
+        dict_scores = {}
+        
+        # Load the images
+        for i,zipped in enumerate(zip(listofmethod,listNameMethod)):
+            method,nameMethod = zipped
+            
+            if method =='':
+                continue
+            else:
+                data_pickle_path = os.path.join(dir_deplacement_carte,filewithoutext,filewithoutext + method+ext_displ)
+            #print(method,nameMethod)
+            if os.path.isfile(data_pickle_path):
+                with open(data_pickle_path, 'rb') as pkl:
+                    data = pickle.load(pkl) # It is a list of the two matrices coordinate X and Y
+                    return(data)
+            else:
+                print(data_pickle_path,' does not exist. Wrong path ?')
+                raise(ValueError(data_pickle_path))
                 
+            
+            # The simplest way to compute a score is to compute the 
+            matrix = np.stack(data,axis=-1) # h,w,pixel coord
+            sum_v_h =  score_decalage(matrix)
+            dict_scores[method] = sum_v_h
+            
+        dictTotal[filewithoutext] = dict_scores
+            
+        
+    name = 'Displacements_Score'
+    name += '.pkl'
+    data_path_save = os.path.join('data',name)
+    with open(data_path_save, 'wb') as pkl:
+        pickle.dump(dictTotal,pkl)
+
+             
 
 if __name__ == '__main__':
     #main()
     #readData()
-    #readDataAndPlot(OnlyStructuredImages=True)
-    #readDataAndPlot(OnlyStructuredImages=False)
+    
+    compute_deplacements_score()
+    
+    for OnlyStructuredImages in [True,False]:
+        for OnlySubset_of_methods in [True,False]:
+            for ReadWhat in ['KL','DisplacementScore']:
+                readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+                                OnlySubset_of_methods=OnlySubset_of_methods,
+                                ReadWhat=ReadWhat)
     # import sys
     # sys.exit(main(sys.argv))
     #computeKL_forbeta_images()
-    Plot_KL_forDiffBetaValues()
+    #Plot_KL_forDiffBetaValues()
