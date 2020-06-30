@@ -590,8 +590,12 @@ def readDataAndPlot(OnlyStructuredImages=False,
     if OnlySubset_of_methods: 
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
                                     'Snelgorove','Deep Corr']
+        list_methods_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
+                                    'Snelgorove','Deep Corr']
     else:
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
+                        'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
+        list_methods_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit', 'Autocorr', \
                         'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
     
     NUM_COLORS = len(list_methods)
@@ -666,7 +670,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
     
     # Critical Diagram 
     cd = Orange.evaluation.compute_CD(meanRank, numberImages) #tested on numberImages images
-    Orange.evaluation.graph_ranks(meanRank, list_methods, cd=cd, width=8, textspace=1.5)
+    Orange.evaluation.graph_ranks(meanRank, list_methods_withoutTF, cd=cd, width=8, textspace=1.5)
     if save_or_show:
         matplotlib.use('Agg')
         plt.tight_layout()
@@ -677,14 +681,13 @@ def readDataAndPlot(OnlyStructuredImages=False,
         plt.show()
     
     
-    
-            
+    # Value plot
+           
     plt.figure()    
     fig_i_c = 0
     x = list(range(0,len(listnameIm)))
-    for method in list_methods: 
-        labelstr = method
-        # print(dicoOfMethods[method])
+    for method,labelstr in zip(list_methods,list_methods_withoutTF): 
+        #print(dicoOfMethods[method])
         plt.plot(x,dicoOfMethods[method],label=labelstr,color=scalarMap.to_rgba(fig_i_c),\
                          marker=list_markers[fig_i_c],linestyle='')
         fig_i_c+=1
@@ -715,8 +718,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.figure()    
     fig_i_c = 0
     x = list(range(0,len(listnameIm)))
-    for method in list_methods: 
-        labelstr = method
+    for method,labelstr in zip(list_methods,list_methods_withoutTF): 
+        #labelstr = method
         # print(dicoOfMethods[method])
         plt.plot(x,np.log(np.array(dicoOfMethods[method])),label=labelstr,color=scalarMap.to_rgba(fig_i_c),\
                          marker=list_markers[fig_i_c],linestyle='')
@@ -742,7 +745,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.figure()    
     list_KLs = []
     for i,method in enumerate(list_methods): 
-        labelstr = method
+        labelstr = list_methods_withoutTF[i]
         # print(dicoOfMethods[method])
         KLs = np.array(dicoOfMethods[method])
         list_KLs += [KLs]
@@ -766,7 +769,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
     
     # Boxplots
     fig, ax1 = plt.subplots(figsize=(10, 6))
-    fig.canvas.set_window_title('Boxplots of the KL distances.')
+    fig.canvas.set_window_title('Boxplots of the '+leg_str+' distances.')
     #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
 #
     bp = ax1.boxplot(list_KLs, notch=0, sym='+', vert=1, whis=1.5)
@@ -803,11 +806,65 @@ def readDataAndPlot(OnlyStructuredImages=False,
         ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
                  color='w', marker='*', markeredgecolor='k', markersize=8)
     # X labels
-    ax1.set_xticklabels(list_methods,
+    ax1.set_xticklabels(list_methods_withoutTF,
                     rotation=45, fontsize=8)  
     if save_or_show:
         plt.tight_layout()
         path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_Boxplots_per_method.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+        input('Enter to close.')
+        plt.close()
+        
+    # Boxplots of log values
+    list_KLs_log = []
+    for elt in list_KLs:
+        list_KLs_log += [np.log(elt)]
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    fig.canvas.set_window_title('Boxplots of the log'+leg_str+' distances.')
+    #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
+#
+    bp = ax1.boxplot(list_KLs_log, notch=0, sym='+', vert=1, whis=1.5)
+    plt.setp(bp['boxes'], color='black')
+    plt.setp(bp['whiskers'], color='black')
+    plt.setp(bp['fliers'], color='black', marker='+')
+    # Hide these grid behind plot objects
+    ax1.set_axisbelow(True)
+    ax1.set_title('Comparison of log'+leg_str+' score for different methods')
+    ax1.set_xlabel('Method')
+    ax1.set_ylabel(leg_str)
+    
+    medians = np.empty(len(list_methods))
+    for i in range(len(list_methods)):
+        box = bp['boxes'][i]
+        boxX = []
+        boxY = []
+        for j in range(5):
+            boxX.append(box.get_xdata()[j])
+            boxY.append(box.get_ydata()[j])
+        box_coords = np.column_stack([boxX, boxY])
+        # Color of the box
+        ax1.add_patch(Polygon(box_coords, facecolor=scalarMap.to_rgba(i)))
+        # Now draw the median lines back over what we just filled in
+        med = bp['medians'][i]
+        medianX = []
+        medianY = []
+        for j in range(2):
+            medianX.append(med.get_xdata()[j])
+            medianY.append(med.get_ydata()[j])
+            ax1.plot(medianX, medianY, 'k')
+        # Finally, overplot the sample averages, with horizontal alignment
+        # in the center of each box
+        ax1.plot(np.average(med.get_xdata()), np.average(list_KLs_log[i]),
+                 color='w', marker='*', markeredgecolor='k', markersize=8)
+    # X labels
+    ax1.set_xticklabels(list_methods_withoutTF,
+                    rotation=45, fontsize=8)  
+    if save_or_show:
+        plt.tight_layout()
+        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_logBoxplots_per_method.png')
         plt.savefig(path_fig,bbox_inches='tight')
         plt.close()
     else:
@@ -1088,9 +1145,8 @@ if __name__ == '__main__':
     #main()
     #readData()
     
-    compute_deplacements_score()
+    #compute_deplacements_score()
     tab = ['KL','DisplacementScore']
-    tab = ['DisplacementScore']
     for OnlyStructuredImages in [True,False]:
         for OnlySubset_of_methods in [True,False]:
             for ReadWhat in tab:
