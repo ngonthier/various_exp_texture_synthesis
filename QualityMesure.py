@@ -33,7 +33,8 @@ import Orange
 import csv
 import matplotlib.image as mpimg
 import matplotlib 
-    
+from shutil import copyfile    
+
 from scipy.stats import gennorm
 from scipy.special import gamma
 
@@ -1139,7 +1140,40 @@ def compute_deplacements_score():
     with open(data_path_save, 'wb') as pkl:
         pickle.dump(dictTotal,pkl)
 
-             
+def copy_displacementMaps():
+    """
+    This function only serve to copy the displacement maps from 
+        dir_deplacement_carte = os.path.join(path_base,ownCloudname,'These Gonthier Nicolas Partage','Cartes_de_deplacements_SAID','Resultats_textures')
+        to the latex im folder 
+    """             
+    output_dir = os.path.join('C:\\','Users','gonthier','Travail','TexturePaper','im','DisplacementMaps')
+    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    ext_displ = '_colored_displacements.png'
+
+    for file in files_short:
+        filewithoutext = '.'.join(file.split('.')[:-1])
+        print('Image :',filewithoutext)
+       
+        # Load the images
+        for i,zipped in enumerate(zip(listofmethod,listNameMethod)):
+            method,nameMethod = zipped
+            
+            if method =='':
+                continue
+            else:
+                im_name =filewithoutext + method+ext_displ
+                name_im = os.path.join(dir_deplacement_carte,filewithoutext,im_name)
+            name_src = name_im.replace('TextureNets','Ulyanov') 
+            name_dst = os.path.join(output_dir,im_name.replace('TextureNets','Ulyanov'))
+            if os.path.isfile(name_src):
+                copyfile(name_src,name_dst)
+                                
+                                
+                                
+                                
+                                
+                                
 
 if __name__ == '__main__':
     #main()

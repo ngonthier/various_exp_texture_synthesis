@@ -59,6 +59,8 @@ listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF + MS
     'Snelgorove','Deep Corr']
 listNameMethod_onlySynth = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
     'Snelgorove','Deep Corr']
+listNameMethod_onlySynth_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
+    'Snelgorove','Deep Corr']
 
 extension = ".png"
 files = [file for file in os.listdir(directory) if file.lower().endswith(extension)]
@@ -646,7 +648,7 @@ def get_Wi_Ei(sub_part):
         assert(len(pij)==n_method-1)
         sum_pij = np.sum(pij)
         #print(sum_pij)
-        Wi = sum_pij / (n_method-1)
+        Wi = sum_pij / (n_method-1.)
         assert(Wi<=1.0)
         #print(Wi)
         W_list += [Wi]  
@@ -678,7 +680,7 @@ def get_Wi_Ei_fromParams(params):
         assert(len(pij_tab)==n_method-1)
         sum_pij = np.sum(pij_tab)
         #print(sum_pij)
-        Wi = sum_pij / (n_method-1)
+        Wi = sum_pij / (n_method-1.)
         assert(Wi<=1.0)
         #print(Wi)
         W_list += [Wi]
@@ -705,7 +707,175 @@ def test_if_sparsity(sub_part):
             
     return(False)
 
-def get_Wi_Betaij_stdij_fromDF(sub_part,estimation_method='mm',std_estimation='hessian',max_iter=100000,tol=10**(-8)):
+def draw_duels_results(sub_part):
+    """
+    This function will draw duel results virtually and return the new dataframe
+    of this virtual study with the same number of duels as previously
+    """
+    
+    output_df = sub_part.copy()
+    
+    n = 1
+    data = []
+    for row in sub_part.iterrows():
+        methodA = row[1]['methodA']
+        pA = row[1]['pA']
+        methodB = row[1]['methodB']
+        pB = row[1]['pB']
+        NumberVote = row[1]['NumberVote']
+        bernouilli_output = np.random.binomial(n,pA, NumberVote)
+        
+        
+        methodA_index = listofmethod_onlySynth.index(methodA)
+        methodB_index = listofmethod_onlySynth.index(methodB)
+        data += [(methodA_index,methodB_index)]*int(winA)
+        data += [(methodB_index,methodA_index)]*int(winB)
+    
+    
+    for i,method in enumerate(listofmethod_onlySynth):
+        for j,method in enumerate(listofmethod_onlySynth):
+            if i < j:
+                pij_A = sub_part[sub_part['methodA']==method]['pA'].values
+                pij_B = sub_part[sub_part['methodB']==method]['pB'].values
+        pij_tab = np.concatenate([pij_A,pij_B]) 
+        pi = np.mean(pij_tab)
+        #print(pi)
+        if pi==0.0 or pi==1.0:
+            return(True)
+
+def get_Wi_Betaij_stdij_fromDF_Empirical(sub_part,estimation_method='mm',
+                                           max_iter=100000,tol=10**(-8),
+                                           std_estimation='boostraping'):
+    """
+    Estimation of the std_estimation by boostraping
+    """
+    
+    N_virtual_study = 3000
+    #N_virtual_study = 10
+    n_method = len(listofmethod_onlySynth)
+    
+    betas=np.zeros((N_virtual_study,n_method))
+    #probs_tirages=np.zeros((N_virtual_study,n_method,n_method))
+    Wi_tirages=np.zeros((N_virtual_study,n_method))
+
+    sub_part.loc[:,'pA'] = sub_part['winA'] /  sub_part['NumberVote']
+    sub_part.loc[:,'pB'] = sub_part['winB'] /  sub_part['NumberVote']
+    
+    if std_estimation=='boostraping': 
+        data_based = convert_pd_df_to_list_wins_lost(sub_part)
+        total_num_votes = sub_part['NumberVote'].sum()
+        sparsity = test_if_sparsity(sub_part)
+
+    for n in range(N_virtual_study):
+        output_df = sub_part.copy()
+        # Do a new virtual study 
+        
+        if std_estimation=='binomial':
+            data = []
+            for row in sub_part.iterrows():
+                index_row = row[0]
+                methodA = row[1]['methodA']
+                #pA = row[1]['pA']
+                methodB = row[1]['methodB']
+                pB = row[1]['pB']
+                NumberVote = row[1]['NumberVote']
+                methodA_index = listofmethod_onlySynth.index(methodA)
+                methodB_index = listofmethod_onlySynth.index(methodB)
+
+                bernouilli_output = np.random.binomial(1,pB, NumberVote)
+                winA = list(bernouilli_output).count(0)
+                winB = list(bernouilli_output).count(1)
+  
+                output_df.loc[index_row,'pA'] = winA / NumberVote
+                output_df.loc[index_row,'pB'] = winB / NumberVote
+                
+                # If pB == 1 it will output only 1.0 values i.e . only votes of methods B
+                data += [(methodA_index,methodB_index)]*int(winA)
+                data += [(methodB_index,methodA_index)]*int(winB)
+                
+            sparsity = test_if_sparsity(output_df)
+                
+        elif std_estimation=='boostraping': 
+            data_based = convert_pd_df_to_list_wins_lost(sub_part)
+            data_indices = np.random.choice(np.arange(len(data_based)), size=total_num_votes, replace=True, p=None) 
+            data = [data_based[i] for i in data_indices] #data_based[]
+            
+        if sparsity:
+            alpha = 10**(-4)
+        else:
+            alpha = 0.0
+
+        if estimation_method=='mm':
+            params = choix.mm_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+        elif estimation_method=='ilsr':
+            params = choix.ilsr_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+        elif estimation_method=='opt_pairwise':
+            params = choix.opt_pairwise(n_method,data,max_iter=max_iter,tol=tol,alpha=alpha) 
+        
+        betas[n,:] = params
+        W_list = []
+        for i,method in enumerate(listofmethod_onlySynth):
+            pij_tab = []
+            for j,_ in enumerate(listofmethod_onlySynth):
+                if not(i==j):
+                    pij, pji = choix.probabilities([i,j],params)
+                    pij_tab += [pij]
+            assert(len(pij_tab)==n_method-1)
+            sum_pij = np.sum(pij_tab)
+            Wi = sum_pij / (n_method-1.)
+            assert(Wi<=1.0)
+            W_list += [Wi]
+        Wi_tirages[n,:] = W_list
+        
+    betas = betas - np.mean(betas,axis=1,keepdims=True) # As the important stuff is the difference
+    # between Beta_i and Beta_j => we can substract to all of them the mean of Beta_i 
+    # For one given virtual study
+    params_mean = np.mean(betas,axis=0) # Cela est faux  !!!! il faut considerer les 
+    # ecarts a Beta_i - Beta_j et non les beta_i seul car cela depend de la constante dans 
+    # l optimisation ! 
+    # Idem std_matrix est faux !!! 
+#    var_beta = np.var(betas,axis=0)
+    cov = np.cov(betas,rowvar=0)
+    std_matrix = np.zeros((n_method,n_method))
+    for i,_ in enumerate(listofmethod_onlySynth):
+        for j,_ in enumerate(listofmethod_onlySynth):
+            if not(i==j):
+                stdij = np.sqrt(cov[i,i]+cov[j,j]-2*cov[i,j])
+                assert(stdij >= 0.)
+                std_matrix[i,j] = stdij
+    print('Wi_tirages',Wi_tirages.shape)
+    print('Wi_tirages',Wi_tirages)
+    W_list = np.mean(Wi_tirages,axis=0)
+    std_Wi_tirages = np.std(Wi_tirages,axis=0)
+    print('std_Wi_tirages',std_Wi_tirages.shape)
+    print('std_Wi_tirages',std_Wi_tirages)
+    
+    return(W_list,params_mean,std_matrix,std_Wi_tirages)    
+        
+
+def get_Wi_Betaij_stdij_fromDF(sub_part,estimation_method='mm',
+                               std_estimation='hessian',
+                               max_iter=100000,tol=10**(-8)):
+    
+    if std_estimation=='hessian':
+        W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF_compute_beta_std(sub_part,
+                                                            estimation_method=estimation_method,
+                                                       std_estimation=std_estimation,
+                                                       max_iter=max_iter,tol=tol)
+        stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
+
+    elif std_estimation=='boostraping' or std_estimation=='binomial':
+        W_list,params_mean,std_matrix,stdW_list = get_Wi_Betaij_stdij_fromDF_Empirical(
+                                            sub_part,estimation_method=estimation_method,
+                                            max_iter=max_iter,tol=tol,
+                                            std_estimation=std_estimation)
+        
+    return(W_list,stdW_list,params_mean,std_matrix,)
+    
+    
+def get_Wi_Betaij_stdij_fromDF_compute_beta_std(sub_part,estimation_method='mm',
+                               std_estimation='hessian',
+                               max_iter=100000,tol=10**(-8)):
     n_method = len(listofmethod_onlySynth)
     
     sub_part.loc[:,'pA'] = sub_part['winA'] /  sub_part['NumberVote']
@@ -737,19 +907,18 @@ def get_Wi_Betaij_stdij_fromDF(sub_part,estimation_method='mm',std_estimation='h
     # Provide de si : the score per method
     #  maximum-likelihood estimate of params with minorization-maximization (MM) algorithm [Hun04]_
    
-    n_method = len(listofmethod_onlySynth)
     W_list = []
     for i,method in enumerate(listofmethod_onlySynth):
         pij_tab = []
         for j,_ in enumerate(listofmethod_onlySynth):
             if not(i==j):
                 pij, pji = choix.probabilities([i,j],params)
-                pij, pji = choix.probabilities([i,j],params)
+                #pij, pji = choix.probabilities([i,j],params)
                 #print(i,j,pij, pji)
                 pij_tab += [pij]
         assert(len(pij_tab)==n_method-1)
         sum_pij = np.sum(pij_tab)
-        Wi = sum_pij / (n_method-1)
+        Wi = sum_pij / (n_method-1.)
         assert(Wi<=1.0)
         W_list += [Wi]
     
@@ -888,11 +1057,11 @@ def run_statistical_study(estimation_method='mm',
                 print(j,filewithoutext)
                 sub_part = number_win_all_images[number_win_all_images['image']==filewithoutext]
                  
-                W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=sub_part,
+                W_list,stdW_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=sub_part,
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-                stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
+                #stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
                 #print(j,stdW_list)
                 dict_couple_W_E[filewithoutext] = [W_list,stdW_list,params,std_matrix]
                 
@@ -920,32 +1089,32 @@ def run_statistical_study(estimation_method='mm',
             # We will regroup all the images (20) together 
             print('All together')
             df_all = number_win_all_images.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
-            W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_all,
+            W_list,stdW_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_all,
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-            stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
+            
             dict_couple_W_E['All'] = [W_list,stdW_list,params,std_matrix]
             
             # We will work on the two subsets : regular and non-regular image 
             print("Regular")
             sub_part_reg = number_win_all_images[number_win_all_images['image'].isin(listRegularImages)]
             df_reg = sub_part_reg.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
-            W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_reg,
+            W_list,stdW_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_reg,
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-            stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
+
             dict_couple_W_E['Reg'] = [W_list,stdW_list,params,std_matrix]
             
             print("Irregular")
             sub_part_irreg = number_win_all_images[~number_win_all_images['image'].isin(listRegularImages)]
             df_irreg = sub_part_irreg.groupby(['methodA','methodB'])["winA", "winB",'NumberVote'].apply(lambda x : x.sum()).reset_index()
-            W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_irreg,
+            W_list,stdW_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF(sub_part=df_irreg,
                                                            estimation_method=estimation_method,
                                                            std_estimation=std_estimation,
                                                            max_iter=max_iter,tol=tol)
-            stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
+
             dict_couple_W_E['Irreg'] = [W_list,stdW_list,params,std_matrix]
 
         # Save the data :
@@ -1070,7 +1239,7 @@ def create_save_bar_plot(heights,error,path='',ext_name='',subset='',title=''):
     ax.bar(x_pos, heights, yerr=error, align='center', alpha=0.5,color=CB_color_cycle, ecolor='black', capsize=10)
     ax.set_ylabel('Winning Prob')
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(listNameMethod_onlySynth, rotation=45,fontsize=8)
+    ax.set_xticklabels(listNameMethod_onlySynth_withoutTF, rotation=45,fontsize=8)
     plt.ylim((0,1))
     ax.set_title(title)
     ax.yaxis.grid(True)
@@ -1120,13 +1289,13 @@ def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',titl
                     loc='center', facecolor=color)
 
     # Row Labels...
-    for i, label_raw in enumerate(listNameMethod_onlySynth):
+    for i, label_raw in enumerate(listNameMethod_onlySynth_withoutTF):
         label = label_raw.replace('_',' ')
         label = label.replace('+','+\n')
         tb.add_cell(i, -1, width, height, text=label, loc='right', 
                     edgecolor='none', facecolor='none')
     # Column Labels...
-    for j, label_raw in enumerate(listNameMethod_onlySynth):
+    for j, label_raw in enumerate(listNameMethod_onlySynth_withoutTF):
         label = label_raw.replace('_',' ')
         label = label.replace('+','+\n')
         tb.add_cell(-1, j, width, height/2, text=label, loc='center', 
@@ -1194,7 +1363,7 @@ def get_std_Wi(params,std_Bi_minus_Bj):
         assert(len(std_pij_tab)==n_method-1)
         sum_std_pij = np.sqrt(np.sum(np.array(std_pij_tab)**2))
         #print(sum_pij)
-        std_Wi = sum_std_pij / (n_method-1)
+        std_Wi = sum_std_pij / (n_method-1.)
         list_std_Wi += [std_Wi]
     return(list_std_Wi)
     
@@ -1213,7 +1382,7 @@ def get_std_Wi_old(std_Bi_minus_Bj):
         assert(len(std_pij_tab)==n_method-1)
         sum_std_pij = np.sqrt(np.sum(std_pij_tab**2))
         #print(sum_pij)
-        std_Wi = sum_std_pij / (n_method-1)
+        std_Wi = sum_std_pij / (n_method-1.)
         list_std_Wi += [std_Wi]
     return(list_std_Wi)
  
@@ -1236,7 +1405,8 @@ def get_std_pij_old(std_Bi_minus_Bj):
     return(std_pij_matrix)
             
     
-def plot_evaluation(estimation_method='mm',std_estimation='hessian'):
+def plot_evaluation(estimation_method='mm',std_estimation='hessian',
+                    protocol_tab = ['all_together','Individual_image']):
     """
     This function will plot the differents images 
     """        
@@ -1245,10 +1415,10 @@ def plot_evaluation(estimation_method='mm',std_estimation='hessian'):
     
     diff_case=['global','local','both']
     #diff_case=['local','both']
-    protocol_tab = ['all_together','Individual_image']  
+     
     #protocol_tab = ['Individual_image']  
 
-    output_im_path = os.path.join(ForPerceptualTestPsyToolkitSurvey,'BarPlot_score')
+    output_im_path = os.path.join(ForPerceptualTestPsyToolkitSurvey,'BarPlot_score',std_estimation)
     pathlib.Path(output_im_path).mkdir(parents=True, exist_ok=True)
     for protocol in protocol_tab:
         print('=',protocol,'=')
@@ -1391,7 +1561,14 @@ if __name__ == '__main__':
 #                          protocol='all_together',
 #                          std_estimation='hessian')
     
-    plot_evaluation(estimation_method='opt_pairwise')
+    #plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian')
     
 #    run_statistical_study(estimation_method='mm',protocol='all_together')
 #    plot_evaluation()
+
+    ## Cas avec le boostraping !
+    run_statistical_study(estimation_method='opt_pairwise',
+                          protocol='all_together',
+                          std_estimation='binomial')
+    plot_evaluation(estimation_method='opt_pairwise',std_estimation='binomial',
+                    protocol_tab = ['all_together'])
