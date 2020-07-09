@@ -515,7 +515,7 @@ def readData():
 def readDataAndPlot(OnlyStructuredImages=False,
                     OnlySubset_of_methods=False,
                     ReadWhat='KL',
-                    save_or_show=True):
+                    save_or_show=True,d=1):
     """
     This function will read the images synthesis and plot the quality 
     measure based on Wavelet coefficients
@@ -562,6 +562,10 @@ def readDataAndPlot(OnlyStructuredImages=False,
         case_str = 'DS'
         leg_str = 'Displacement'
         name = 'Displacements_Score'
+        if not(d==1):
+            name+='_d'+str(d)
+            case_str +='_d'+str(d)
+            leg_str = 'Displacement d = '+str(d)
         name += '.pkl'
         data_path_save = os.path.join('data',name)
         with open(data_path_save, 'rb') as pkl:
@@ -1074,23 +1078,24 @@ def Plot_KL_forDiffBetaValues(OnlyStructuredImages=False):
     input('Enter to close.')
     plt.close()
    
-def score_decalage(matrix):
+def score_decalage(matrix,d=1):
     """
     @input : a matrix of the pixel coordinate
+    @param : d = 1 the distance where the score is computed or not
     """
     diff_vert = np.diff(matrix,axis=0)
     diff_hor = np.diff(matrix,axis=1)
     #  Calcul des différences entre les coordinonnés en verticals et en horizontales
     abs_diff_vert = np.abs(diff_vert)
     abs_diff_hor = np.abs(diff_hor)
-    where_1_vert = np.where(abs_diff_vert<=1)
-    where_1_hor = np.where(abs_diff_hor<=1)
+    where_1_vert = np.where(abs_diff_vert<=d)
+    where_1_hor = np.where(abs_diff_hor<=d)
     sum_where_1_vert = np.sum(where_1_vert[2])/ (abs_diff_vert.shape[0]*abs_diff_vert.shape[1])
     sum_where_1_hor = np.sum(where_1_hor[2])/ (abs_diff_hor.shape[0]*abs_diff_hor.shape[1])
     sum_v_h = 1 - (sum_where_1_vert + sum_where_1_hor)/2
     return(sum_v_h)
 
-def compute_deplacements_score():
+def compute_deplacements_score(d=1):
     """
     Le but de cette fonction est de calculer un score de deplacement a partir des
     cartes de deplacements calculees par Said 
@@ -1125,7 +1130,7 @@ def compute_deplacements_score():
             
             # The simplest way to compute a score is to compute the 
             matrix = np.stack(data,axis=-1) # h,w,pixel coord
-            sum_v_h =  score_decalage(matrix)
+            sum_v_h =  score_decalage(matrix,d=d)
             
             print(nameMethod,sum_v_h)
             
@@ -1135,6 +1140,8 @@ def compute_deplacements_score():
             
         
     name = 'Displacements_Score'
+    if not(d==1):
+        name+='_d'+str(d)
     name += '.pkl'
     data_path_save = os.path.join('data',name)
     with open(data_path_save, 'wb') as pkl:
@@ -1180,13 +1187,21 @@ if __name__ == '__main__':
     #readData()
     
     #compute_deplacements_score()
-    tab = ['KL','DisplacementScore']
-    for OnlyStructuredImages in [True,False]:
-        for OnlySubset_of_methods in [True,False]:
-            for ReadWhat in tab:
-                readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
-                                OnlySubset_of_methods=OnlySubset_of_methods,
-                                ReadWhat=ReadWhat)
+#    tab = ['KL','DisplacementScore']
+#    for OnlyStructuredImages in [True,False]:
+#        for OnlySubset_of_methods in [True,False]:
+#            for ReadWhat in tab:
+#                readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+#                                OnlySubset_of_methods=OnlySubset_of_methods,
+#                                ReadWhat=ReadWhat)
+    tab = ['DisplacementScore']
+    for d in [2,5,10,50]:
+        for OnlyStructuredImages in [True,False]:
+            for OnlySubset_of_methods in [True,False]:
+                for ReadWhat in tab:
+                    readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+                                    OnlySubset_of_methods=OnlySubset_of_methods,
+                                    ReadWhat=ReadWhat,d=d)
     # import sys
     # sys.exit(main(sys.argv))
     #computeKL_forbeta_images()
