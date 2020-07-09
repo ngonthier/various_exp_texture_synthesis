@@ -66,14 +66,14 @@ listofmethod =['','_SAME_Gatys','_EfrosLeung','_EfrosFreeman',
 # Si vous voulez afficher plus de choses
 #['','_SAME_Gatys','_EfrosLeung','_EfrosFreeman','_SAME_Gatys_spectrum','_SAME_Gatys_spectrumTFabs_eps10m16','MultiScale_o5_l3_8_psame','_DCor','_Gatys_Gang','_SAME_Gatys_MSSInit','_SAME_Gatys_spectrum_MSSInit','_SAME_Gatys_spectrumTFabs_eps10m16_MSSInit','_Gatys_Gang_MSInit','_SAME_autocorr','_SAME_autocorr_MSSInit','_SAME_phaseAlea_MSSInit']
 # ,'_SAME_texture_spectrum_MSSInit','_SAME_phaseAlea'
-listNameMethod = ['Reference','Gatys','EfrosLeung','EfrosFreeman','Gatys + Spectrum TF','Snelgorove','Deep Corr','Gatys + MSInit','Gatys + Spectrum TF + MSInit','Autocorr','Autocorr + MSInit','1 : OT Galerne Leclair','2 :Guisong method','3 : Tartavel','GAN Zalando Jetchev']
+listNameMethod = ['Reference','Gatys','Efros Leung','Efros Freeman','Gatys + Spectrum','Snelgrove','Deep Corr','Gatys + MSInit','Gatys + Spectrum + MSInit','Autocorr','Autocorr + MSInit','1 : OT Galerne Leclair','2 :Guisong method','3 : Tartavel','GAN Zalando Jetchev']
 # listNameMethod = ['Reference','Gatys','EfrosLeung','EfrosFreeman','Gatys + Spectrum TF','Gatys + Spectrum TF eps10m16','Snelgorove','Deep Corr','Gang Spectrum Code','Gatys + MSInit','Gatys + Spectrum TF + MSInit','Gatys + Spectrum TF eps10m16 + MSInit','Gang code for MSInit','Autocorr','Autocorr + MSInit','PhaseAlea + MSInit']
 #'Gatys + Spectrum + multi-scale Init','PhaseAlea'
 
 listofmethod = ['','_SAME_Gatys','_SAME_Gatys_MSSInit','_SAME_Gatys_spectrumTFabs_eps10m16','_SAME_Gatys_spectrumTFabs_eps10m16_MSSInit',\
     '_SAME_autocorr','_SAME_autocorr_MSSInit','MultiScale_o5_l3_8_psame','_DCor','_EfrosLeung','_EfrosFreeman','_TextureNets']
-listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit',\
-    'Autocorr','Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
+listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit',\
+    'Autocorr','Autocorr + MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov']
 
 
 listRegularImages = ['BrickRound0122_1_seamless_S',
@@ -1103,6 +1103,7 @@ def compute_deplacements_score(d=1):
     ext_displ = '_X_Y_displacements.pickle'
     dir_deplacement_carte
     dictTotal = {}
+    print('=== d',d,' ===')
     for file in files_short:
         filewithoutext = '.'.join(file.split('.')[:-1])
         print('Image :',filewithoutext)
@@ -1186,22 +1187,24 @@ if __name__ == '__main__':
     #main()
     #readData()
     
-    #compute_deplacements_score()
-#    tab = ['KL','DisplacementScore']
-#    for OnlyStructuredImages in [True,False]:
-#        for OnlySubset_of_methods in [True,False]:
-#            for ReadWhat in tab:
-#                readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
-#                                OnlySubset_of_methods=OnlySubset_of_methods,
-#                                ReadWhat=ReadWhat)
-    tab = ['DisplacementScore']
-    for d in [2,5,10,50]:
-        for OnlyStructuredImages in [True,False]:
-            for OnlySubset_of_methods in [True,False]:
-                for ReadWhat in tab:
-                    readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
-                                    OnlySubset_of_methods=OnlySubset_of_methods,
-                                    ReadWhat=ReadWhat,d=d)
+   main() # To compute for the Wavelets
+   compute_deplacements_score()
+   tab = ['KL','DisplacementScore']
+   for OnlyStructuredImages in [True,False]:
+       for OnlySubset_of_methods in [True,False]:
+           for ReadWhat in tab:
+               readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+                               OnlySubset_of_methods=OnlySubset_of_methods,
+                               ReadWhat=ReadWhat)
+    # tab = ['DisplacementScore']
+    # for d in [2,5,10,50,100,128,256]:
+        # for OnlyStructuredImages in [True,False]:
+            # for OnlySubset_of_methods in [True,False]:
+                # for ReadWhat in tab:
+                    # compute_deplacements_score(d=d)
+                    # readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+                                    # OnlySubset_of_methods=OnlySubset_of_methods,
+                                    # ReadWhat=ReadWhat,d=d)
     # import sys
     # sys.exit(main(sys.argv))
     #computeKL_forbeta_images()
