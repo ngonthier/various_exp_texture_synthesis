@@ -595,13 +595,17 @@ def readDataAndPlot(OnlyStructuredImages=False,
     if OnlySubset_of_methods: 
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
                                     'Snelgorove','Deep Corr']
+        list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
+                                    'Snelgrove','Deep Corr']
         list_methods_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
-                                    'Snelgorove','Deep Corr']
+                                    'Snelgrove','Deep Corr']
     else:
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
                         'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
+        list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit', 'Autocorr', \
+                        'Autocorr + MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov']
         list_methods_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit', 'Autocorr', \
-                        'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
+                        'Autocorr + MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov']
     
     NUM_COLORS = len(list_methods)
     color_number_for_frozen = [0,NUM_COLORS//2,NUM_COLORS-1]
@@ -691,7 +695,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.figure()    
     fig_i_c = 0
     x = list(range(0,len(listnameIm)))
-    for method,labelstr in zip(list_methods,list_methods_withoutTF): 
+    for method,labelstr in zip(list_methods,list_methods_withoutTF):
+        #print(method) 
         #print(dicoOfMethods[method])
         plt.plot(x,dicoOfMethods[method],label=labelstr,color=scalarMap.to_rgba(fig_i_c),\
                          marker=list_markers[fig_i_c],linestyle='')
@@ -1187,8 +1192,8 @@ if __name__ == '__main__':
     #main()
     #readData()
     
-   main() # To compute for the Wavelets
-   compute_deplacements_score()
+   #main() # To compute for the Wavelets
+   #compute_deplacements_score()
    tab = ['KL','DisplacementScore']
    for OnlyStructuredImages in [True,False]:
        for OnlySubset_of_methods in [True,False]:
