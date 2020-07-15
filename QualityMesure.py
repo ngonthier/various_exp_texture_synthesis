@@ -354,22 +354,25 @@ def computeKL_forbeta_images(ReDo=False):
     with open(data_path_save, 'wb') as pkl:
         pickle.dump(data,pkl)
         
-def main(ReDo=False):
+def main(ReDo=False,number_of_scale = 3):
     """
     compute the quality measure : KL between new and reference texture
+    @param : number_of_scale : number of scale in the wavelets decomposition 
+        = None for automatic computation
     """
     # path_output = os.path.join('Spectrum','Crops',str(dim))
     # pathlib.Path(path_output).mkdir(parents=True, exist_ok=True)
     verbose = False
     plot_hist = False
     With_formula = True # If False we will use the histogram
-    number_of_scale = 3
+    
     
     name = 'Wavelets_KL_'+str(number_of_scale)+'Scale'
     if With_formula:
         name += '_ExplicitFormula'
     else:
         name +=  '_Hist'
+
     #name += 'OnlySum'
     name += '.pkl'
     data_path_save = os.path.join('data',name)
@@ -505,6 +508,7 @@ def readData():
         name += '_ExplicitFormula'
     else:
         name +=  '_Hist'
+
     name += '.pkl'
     data_path_save = os.path.join('data',name)
     with open(data_path_save, 'rb') as pkl:
@@ -515,7 +519,8 @@ def readData():
 def readDataAndPlot(OnlyStructuredImages=False,
                     OnlySubset_of_methods=False,
                     ReadWhat='KL',
-                    save_or_show=True,d=1):
+                    save_or_show=True,d=1,
+                    number_of_scale = 3):
     """
     This function will read the images synthesis and plot the quality 
     measure based on Wavelet coefficients
@@ -524,6 +529,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     @param ReadWhat == KL plot the KL method 
     @param ReadWhat == DisplacementScore plot the DisplacementScore of the methods
     @param : if save_or_show = True we save the figure, otherwise we only show it
+    @param : d = 1 distance used for thresholding in the displacement maps
+    @param :  number_of_scale = 3 number of scale for the wavelet decomposition
     """
     
 #    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
@@ -535,15 +542,17 @@ def readDataAndPlot(OnlyStructuredImages=False,
     
     if ReadWhat=='KL':
         case_str = 'KL'
+        if not(number_of_scale==3):
+            case_str += '_NScale'+str(number_of_scale)
         leg_str = 'KL'
         With_formula = True # If False we will use the histogram
-        number_of_scale = 3
         
         name = 'Wavelets_KL_'+str(number_of_scale)+'Scale'
         if With_formula:
             name += '_ExplicitFormula'
         else:
             name +=  '_Hist'
+
         #name += 'OnlySum'
         name += '.pkl'
         data_path_save = os.path.join('data',name)
