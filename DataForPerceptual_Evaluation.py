@@ -60,7 +60,7 @@ listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF + MS
 listNameMethod_onlySynth = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
     'Snelgorove','Deep Corr']
 listNameMethod_onlySynth_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
-    'Snelgorove','Deep Corr']
+    'Snelgrove','Deep Corr']
 
 extension = ".png"
 files = [file for file in os.listdir(directory) if file.lower().endswith(extension)]
@@ -751,7 +751,7 @@ def get_Wi_Betaij_stdij_fromDF_Empirical(sub_part,estimation_method='mm',
     """
     
     N_virtual_study = 3000
-    #N_virtual_study = 10
+    N_virtual_study = 100
     n_method = len(listofmethod_onlySynth)
     
     betas=np.zeros((N_virtual_study,n_method))
@@ -858,11 +858,11 @@ def get_Wi_Betaij_stdij_fromDF(sub_part,estimation_method='mm',
                                max_iter=100000,tol=10**(-8)):
     
     if std_estimation=='hessian':
-        W_list,params,std_matrix = get_Wi_Betaij_stdij_fromDF_compute_beta_std(sub_part,
+        W_list,params_mean,std_matrix = get_Wi_Betaij_stdij_fromDF_compute_beta_std(sub_part,
                                                             estimation_method=estimation_method,
                                                        std_estimation=std_estimation,
                                                        max_iter=max_iter,tol=tol)
-        stdW_list = get_std_Wi(params,std_Bi_minus_Bj=std_matrix)
+        stdW_list = get_std_Wi(params_mean,std_Bi_minus_Bj=std_matrix)
 
     elif std_estimation=='boostraping' or std_estimation=='binomial':
         W_list,params_mean,std_matrix,stdW_list = get_Wi_Betaij_stdij_fromDF_Empirical(
@@ -870,7 +870,7 @@ def get_Wi_Betaij_stdij_fromDF(sub_part,estimation_method='mm',
                                             max_iter=max_iter,tol=tol,
                                             std_estimation=std_estimation)
         
-    return(W_list,stdW_list,params_mean,std_matrix,)
+    return(W_list,stdW_list,params_mean,std_matrix)
     
     
 def get_Wi_Betaij_stdij_fromDF_compute_beta_std(sub_part,estimation_method='mm',
@@ -1567,8 +1567,13 @@ if __name__ == '__main__':
 #    plot_evaluation()
 
     ## Cas avec le boostraping !
+#    run_statistical_study(estimation_method='opt_pairwise',
+#                          protocol='all_together',
+#                          std_estimation='binomial')
+#    plot_evaluation(estimation_method='opt_pairwise',std_estimation='binomial',
+#                    protocol_tab = ['all_together'])
     run_statistical_study(estimation_method='opt_pairwise',
                           protocol='all_together',
-                          std_estimation='binomial')
-    plot_evaluation(estimation_method='opt_pairwise',std_estimation='binomial',
+                          std_estimation='hessian')
+    plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian',
                     protocol_tab = ['all_together'])
