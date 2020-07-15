@@ -456,7 +456,8 @@ def main(ReDo=False,number_of_scale = 3):
             dict_scores[nameMethod] = 0.
 #            ref_img = dict_imgs['Reference']
 #            syn_img = dict_imgs[nameMethod]
-            for s in range(number_of_scale+1): # scale
+            len_ref_coeff = len(ref_coeff)
+            for s in range(len_ref_coeff): # scale
                 if s==0:
                     # Average case : cAn : ie approximation at rank n 
                     # we will pass it 
@@ -1201,15 +1202,21 @@ if __name__ == '__main__':
     #main()
     #readData()
     
-   #main() # To compute for the Wavelets
-   #compute_deplacements_score()
-   tab = ['KL','DisplacementScore']
+   main(number_of_scale=None)
    for OnlyStructuredImages in [True,False]:
        for OnlySubset_of_methods in [True,False]:
-           for ReadWhat in tab:
                readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
                                OnlySubset_of_methods=OnlySubset_of_methods,
-                               ReadWhat=ReadWhat)
+                               ReadWhat='KL',number_of_scale=None)
+   #main() # To compute for the Wavelets
+   #compute_deplacements_score()
+   # tab = ['KL','DisplacementScore']
+   # for OnlyStructuredImages in [True,False]:
+       # for OnlySubset_of_methods in [True,False]:
+           # for ReadWhat in tab:
+               # readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+                               # OnlySubset_of_methods=OnlySubset_of_methods,
+                               # ReadWhat=ReadWhat)
     # tab = ['DisplacementScore']
     # for d in [2,5,10,50,100,128,256]:
         # for OnlyStructuredImages in [True,False]:
