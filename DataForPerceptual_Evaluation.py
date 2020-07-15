@@ -56,9 +56,9 @@ listofmethod_onlySynth = ['_SAME_Gatys','_SAME_Gatys_MSSInit','_SAME_Gatys_spect
     '_Snelgorove_MultiScale_o5_l3_8_psame','_DCor']
 
 listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
-    'Snelgorove','Deep Corr']
+    'Snelgrove','Deep Corr']
 listNameMethod_onlySynth = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
-    'Snelgorove','Deep Corr']
+    'Snelgrove','Deep Corr']
 listNameMethod_onlySynth_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
     'Snelgrove','Deep Corr']
 
