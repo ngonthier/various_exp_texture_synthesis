@@ -607,15 +607,15 @@ def readDataAndPlot(OnlyStructuredImages=False,
                                     'Snelgorove','Deep Corr']
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
                                     'Snelgrove','Deep Corr']
-        list_methods_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
+        list_methods_withoutTF = ['Gatys','Gram +\n MSInit','Gram +\n Spectrum +\n MSInit',\
                                     'Snelgrove','Deep Corr']
     else:
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
                         'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit', 'Autocorr', \
                         'Autocorr + MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov']
-        list_methods_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit', 'Autocorr', \
-                        'Autocorr + MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov']
+        list_methods_withoutTF = ['Gatys','Gram +\n MSInit','Gram +\n Spectrum','Gram +\n Spectrum +\n MSInit', 'Autocorr', \
+                        'Autocorr +\n MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov'] # IE the string used in the figure as label 
     
     NUM_COLORS = len(list_methods)
     color_number_for_frozen = [0,NUM_COLORS//2,NUM_COLORS-1]
@@ -843,7 +843,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
     for elt in list_KLs:
         list_KLs_log += [np.log(elt)]
     fig, ax1 = plt.subplots(figsize=(10, 6))
-    fig.canvas.set_window_title('Boxplots of the log'+leg_str+' distances.')
+    #fig.canvas.set_window_title('Boxplots of the log '+leg_str+' distances.') 
     #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
 #
     bp = ax1.boxplot(list_KLs_log, notch=0, sym='+', vert=1, whis=1.5)
@@ -852,9 +852,9 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.setp(bp['fliers'], color='black', marker='+')
     # Hide these grid behind plot objects
     ax1.set_axisbelow(True)
-    ax1.set_title('Comparison of log'+leg_str+' score for different methods')
+    #ax1.set_title('Comparison of log '+leg_str+' score for different methods') # No title
     ax1.set_xlabel('Method')
-    ax1.set_ylabel(leg_str)
+    ax1.set_ylabel('log '+leg_str)
     
     medians = np.empty(len(list_methods))
     for i in range(len(list_methods)):
@@ -1202,7 +1202,7 @@ if __name__ == '__main__':
     #main()
     #readData()
     
-   main(number_of_scale=None)
+   #main(number_of_scale=None)
    for OnlyStructuredImages in [True,False]:
        for OnlySubset_of_methods in [True,False]:
                readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
