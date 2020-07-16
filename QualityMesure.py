@@ -798,7 +798,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.setp(bp['fliers'], color='black', marker='+')
     # Hide these grid behind plot objects
     ax1.set_axisbelow(True)
-    ax1.set_title('Comparison of '+leg_str+' score for different methods')
+    #ax1.set_title('Comparison of '+leg_str+' score for different methods')
     ax1.set_xlabel('Method')
     ax1.set_ylabel(leg_str)
     
@@ -1208,6 +1208,11 @@ if __name__ == '__main__':
                readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
                                OnlySubset_of_methods=OnlySubset_of_methods,
                                ReadWhat='KL',number_of_scale=None)
+   for OnlyStructuredImages in [True,False]:
+       for OnlySubset_of_methods in [True,False]:
+               readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+                               OnlySubset_of_methods=OnlySubset_of_methods,
+                               ReadWhat='DisplacementScore',number_of_scale=None)
    #main() # To compute for the Wavelets
    #compute_deplacements_score()
    # tab = ['KL','DisplacementScore']
