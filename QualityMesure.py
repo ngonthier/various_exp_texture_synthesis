@@ -774,8 +774,9 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.title(title)
     plt.legend(loc='best')
     if save_or_show:
-        plt.tight_layout()
+        
         if output_img=='png':
+            plt.tight_layout()
             path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.png')
             plt.savefig(path_fig,bbox_inches='tight')
             plt.close()
@@ -805,8 +806,9 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.title(title)
     plt.legend(loc='best')
     if save_or_show:
-        plt.tight_layout()
+    
         if output_img=='png':
+            plt.tight_layout()
             path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.png')
             plt.savefig(path_fig,bbox_inches='tight')
             plt.close()
@@ -839,8 +841,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.title(title)
     plt.legend(loc='best')
     if save_or_show:
-        plt.tight_layout()
         if output_img=='png':
+            plt.tight_layout()
             path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.png')
             plt.savefig(path_fig,bbox_inches='tight')
             plt.close()
@@ -895,9 +897,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     ax1.set_xticklabels(list_methods_withoutTF,
                     rotation=45, fontsize=8)  
     if save_or_show:
-        plt.tight_layout()
         if output_img=='png':
-            
+            plt.tight_layout()
             path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_Boxplots_per_method.png')
             plt.savefig(path_fig,bbox_inches='tight')
             plt.close()
@@ -957,9 +958,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     ax1.set_xticklabels(list_methods_withoutTF,
                     rotation=45, fontsize=8)  
     if save_or_show:
-        plt.tight_layout()
         if output_img=='png':
-            
+            plt.tight_layout()
             path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_logBoxplots_per_method.png')
             plt.savefig(path_fig,bbox_inches='tight')
             plt.close()

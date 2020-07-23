@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 from matplotlib.table import Table
 matplotlib.rcParams['text.usetex'] = True
 sns.set()
+sns.set_style("whitegrid")
 import pandas as pd
 
 import choix
