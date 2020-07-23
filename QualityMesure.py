@@ -783,7 +783,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
         if output_img=='tikz':
             path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.tex')
             tikzplotlib.save(path_fig)
-            modify_underscore(path_fig)
+            modify_underscore(path_fig) # PB il va y avoir un probleme entre les 
+            # cas cite et les cas non cite il faudra regler cela plus tard  peut etre !!
             modify_labels(path_fig)
     else:
         plt.show()
@@ -856,7 +857,11 @@ def readDataAndPlot(OnlyStructuredImages=False,
         plt.show()
     
     # Boxplots
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    if output_img=='png':
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+    elif output_img=='tikz':
+        fig, ax1 = plt.subplots()
+        
     fig.canvas.set_window_title('Boxplots of the '+leg_str+' distances.')
     #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
 #
@@ -891,8 +896,12 @@ def readDataAndPlot(OnlyStructuredImages=False,
             ax1.plot(medianX, medianY, 'k')
         # Finally, overplot the sample averages, with horizontal alignment
         # in the center of each box
-        ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
+        if output_img=='png':
+            ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
                  color='w', marker='*', markeredgecolor='k', markersize=10)
+        elif output_img=='tikz':
+            ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
+                 color='w', marker='h', markeredgecolor='k', markersize=10)
     # X labels
     ax1.set_xticklabels(list_methods_withoutTF,
                     rotation=45, fontsize=8)  
@@ -917,7 +926,10 @@ def readDataAndPlot(OnlyStructuredImages=False,
     list_KLs_log = []
     for elt in list_KLs:
         list_KLs_log += [np.log(elt)]
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    if output_img=='png':
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+    elif output_img=='tikz':
+        fig, ax1 = plt.subplots()
     #fig.canvas.set_window_title('Boxplots of the log '+leg_str+' distances.') 
     #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
 #
@@ -952,8 +964,12 @@ def readDataAndPlot(OnlyStructuredImages=False,
             ax1.plot(medianX, medianY, 'k')
         # Finally, overplot the sample averages, with horizontal alignment
         # in the center of each box
-        ax1.plot(np.average(med.get_xdata()), np.average(list_KLs_log[i]),
+        if output_img=='png':
+            ax1.plot(np.average(med.get_xdata()), np.average(list_KLs_log[i]),
                  color='w', marker='*', markeredgecolor='k', markersize=10)
+        elif output_img=='tikz':
+            ax1.plot(np.average(med.get_xdata()), np.average(list_KLs_log[i]),
+                 color='w', marker='h', markeredgecolor='k', markersize=10)
     # X labels
     ax1.set_xticklabels(list_methods_withoutTF,
                     rotation=45, fontsize=8)  

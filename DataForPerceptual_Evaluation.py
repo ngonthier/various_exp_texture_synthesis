@@ -1307,6 +1307,8 @@ def modify_labels(path_fig):
     data = data.replace('rotate=45.0','rotate=45.0,align=center')
     data = data.replace('Gram + MSInit',r'{Gram +\\ MSInit}')
     data = data.replace('Gram + Spectrum + MSInit',r'{Gram +\\ Spectrum +\\ MSInit}')
+    data = data.replace('Gram + Spectrum',r'{Gram +\\ Spectrum}')
+    data = data.replace('Autocorr + MSInit',r'{Autocorr +\\ MSInit}')
     WriteTxtFile = open(path_fig, "w")
     WriteTxtFile.write(data)
     WriteTxtFile.close()
@@ -1442,7 +1444,7 @@ def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',titl
 def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',subset='',title='',zalpha=1.,
                             output_img='png'):
     """
-    In this case we will output a tex file 
+    In this case we will output a tex file in the form of a tabular 
     """
     
     if output_img=='png': 
