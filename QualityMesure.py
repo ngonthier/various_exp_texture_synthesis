@@ -21,18 +21,24 @@ import os.path
 from scipy import fftpack
 from skimage import io
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
-import matplotlib.cm as mplcm
-import matplotlib.colors as colors
-import matplotlib.gridspec as gridspec
+
 from skimage.color import rgb2hsv
 import pathlib
 import pywt # Wavelet
 import pickle
 import Orange
 import csv
+import seaborn as sns
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.patches import Polygon
+import matplotlib.cm as mplcm
+import matplotlib.colors as colors
+import matplotlib.gridspec as gridspec
 import matplotlib.image as mpimg
-import matplotlib 
+matplotlib.rcParams['text.usetex'] = True
+sns.set()
+
 from shutil import copyfile    
 
 from scipy.stats import gennorm
@@ -881,7 +887,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
         # Finally, overplot the sample averages, with horizontal alignment
         # in the center of each box
         ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
-                 color='w', marker='*', markeredgecolor='k', markersize=8)
+                 color='w', marker='*', markeredgecolor='k', markersize=10)
     # X labels
     ax1.set_xticklabels(list_methods_withoutTF,
                     rotation=45, fontsize=8)  
@@ -943,7 +949,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
         # Finally, overplot the sample averages, with horizontal alignment
         # in the center of each box
         ax1.plot(np.average(med.get_xdata()), np.average(list_KLs_log[i]),
-                 color='w', marker='*', markeredgecolor='k', markersize=8)
+                 color='w', marker='*', markeredgecolor='k', markersize=10)
     # X labels
     ax1.set_xticklabels(list_methods_withoutTF,
                     rotation=45, fontsize=8)  

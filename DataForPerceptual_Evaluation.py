@@ -17,10 +17,13 @@ from itertools import permutations,combinations
 import random
 import math
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.pyplot as plt
+import seaborn as sns
 import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from matplotlib.table import Table
 matplotlib.rcParams['text.usetex'] = True
+sns.set()
 import pandas as pd
 
 import choix
