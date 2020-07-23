@@ -20,7 +20,7 @@ import os
 import os.path
 from scipy import fftpack
 from skimage import io
-import matplotlib.pyplot as plt
+
 
 from skimage.color import rgb2hsv
 import pathlib
@@ -31,6 +31,7 @@ import csv
 import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import matplotlib.cm as mplcm
 import matplotlib.colors as colors
@@ -38,6 +39,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.image as mpimg
 matplotlib.rcParams['text.usetex'] = True
 sns.set()
+sns.set_style("whitegrid")
 
 from shutil import copyfile    
 
