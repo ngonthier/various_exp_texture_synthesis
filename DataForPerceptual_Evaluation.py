@@ -27,8 +27,12 @@ import choix
 import pickle
 import scipy
 import tikzplotlib
+import platform
 
-os.environ["path"] += os.path.join('C:\\','Program Files','MiKTeX','miktex','bin','x64')
+if platform.system()=='Windows':
+    os.environ["path"] += os.path.join('C:\\','Program Files','MiKTeX','miktex','bin','x64')
+else:
+   os.environ["PATH"] += os.path.join( 'usr','bin')
 
 directory = "./im/References/"
 ResultsDir = "./im/"

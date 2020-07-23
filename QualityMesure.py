@@ -42,6 +42,13 @@ import tikzplotlib
 
 from DataForPerceptual_Evaluation import modify_underscore,modify_labels
 
+import platform
+
+if platform.system()=='Windows':
+    os.environ["path"] += os.path.join('C:\\','Program Files','MiKTeX','miktex','bin','x64')
+else:
+   os.environ["PATH"] += os.path.join( 'usr','bin')
+
 directory = "./im/References/"
 ResultsDir = "./im/"
 #if os.environ.get('OS','') == 'Windows_NT':
