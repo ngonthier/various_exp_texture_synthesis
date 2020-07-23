@@ -38,6 +38,10 @@ from shutil import copyfile
 from scipy.stats import gennorm
 from scipy.special import gamma
 
+import tikzplotlib
+
+from DataForPerceptual_Evaluation import modify_underscore,modify_labels
+
 directory = "./im/References/"
 ResultsDir = "./im/"
 #if os.environ.get('OS','') == 'Windows_NT':
@@ -74,6 +78,14 @@ listofmethod = ['','_SAME_Gatys','_SAME_Gatys_MSSInit','_SAME_Gatys_spectrumTFab
     '_SAME_autocorr','_SAME_autocorr_MSSInit','MultiScale_o5_l3_8_psame','_DCor','_EfrosLeung','_EfrosFreeman','_TextureNets']
 listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit',\
     'Autocorr','Autocorr + MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov']
+
+# The goal is to have the same order in the color plot
+# ['Gatys','Gram + MSInit','Gram + Spectrum + MSInit','Snelgrove','Deep Corr'] doivent etre
+# '#377eb8', '#ff7f00',      '#4daf4a'                ,'#f781bf', '#a65628'
+
+CB_color_cycle = ['#377eb8', '#ff7f00','#984ea3', '#4daf4a','#A2C8EC','#e41a1c',
+                  '#f781bf', '#a65628', '#dede00','#FFBC79','#999999']
+
 
 
 listRegularImages = ['BrickRound0122_1_seamless_S',
@@ -521,7 +533,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
                     OnlySubset_of_methods=False,
                     ReadWhat='KL',
                     save_or_show=True,d=1,
-                    number_of_scale = 3):
+                    number_of_scale = 3,
+                    output_img='png'):
     """
     This function will read the images synthesis and plot the quality 
     measure based on Wavelet coefficients
@@ -532,6 +545,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     @param : if save_or_show = True we save the figure, otherwise we only show it
     @param : d = 1 distance used for thresholding in the displacement maps
     @param :  number_of_scale = 3 number of scale for the wavelet decomposition
+    @param : output_img == png for saving png figures
+                ==tikz for save tikzpicture for tex
     """
     
 #    listStructuredImages = ['BrickRound0122_1_seamless_S','fabric_white_blue_1024','lego_1024','metal_ground_1024','Pierzga_2006_1024','TexturesCom_BrickSmallBrown0473_1_M_1024',
@@ -540,6 +555,9 @@ def readDataAndPlot(OnlyStructuredImages=False,
     pathlib.Path(dir_for_quality_measure).mkdir(parents=True, exist_ok=True)
     if not(save_or_show):
         plt.ion()
+        
+    if output_img=='tikz':
+        plt.rc('text', usetex=True)
     
     if ReadWhat=='KL':
         case_str = 'KL'
@@ -607,15 +625,25 @@ def readDataAndPlot(OnlyStructuredImages=False,
                                     'Snelgorove','Deep Corr']
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
                                     'Snelgrove','Deep Corr']
-        list_methods_withoutTF = ['Gatys','Gram +\n MSInit','Gram +\n Spectrum +\n MSInit',\
+        if output_img=='png':
+            list_methods_withoutTF = ['Gatys','Gram +\n MSInit','Gram +\n Spectrum +\n MSInit',\
                                     'Snelgrove','Deep Corr']
+        elif output_img=='tikz':
+            list_methods_withoutTF = [r'Gatys \cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum + MSInit',\
+                                                           r'Snelgrove \cite{snelgrove_highresolution_2017}',r'Deep Corr \cite{sendik_deep_2017}']
+
     else:
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF','Gatys + Spectrum TF + MSInit', 'Autocorr', \
                         'Autocorr + MSInit','Snelgorove','Deep Corr','EfrosLeung','EfrosFreeman','Ulyanov']
         list_methods = ['Gatys','Gatys + MSInit','Gatys + Spectrum','Gatys + Spectrum + MSInit', 'Autocorr', \
                         'Autocorr + MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov']
-        list_methods_withoutTF = ['Gatys','Gram +\n MSInit','Gram +\n Spectrum','Gram +\n Spectrum +\n MSInit', 'Autocorr', \
+        if output_img=='png':
+            list_methods_withoutTF = ['Gatys','Gram +\n MSInit','Gram +\n Spectrum','Gram +\n Spectrum +\n MSInit', 'Autocorr', \
                         'Autocorr +\n MSInit','Snelgrove','Deep Corr','Efros Leung','Efros Freeman','Ulyanov'] # IE the string used in the figure as label 
+        elif output_img=='tikz':
+            list_methods_withoutTF = [r'Gatys \cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum',r'Gram + Spectrum + MSInit',r'Autocorr', \
+                        r'Autocorr + MSInit',r'Snelgrove \cite{snelgrove_highresolution_2017}',r'Deep Corr \cite{sendik_deep_2017}',r'Efros Leung \cite{efros_texture_1999}',r'Efros Freeman \cite{efros_image_2001}',r'Ulyanov \cite{ulyanov2016} '] # IE the string used in the figure as label 
+       
     
     NUM_COLORS = len(list_methods)
     color_number_for_frozen = [0,NUM_COLORS//2,NUM_COLORS-1]
@@ -693,9 +721,12 @@ def readDataAndPlot(OnlyStructuredImages=False,
     if save_or_show:
         matplotlib.use('Agg')
         plt.tight_layout()
-        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_CD.png')
-        plt.savefig(path_fig,bbox_inches='tight')
-        plt.close()
+        if output_img=='tikz':
+            print('Not possible to save critical diagram in tikz')
+        else:
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_CD.png')
+            plt.savefig(path_fig,bbox_inches='tight')
+            plt.close()
     else:
         plt.show()
     
@@ -708,8 +739,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     for method,labelstr in zip(list_methods,list_methods_withoutTF):
         #print(method) 
         #print(dicoOfMethods[method])
-        plt.plot(x,dicoOfMethods[method],label=labelstr,color=scalarMap.to_rgba(fig_i_c),\
-                         marker=list_markers[fig_i_c],linestyle='')
+        plt.plot(x,dicoOfMethods[method],label=labelstr,color=CB_color_cycle[fig_i_c],\
+                         marker=list_markers[fig_i_c],linestyle='')# color=scalarMap.to_rgba(fig_i_c)
         fig_i_c+=1
     
     listnameIm_without1024 = []
@@ -728,9 +759,15 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.legend(loc='best')
     if save_or_show:
         plt.tight_layout()
-        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.png')
-        plt.savefig(path_fig,bbox_inches='tight')
-        plt.close()
+        if output_img=='png':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.png')
+            plt.savefig(path_fig,bbox_inches='tight')
+            plt.close()
+        if output_img=='tikz':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.tex')
+            tikzplotlib.save(path_fig)
+            modify_underscore(path_fig)
+            modify_labels(path_fig)
     else:
         plt.show()
     
@@ -741,8 +778,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
     for method,labelstr in zip(list_methods,list_methods_withoutTF): 
         #labelstr = method
         # print(dicoOfMethods[method])
-        plt.plot(x,np.log(np.array(dicoOfMethods[method])),label=labelstr,color=scalarMap.to_rgba(fig_i_c),\
-                         marker=list_markers[fig_i_c],linestyle='')
+        plt.plot(x,np.log(np.array(dicoOfMethods[method])),label=labelstr,color=CB_color_cycle[fig_i_c],\
+                         marker=list_markers[fig_i_c],linestyle='') # color = scalarMap.to_rgba(fig_i_c)
         fig_i_c+=1
 
     title = 'Log '+leg_str+'score computed with Wavelets coeffs'
@@ -753,9 +790,15 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.legend(loc='best')
     if save_or_show:
         plt.tight_layout()
-        path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.png')
-        plt.savefig(path_fig,bbox_inches='tight')
-        plt.close()
+        if output_img=='png':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.png')
+            plt.savefig(path_fig,bbox_inches='tight')
+            plt.close()
+        if output_img=='tikz':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.tex')
+            tikzplotlib.save(path_fig)
+            modify_underscore(path_fig)
+            modify_labels(path_fig)
     else:
         plt.show() 
         plt.pause(0.001)
@@ -771,7 +814,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
         list_KLs += [KLs]
         meanKL = np.mean(KLs)
         stdKL = np.std(KLs)
-        plt.errorbar(i, meanKL, yerr=stdKL,label=labelstr,color=scalarMap.to_rgba(i),\
+        plt.errorbar(i, meanKL, yerr=stdKL,label=labelstr,color=CB_color_cycle[i],\
                           marker=list_markers[i],linestyle='', markersize=8,uplims=True, lolims=True)
 
     title = 'Mean and std of '+leg_str+' score per method.'
@@ -781,9 +824,16 @@ def readDataAndPlot(OnlyStructuredImages=False,
     plt.legend(loc='best')
     if save_or_show:
         plt.tight_layout()
-        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.png')
-        plt.savefig(path_fig,bbox_inches='tight')
-        plt.close()
+        if output_img=='png':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.png')
+            plt.savefig(path_fig,bbox_inches='tight')
+            plt.close()
+        if output_img=='tikz':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.tex')
+            tikzplotlib.save(path_fig)
+            modify_underscore(path_fig)
+            modify_labels(path_fig)
+        
     else:
         plt.show()
     
@@ -812,7 +862,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
             boxY.append(box.get_ydata()[j])
         box_coords = np.column_stack([boxX, boxY])
         # Color of the box
-        ax1.add_patch(Polygon(box_coords, facecolor=scalarMap.to_rgba(i)))
+        ax1.add_patch(Polygon(box_coords, facecolor=CB_color_cycle[i],alpha=0.5))
         # Now draw the median lines back over what we just filled in
         med = bp['medians'][i]
         medianX = []
@@ -830,9 +880,17 @@ def readDataAndPlot(OnlyStructuredImages=False,
                     rotation=45, fontsize=8)  
     if save_or_show:
         plt.tight_layout()
-        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_Boxplots_per_method.png')
-        plt.savefig(path_fig,bbox_inches='tight')
-        plt.close()
+        if output_img=='png':
+            
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_Boxplots_per_method.png')
+            plt.savefig(path_fig,bbox_inches='tight')
+            plt.close()
+        if output_img=='tikz':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_Boxplots_per_method.tex')
+            tikzplotlib.save(path_fig)
+            modify_underscore(path_fig)
+            modify_labels(path_fig)
+        
     else:
         plt.show()
         input('Enter to close.')
@@ -866,7 +924,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
             boxY.append(box.get_ydata()[j])
         box_coords = np.column_stack([boxX, boxY])
         # Color of the box
-        ax1.add_patch(Polygon(box_coords, facecolor=scalarMap.to_rgba(i)))
+        ax1.add_patch(Polygon(box_coords, facecolor=CB_color_cycle[i],alpha=0.5))
         # Now draw the median lines back over what we just filled in
         med = bp['medians'][i]
         medianX = []
@@ -884,9 +942,17 @@ def readDataAndPlot(OnlyStructuredImages=False,
                     rotation=45, fontsize=8)  
     if save_or_show:
         plt.tight_layout()
-        path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_logBoxplots_per_method.png')
-        plt.savefig(path_fig,bbox_inches='tight')
-        plt.close()
+        if output_img=='png':
+            
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_logBoxplots_per_method.png')
+            plt.savefig(path_fig,bbox_inches='tight')
+            plt.close()
+        if output_img=='tikz':
+            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_logBoxplots_per_method.tex')
+            tikzplotlib.save(path_fig)
+            modify_underscore(path_fig)
+            modify_labels(path_fig)
+        
     else:
         plt.show()
         input('Enter to close.')
@@ -1203,16 +1269,24 @@ if __name__ == '__main__':
     #readData()
     
    #main(number_of_scale=None)
-   for OnlyStructuredImages in [True,False]:
-       for OnlySubset_of_methods in [True,False]:
-               readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
-                               OnlySubset_of_methods=OnlySubset_of_methods,
-                               ReadWhat='KL',number_of_scale=None)
-   for OnlyStructuredImages in [True,False]:
-       for OnlySubset_of_methods in [True,False]:
-               readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
-                               OnlySubset_of_methods=OnlySubset_of_methods,
-                               ReadWhat='DisplacementScore',number_of_scale=None)
+   # To plot all the figures
+#   for OnlyStructuredImages in [True,False]:
+#       for OnlySubset_of_methods in [True,False]:
+#               readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+#                               OnlySubset_of_methods=OnlySubset_of_methods,
+#                               ReadWhat='KL',number_of_scale=None)
+#   for OnlyStructuredImages in [True,False]:
+#       for OnlySubset_of_methods in [True,False]:
+#               readDataAndPlot(OnlyStructuredImages=OnlyStructuredImages,
+#                               OnlySubset_of_methods=OnlySubset_of_methods,
+#                               ReadWhat='DisplacementScore',number_of_scale=None)
+
+   readDataAndPlot(OnlyStructuredImages=False,
+                   OnlySubset_of_methods=False,
+                   ReadWhat='KL',number_of_scale=None,output_img='tikz')
+   readDataAndPlot(OnlyStructuredImages=False,
+                   OnlySubset_of_methods=False,
+                   ReadWhat='DisplacementScore',number_of_scale=None,output_img='tikz')
    #main() # To compute for the Wavelets
    #compute_deplacements_score()
    # tab = ['KL','DisplacementScore']

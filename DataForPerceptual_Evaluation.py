@@ -26,6 +26,9 @@ import pandas as pd
 import choix
 import pickle
 import scipy
+import tikzplotlib
+
+os.environ["path"] += os.path.join('C:\\','Program Files','MiKTeX','miktex','bin','x64')
 
 directory = "./im/References/"
 ResultsDir = "./im/"
@@ -59,8 +62,12 @@ listNameMethod = ['Reference','Gatys','Gatys + MSInit','Gatys + Spectrum TF + MS
     'Snelgrove','Deep Corr']
 listNameMethod_onlySynth = ['Gatys','Gatys + MSInit','Gatys + Spectrum TF + MSInit',\
     'Snelgrove','Deep Corr']
-listNameMethod_onlySynth_withoutTF = ['Gatys','Gatys + MSInit','Gatys + Spectrum + MSInit',\
+listNameMethod_onlySynth_withoutTF = ['Gatys','Gram + MSInit','Gram + Spectrum + MSInit',\
     'Snelgrove','Deep Corr']
+listNameMethod_onlySynth_withoutTF_withCite = [r'Gatys \cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum + MSInit',\
+    r'Snelgrove \cite{snelgrove_highresolution_2017}',r'Deep Corr \cite{sendik_deep_2017}']
+listNameMethod_onlySynth_withoutTF_withCiteForpgf = [r'Gatys \cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum + MSInit',\
+    r'Snelgrove \cite{snelgrove_highresolution_2017}',r'Deep Corr \cite{sendik_deep_2017}']
 
 extension = ".png"
 files = [file for file in os.listdir(directory) if file.lower().endswith(extension)]
@@ -1229,30 +1236,91 @@ def run_statistical_study_old(estimation_method='mm',protocol='all_together'):
         with open(data_path_save, 'wb') as pkl:
             pickle.dump(dict_couple_W_E,pkl)
  
-def create_save_bar_plot(heights,error,path='',ext_name='',subset='',title=''):
+def create_save_bar_plot(heights,error,path='',ext_name='',subset='',title='',
+                         output_img='png'):
     # Build the plot
+    if output_img=='pgf':
+        matplotlib.use('pgf')
+        plt.rcParams.update({"pgf.texsystem" : "pdflatex"})
+        matplotlib.rcParams['text.usetex'] = True
+        #matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{hyperref}'] #if needed
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
+        matplotlib.rcParams['pgf.preamble'] = [r'\usepackage{hyperref}', ]
+    elif output_img=='tikz':
+        plt.rc('text', usetex=True)
+        
     x_pos = np.arange(len(listofmethod_onlySynth))
+    # Color blind color cycle
     CB_color_cycle = ['#377eb8', '#ff7f00', '#4daf4a',
                   '#f781bf', '#a65628', '#984ea3',
-                  '#999999', '#e41a1c', '#dede00']
+                  '#999999', '#e41a1c', '#dede00','#A2C8EC', '#FFBC79']
     fig, ax = plt.subplots()
     ax.bar(x_pos, heights, yerr=error, align='center', alpha=0.5,color=CB_color_cycle, ecolor='black', capsize=10)
     ax.set_ylabel('Winning Prob')
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(listNameMethod_onlySynth_withoutTF, rotation=45,fontsize=8)
+    if output_img=='png': 
+        ax.set_xticklabels(listNameMethod_onlySynth_withoutTF, rotation=45,fontsize=8)
+    elif output_img=='pgf' or output_img=='tikz':
+        ax.set_xticklabels(listNameMethod_onlySynth_withoutTF_withCite, rotation=45,fontsize=8,fontdict={'horizontalalignment': 'center'})
     plt.ylim((0,1))
     ax.set_title(title)
     ax.yaxis.grid(True)
     
     # Save the figure and show
     plt.tight_layout()
-    path_fig = os.path.join(path,'Bar_plot_'+ext_name+'_'+subset+'.png')
-    plt.savefig(path_fig,bbox_inches='tight')
+    if output_img=='png':
+        path_fig = os.path.join(path,'Bar_plot_'+ext_name+'_'+subset+'.png')
+        plt.savefig(path_fig,bbox_inches='tight')
+    if output_img=='tikz':
+        path_fig = os.path.join(path,'Bar_plot_'+ext_name+'_'+subset+'.tex')
+        tikzplotlib.save(path_fig)
+        # Two workaround sorry 
+        # https://sourceforge.net/p/pgfplots/mailman/message/25027720/
+        modify_underscore(path_fig)
+        modify_labels(path_fig)
+    elif output_img=='pgf':
+        path_fig = os.path.join(path,'Bar_plot_'+ext_name+'_'+subset+'.pgf')
+        plt.savefig(path_fig)
     #plt.show()
     plt.close()
            
-def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',title='',zalpha=1.):
+def modify_underscore(path_fig):
+    with open (path_fig, "r") as myfile:
+        data=myfile.read()
+    data = data.replace('\_','_')
+    WriteTxtFile = open(path_fig, "w")
+    WriteTxtFile.write(data)
+    WriteTxtFile.close()
     
+def modify_labels(path_fig):
+    with open (path_fig, "r") as myfile:
+        data=myfile.read()
+    data = data.replace('rotate=45.0','rotate=45.0,align=center')
+    data = data.replace('Gram + MSInit',r'{Gram +\\ MSInit}')
+    data = data.replace('Gram + Spectrum + MSInit',r'{Gram +\\ Spectrum +\\ MSInit}')
+    WriteTxtFile = open(path_fig, "w")
+    WriteTxtFile.write(data)
+    WriteTxtFile.close()
+    
+def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',title='',zalpha=1.,
+                            output_img='png'):
+    
+    if output_img=='png': 
+        extension = 'png'
+        local_list_label = listNameMethod_onlySynth_withoutTF
+    elif output_img=='tikz':
+        extension = 'tex'
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
+        local_list_label = listNameMethod_onlySynth_withoutTF_withCite 
+    elif output_img=='pgf':
+        extension = 'pgf'
+        local_list_label = listNameMethod_onlySynth_withoutTF_withCiteForpgf 
+        matplotlib.use('pgf')
+        #plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
+        matplotlib.rcParams['pgf.preamble'] = [r'\usepackage{hyperref}', ]
     
     fig, ax = plt.subplots()
     ax.set_axis_off()
@@ -1289,13 +1357,142 @@ def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',titl
                     loc='center', facecolor=color)
 
     # Row Labels...
-    for i, label_raw in enumerate(listNameMethod_onlySynth_withoutTF):
+    for i, label_raw in enumerate(local_list_label):
+        if not(output_img=='pgf'):
+            label_raw = label_raw.replace('_',' ')
+        label = label_raw.replace('+','+\n')
+        tb.add_cell(i, -1, width, height, text=label, loc='right', 
+                    edgecolor='none', facecolor='none')
+    # Column Labels...
+    for j, label_raw in enumerate(local_list_label):
+        if not(output_img=='pgf'):
+            label_raw = label_raw.replace('_',' ')
+        label = label_raw.replace('+','+\n')
+        tb.add_cell(-1, j, width, height/2, text=label, loc='center', 
+                           edgecolor='none', facecolor='none')
+    ax.add_table(tb)
+    
+#    
+#    fig, ax = plt.subplots()
+#    
+#    dict_ij = {}
+#    
+#    image = np.zeros(nrows*ncols)
+#
+#
+#    
+#    for i in range(len(params)):
+#        for j in range(len(params)):
+#            if not(i==j):
+#                print(i,j)
+#                b_ij = params[i]-params[j]
+#                std_ij = std_matrix[i,j]
+#                text_ij = '{0:.2e} ({1:.2e})'.format(b_ij,std_ij)
+#                dict_ij[[i,j]] =  text_ij
+#                
+#                ax.text(i+1/2, j+1/2, text_ij, va='center', ha='center')
+#    
+#    plt.xticks(range(len(params)), listNameMethod_onlySynth,rotation=45)
+#    plt.yticks(range(len(params)), listNameMethod_onlySynth)
+#    
+#    for tick in ax.xaxis.get_minor_ticks():
+#        tick.tick1line.set_markersize(0)
+#        tick.tick2line.set_markersize(0)
+#        tick.label1.set_horizontalalignment('center')
+#    for tick in ax.yaxis.get_minor_ticks():
+#        tick.tick1line.set_markersize(0)
+#        tick.tick2line.set_markersize(0)
+#        tick.label1.set_horizontalalignment('center')
+#    
+#    ax.grid()
+    
+    ax.set_title(title)
+
+    # Save the figure and show
+    plt.tight_layout()
+    if not(zalpha==1.0):
+        name_fig = r'BetaValue_plot_'+ext_name+'_'+subset+'_zalpha'+str(zalpha).replace('.','')+'.'+extension
+        path_fig = os.path.join(path,name_fig)
+        if not(output_img=='tikz'):
+            plt.savefig(path_fig,bbox_inches='tight',dpi=300)
+        else:
+            from tabulate import tabulate
+            print(tabulate(tb, tablefmt="latex"))
+            #tikzplotlib.save(path_fig) # Ne marche pas avec Table !!!
+    else:
+        name_fig = r'BetaValue_plot_'+ext_name+'_'+subset+'.'+extension
+        path_fig = os.path.join(path,name_fig)
+        if not(output_img=='tikz'):
+            plt.show()
+            plt.savefig(path_fig,bbox_inches='tight',dpi=300)
+        else:
+            from tabulate import tabulate
+            print(tabulate(tb, tablefmt="latex"))
+    plt.close()
+    
+    
+def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',subset='',title='',zalpha=1.,
+                            output_img='png'):
+    """
+    In this case we will output a tex file 
+    """
+    
+    if output_img=='png': 
+        extension = 'png'
+        local_list_label = listNameMethod_onlySynth_withoutTF
+    elif output_img=='tikz':
+        extension = 'tex'
+        local_list_label = listNameMethod_onlySynth_withoutTF_withCite 
+    elif output_img=='pgf':
+        extension = 'pgf'
+        local_list_label = listNameMethod_onlySynth_withoutTF_withCite 
+        matplotlib.use('pgf')
+        plt.rc('text', usetex=True)
+        plt.rc('font', family='serif')
+        matplotlib.rcParams['pgf.preamble'] = [r'\usepackage{hyperref}', ]
+    
+    fig, ax = plt.subplots()
+    ax.set_axis_off()
+    tb = Table(ax) # , bbox=[0,0,1,1]
+    tb.auto_set_font_size(False)
+    tb.set_fontsize(18)
+
+    color_win = 'lightgreen'
+    color_loss = 'lightcoral'
+    color_neutral = 'white'
+
+    nrows, ncols = len(params),len(params)
+    width, height = 1.0 / ncols, 1.0 / nrows
+
+    # Add cells
+    for i in range(len(params)):
+        for j in range(len(params)):
+            if not(i==j):
+                #print(i,j)
+                b_ij = params[i]-params[j]
+                std_ij = std_matrix[i,j]
+                text_ij = '{0:.2e}\n({1:.2e})'.format(b_ij,zalpha*std_ij)
+                if b_ij > 0:
+                    if b_ij - zalpha*std_ij > 0:
+                        color = color_win
+                    else:
+                        color= color_neutral
+                else:
+                    if b_ij + zalpha*std_ij < 0:
+                        color = color_loss
+                    else:
+                        color = color_neutral
+                tb.add_cell(i, j, width, height, text=text_ij, 
+                    loc='center', facecolor=color)
+
+    # Row Labels...
+    for i, label_raw in enumerate(local_list_label):
         label = label_raw.replace('_',' ')
         label = label.replace('+','+\n')
         tb.add_cell(i, -1, width, height, text=label, loc='right', 
                     edgecolor='none', facecolor='none')
     # Column Labels...
-    for j, label_raw in enumerate(listNameMethod_onlySynth_withoutTF):
+    for j, label_raw in enumerate(local_list_label):
         label = label_raw.replace('_',' ')
         label = label.replace('+','+\n')
         tb.add_cell(-1, j, width, height/2, text=label, loc='center', 
@@ -1341,11 +1538,19 @@ def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',titl
     # Save the figure and show
     plt.tight_layout()
     if not(zalpha==1.0):
-        name_fig = 'BetaValue_plot_'+ext_name+'_'+subset+'_zalpha'+str(zalpha).replace('.','')+'.png'
+        name_fig = 'BetaValue_plot_'+ext_name+'_'+subset+'_zalpha'+str(zalpha).replace('.','')+'.'+extension
+        path_fig = os.path.join(path,name_fig)
+        if not(output_img=='tikz'):
+            plt.savefig(path_fig,bbox_inches='tight',dpi=300)
+        else:
+            tikzplotlib.save(path_fig)
     else:
-        name_fig = 'BetaValue_plot_'+ext_name+'_'+subset+'.png'
-    path_fig = os.path.join(path,name_fig)
-    plt.savefig(path_fig,bbox_inches='tight',dpi=300)
+        name_fig = 'BetaValue_plot_'+ext_name+'_'+subset+'.'+extension
+        path_fig = os.path.join(path,name_fig)
+        if not(output_img=='tikz'):
+            plt.savefig(path_fig,dpi=300)
+        else:
+            tikzplotlib.save(path_fig)
     plt.close()
    
 def get_std_Wi(params,std_Bi_minus_Bj):
@@ -1406,9 +1611,12 @@ def get_std_pij_old(std_Bi_minus_Bj):
             
     
 def plot_evaluation(estimation_method='mm',std_estimation='hessian',
-                    protocol_tab = ['all_together','Individual_image']):
+                    protocol_tab = ['all_together','Individual_image'],
+                    output_img='png'):
     """
     This function will plot the differents images 
+    @param : output_img : kind of output used to save the image png is the default
+        pgf is to gave the \cite in the figure itself : ne marche pas car il y a besoin de la taille des \cite qui ne sont pas la
     """        
     print("== Start Plotting the bar plot ==")
     matplotlib.use('Agg') # To avoid to have the figure that's pop up during execution
@@ -1457,33 +1665,33 @@ def plot_evaluation(estimation_method='mm',std_estimation='hessian',
 
                 print('All, Reg, Irreg')
                 [W_list,E_list,stdW_list] = dict_couple_W_E['All'] # All images together
-                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='All',title='')
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='All',title='',output_img=output_img)
 #                print('stdW_list',stdW_list)
 #                print('E_list',E_list)
 #                print('W_list',W_list)
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='All',title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='All',title='',output_img=output_img)
                 [W_list,E_list,stdW_list] = dict_couple_W_E['Reg'] # All images together
                 create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='')
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Reg',title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Reg',title='',output_img=output_img)
                 [W_list,E_list,stdW_list] = dict_couple_W_E['All'] # All images together
                 create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='')
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Irreg',title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Irreg',title='',output_img=output_img)
 
 
             if protocol=='all_together':
                 print('All, Reg, Irreg')
                 [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['All'] # All images together
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='All',title='')
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',title='')
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',zalpha=1.96,title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='All',title='',output_img=output_img)
+                #create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',title='',output_img=output_img)
+                #create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',zalpha=1.96,title='',output_img=output_img)
                 [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['Reg'] # All images together
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='')
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',title='')
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',zalpha=1.96,title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='',output_img=output_img)
+                #create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',title='',output_img=output_img)
+                #create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',zalpha=1.96,title='',output_img=output_img)
                 [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['All'] # All images together
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='')
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',title='')
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',zalpha=1.96,title='')
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='',output_img=output_img)
+                #create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',title='',output_img=output_img)
+                #create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',zalpha=1.96,title='',output_img=output_img)
             
     
 def plot_evaluation_old():
@@ -1572,8 +1780,10 @@ if __name__ == '__main__':
 #                          std_estimation='binomial')
 #    plot_evaluation(estimation_method='opt_pairwise',std_estimation='binomial',
 #                    protocol_tab = ['all_together'])
-    run_statistical_study(estimation_method='opt_pairwise',
-                          protocol='all_together',
-                          std_estimation='hessian')
+#    run_statistical_study(estimation_method='opt_pairwise',
+#                          protocol='all_together',
+#                          std_estimation='hessian')
+#    plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian',
+#                    protocol_tab = ['all_together'],output_img='tikz')
     plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian',
-                    protocol_tab = ['all_together'])
+                    protocol_tab = ['all_together'],output_img='tikz')
