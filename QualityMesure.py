@@ -32,6 +32,7 @@ import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 from matplotlib.patches import Polygon
 import matplotlib.cm as mplcm
 import matplotlib.colors as colors
