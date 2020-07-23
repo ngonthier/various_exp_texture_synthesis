@@ -723,19 +723,19 @@ def readDataAndPlot(OnlyStructuredImages=False,
                 # print(i,list_methods[ri],' mean rank : ',meanRank[ri])
     
     # Critical Diagram 
-    cd = Orange.evaluation.compute_CD(meanRank, numberImages) #tested on numberImages images
-    Orange.evaluation.graph_ranks(meanRank, list_methods_withoutTF, cd=cd, width=8, textspace=1.5)
-    if save_or_show:
-        matplotlib.use('Agg')
-        plt.tight_layout()
-        if output_img=='tikz':
-            print('Not possible to save critical diagram in tikz')
-        else:
+    if output_img=='tikz':
+        print('Not possible to save critical diagram in tikz')
+    else:
+        cd = Orange.evaluation.compute_CD(meanRank, numberImages) #tested on numberImages images
+        Orange.evaluation.graph_ranks(meanRank, list_methods_withoutTF, cd=cd, width=8, textspace=1.5)
+        if save_or_show:
+            matplotlib.use('Agg')
+            plt.tight_layout()
             path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_CD.png')
             plt.savefig(path_fig,bbox_inches='tight')
             plt.close()
-    else:
-        plt.show()
+        else:
+            plt.show()
     
     
     # Value plot
