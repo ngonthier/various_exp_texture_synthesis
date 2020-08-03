@@ -38,6 +38,7 @@ import matplotlib.cm as mplcm
 import matplotlib.colors as colors
 import matplotlib.gridspec as gridspec
 import matplotlib.image as mpimg
+import pandas as pd
 matplotlib.rcParams['text.usetex'] = True
 sns.set()
 sns.set_style("whitegrid")
@@ -49,7 +50,7 @@ from scipy.special import gamma
 
 import tikzplotlib
 
-from DataForPerceptual_Evaluation import modify_underscore,modify_labels
+from DataForPerceptual_Evaluation import modify_underscore,modify_labels,modify_fontsizeByInput
 
 import platform
 
@@ -591,6 +592,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
         #name += 'OnlySum'
         name += '.pkl'
         data_path_save = os.path.join('data',name)
+        if not(os.path.isfile(data_path_save)):
+            data_path_save = os.path.join(dir_for_quality_measure,name)
         print('The wavelet KL score are store in ',data_path_save)
         with open(data_path_save, 'rb') as pkl:
              data = pickle.load(pkl)
@@ -612,6 +615,8 @@ def readDataAndPlot(OnlyStructuredImages=False,
             leg_str = 'Displacement d = '+str(d)
         name += '.pkl'
         data_path_save = os.path.join('data',name)
+        if not(os.path.isfile(data_path_save)):
+            data_path_save = os.path.join(dir_for_quality_measure,name)
         with open(data_path_save, 'rb') as pkl:
              data = pickle.load(pkl)
         dict_scores = data
@@ -749,112 +754,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
     
     # Value plot
            
-    plt.figure()    
-    fig_i_c = 0
-    x = list(range(0,len(listnameIm)))
-    for method,labelstr in zip(list_methods,list_methods_withoutTF):
-        #print(method) 
-        #print(dicoOfMethods[method])
-        plt.plot(x,dicoOfMethods[method],label=labelstr,color=CB_color_cycle[fig_i_c],\
-                         marker=list_markers[fig_i_c],linestyle='')# color=scalarMap.to_rgba(fig_i_c)
-        fig_i_c+=1
-    
-    listnameIm_without1024 = []
-    for elt in listnameIm:
-        elt_wt1024 = elt.replace('_1024','')
-        elt_wt1024 = elt_wt1024.replace('_seamless_S','')
-        elt_wt1024 = elt_wt1024.replace('TexturesCom_','')
-        listnameIm_without1024+= [elt_wt1024]
-
-    title = leg_str+' score computed with Wavelets coeffs'
-    #plt.xticks(x, listnameIm, rotation='vertical')
-    plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
-    plt.ylabel(leg_str+' score')
-    plt.ylim(bottom=0.)  # adjust the bottom leaving top unchanged
-    plt.title(title)
-    plt.legend(loc='best')
-    if save_or_show:
-        
-        if output_img=='png':
-            plt.tight_layout()
-            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.png')
-            plt.savefig(path_fig,bbox_inches='tight')
-            plt.close()
-        if output_img=='tikz':
-            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.tex')
-            tikzplotlib.save(path_fig)
-            modify_underscore(path_fig) # PB il va y avoir un probleme entre les 
-            # cas cite et les cas non cite il faudra regler cela plus tard  peut etre !!
-            modify_labels(path_fig)
-    else:
-        plt.show()
-    
-    # Log(x)
-    plt.figure()    
-    fig_i_c = 0
-    x = list(range(0,len(listnameIm)))
-    for method,labelstr in zip(list_methods,list_methods_withoutTF): 
-        #labelstr = method
-        # print(dicoOfMethods[method])
-        plt.plot(x,np.log(np.array(dicoOfMethods[method])),label=labelstr,color=CB_color_cycle[fig_i_c],\
-                         marker=list_markers[fig_i_c],linestyle='') # color = scalarMap.to_rgba(fig_i_c)
-        fig_i_c+=1
-
-    title = 'Log '+leg_str+'score computed with Wavelets coeffs'
-    #plt.xticks(x, listnameIm, rotation='vertical')
-    plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
-    plt.ylabel('log ('+leg_str+' score)')
-    plt.title(title)
-    plt.legend(loc='best')
-    if save_or_show:
-    
-        if output_img=='png':
-            plt.tight_layout()
-            path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.png')
-            plt.savefig(path_fig,bbox_inches='tight')
-            plt.close()
-        if output_img=='tikz':
-            path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.tex')
-            tikzplotlib.save(path_fig)
-            modify_underscore(path_fig)
-            modify_labels(path_fig)
-    else:
-        plt.show() 
-        plt.pause(0.001)
-    
-    
-    # Mean of KL
-    plt.figure()    
-    list_KLs = []
-    for i,method in enumerate(list_methods): 
-        labelstr = list_methods_withoutTF[i]
-        # print(dicoOfMethods[method])
-        KLs = np.array(dicoOfMethods[method])
-        list_KLs += [KLs]
-        meanKL = np.mean(KLs)
-        stdKL = np.std(KLs)
-        plt.errorbar(i, meanKL, yerr=stdKL,label=labelstr,color=CB_color_cycle[i],\
-                          marker=list_markers[i],linestyle='', markersize=8,uplims=True, lolims=True)
-
-    title = 'Mean and std of '+leg_str+' score per method.'
-    plt.xticks(list(range(0,len(list_methods))), list_methods, rotation=45,fontsize=8)
-    plt.ylabel('Mean '+leg_str+' score')
-    plt.title(title)
-    plt.legend(loc='best')
-    if save_or_show:
-        if output_img=='png':
-            plt.tight_layout()
-            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.png')
-            plt.savefig(path_fig,bbox_inches='tight')
-            plt.close()
-        if output_img=='tikz':
-            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.tex')
-            tikzplotlib.save(path_fig)
-            modify_underscore(path_fig)
-            modify_labels(path_fig)
-        
-    else:
-        plt.show()
+#    
     
     # Boxplots
     if output_img=='png':
@@ -863,9 +763,115 @@ def readDataAndPlot(OnlyStructuredImages=False,
         fig, ax1 = plt.subplots()
         
     fig.canvas.set_window_title('Boxplots of the '+leg_str+' distances.')
-    #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
+    #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)plt.figure()    
+#    fig_i_c = 0
+#    x = list(range(0,len(listnameIm)))
+#    for method,labelstr in zip(list_methods,list_methods_withoutTF):
+#        #print(method) 
+#        #print(dicoOfMethods[method])
+#        plt.plot(x,dicoOfMethods[method],label=labelstr,color=CB_color_cycle[fig_i_c],\
+#                         marker=list_markers[fig_i_c],linestyle='')# color=scalarMap.to_rgba(fig_i_c)
+#        fig_i_c+=1
+#    
+#    listnameIm_without1024 = []
+#    for elt in listnameIm:
+#        elt_wt1024 = elt.replace('_1024','')
+#        elt_wt1024 = elt_wt1024.replace('_seamless_S','')
+#        elt_wt1024 = elt_wt1024.replace('TexturesCom_','')
+#        listnameIm_without1024+= [elt_wt1024]
 #
-    bp = ax1.boxplot(list_KLs, notch=0, sym='+', vert=1, whis=1.5)
+#    title = leg_str+' score computed with Wavelets coeffs'
+#    #plt.xticks(x, listnameIm, rotation='vertical')
+#    plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
+#    plt.ylabel(leg_str+' score')
+#    plt.ylim(bottom=0.)  # adjust the bottom leaving top unchanged
+#    plt.title(title)
+#    plt.legend(loc='best')
+#    if save_or_show:
+#        
+#        if output_img=='png':
+#            plt.tight_layout()
+#            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.png')
+#            plt.savefig(path_fig,bbox_inches='tight')
+#            plt.close()
+#        if output_img=='tikz':
+#            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'.tex')
+#            #tikzplotlib.save(path_fig)
+#            #modify_underscore(path_fig) # PB il va y avoir un probleme entre les 
+#            # cas cite et les cas non cite il faudra regler cela plus tard  peut etre !!
+#            #modify_labels(path_fig)
+#    else:
+#        plt.show()
+#    
+#    # Log(x)
+#    plt.figure()    
+#    fig_i_c = 0
+#    x = list(range(0,len(listnameIm)))
+#    for method,labelstr in zip(list_methods,list_methods_withoutTF): 
+#        #labelstr = method
+#        # print(dicoOfMethods[method])
+#        plt.plot(x,np.log(np.array(dicoOfMethods[method])),label=labelstr,color=CB_color_cycle[fig_i_c],\
+#                         marker=list_markers[fig_i_c],linestyle='') # color = scalarMap.to_rgba(fig_i_c)
+#        fig_i_c+=1
+#
+#    title = 'Log '+leg_str+'score computed with Wavelets coeffs'
+#    #plt.xticks(x, listnameIm, rotation='vertical')
+#    plt.xticks(x, listnameIm_without1024, rotation=90,fontsize=5)
+#    plt.ylabel('log ('+leg_str+' score)')
+#    plt.title(title)
+#    plt.legend(loc='best')
+#    if save_or_show:
+#    
+#        if output_img=='png':
+#            plt.tight_layout()
+#            path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.png')
+#            plt.savefig(path_fig,bbox_inches='tight')
+#            plt.close()
+#        if output_img=='tikz':
+#            path_fig = os.path.join(dir_for_quality_measure,ext_name+'log'+case_str+'.tex')
+#            #tikzplotlib.save(path_fig)
+#            #modify_underscore(path_fig)
+#            #modify_labels(path_fig)
+#    else:
+#        plt.show() 
+#        plt.pause(0.001)
+#    
+#    
+#    # Mean of KL
+#    plt.figure()    
+    list_KLs = []
+    for i,method in enumerate(list_methods): 
+        labelstr = list_methods_withoutTF[i]
+        # print(dicoOfMethods[method])
+        KLs = np.array(dicoOfMethods[method])
+        list_KLs += [KLs]
+#        meanKL = np.mean(KLs)
+#        stdKL = np.std(KLs)
+#        plt.errorbar(i, meanKL, yerr=stdKL,label=labelstr,color=CB_color_cycle[i],\
+#                          marker=list_markers[i],linestyle='', markersize=8,uplims=True, lolims=True)
+#
+#    title = 'Mean and std of '+leg_str+' score per method.'
+#    plt.xticks(list(range(0,len(list_methods))), list_methods, rotation=45,fontsize=8)
+#    plt.ylabel('Mean '+leg_str+' score')
+#    plt.title(title)
+#    plt.legend(loc='best')
+#    if save_or_show:
+#        if output_img=='png':
+#            plt.tight_layout()
+#            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.png')
+#            plt.savefig(path_fig,bbox_inches='tight')
+#            plt.close()
+#        if output_img=='tikz':
+#            path_fig = os.path.join(dir_for_quality_measure,ext_name+case_str+'_MeanStd_per_method.tex')
+#            tikzplotlib.save(path_fig)
+#            modify_underscore(path_fig)
+#            modify_labels(path_fig)
+#        
+#    else:
+#        plt.show()
+#
+    #bp = ax1.boxplot(list_KLs, notch=0, sym='+', vert=1, whis=1.5)
+    bp = ax1.boxplot(list_KLs, notch=0, sym='+')
     plt.setp(bp['boxes'], color='black')
     plt.setp(bp['whiskers'], color='black')
     plt.setp(bp['fliers'], color='black', marker='+')
@@ -898,13 +904,17 @@ def readDataAndPlot(OnlyStructuredImages=False,
         # in the center of each box
         if output_img=='png':
             ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
-                 color='w', marker='*', markeredgecolor='k', markersize=10)
+                 color='w', marker='*', markeredgecolor='k', markersize=8)
         elif output_img=='tikz':
             ax1.plot(np.average(med.get_xdata()), np.average(list_KLs[i]),
-                 color='w', marker='h', markeredgecolor='k', markersize=10)
+                 color='w', marker='h', markeredgecolor='k', markersize=6)
     # X labels
-    ax1.set_xticklabels(list_methods_withoutTF,
-                    rotation=45, fontsize=8)  
+    if output_img=='png':
+        ax1.set_xticklabels(list_methods_withoutTF,
+                    rotation=45, fontsize=8) 
+    elif output_img=='tikz':
+        ax1.set_xticklabels(list_methods_withoutTF,
+                    rotation=75, fontsize=8)    
     if save_or_show:
         if output_img=='png':
             plt.tight_layout()
@@ -916,7 +926,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
             tikzplotlib.save(path_fig)
             modify_underscore(path_fig)
             modify_labels(path_fig)
-        
+            modify_fontsizeByInput(path_fig)
     else:
         plt.show()
         input('Enter to close.')
@@ -933,14 +943,18 @@ def readDataAndPlot(OnlyStructuredImages=False,
     #fig.canvas.set_window_title('Boxplots of the log '+leg_str+' distances.') 
     #fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
 #
-    bp = ax1.boxplot(list_KLs_log, notch=0, sym='+', vert=1, whis=1.5)
+    #bp = ax1.boxplot(list_KLs_log, notch=0, sym='+', vert=1, whis=1.5)
+    
+    #g =sns.boxplot(y=list_KLs_log,x=list_methods,showmeans=True)
+    #g.set_xticklabels(labels=list_methods,rotation=45)
+    bp = ax1.boxplot(list_KLs_log, notch=0, sym='+')
     plt.setp(bp['boxes'], color='black')
     plt.setp(bp['whiskers'], color='black')
     plt.setp(bp['fliers'], color='black', marker='+')
     # Hide these grid behind plot objects
     ax1.set_axisbelow(True)
     #ax1.set_title('Comparison of log '+leg_str+' score for different methods') # No title
-    ax1.set_xlabel('Method')
+    #ax1.set_xlabel('Method')
     ax1.set_ylabel('log '+leg_str)
     
     medians = np.empty(len(list_methods))
@@ -966,13 +980,17 @@ def readDataAndPlot(OnlyStructuredImages=False,
         # in the center of each box
         if output_img=='png':
             ax1.plot(np.average(med.get_xdata()), np.average(list_KLs_log[i]),
-                 color='w', marker='*', markeredgecolor='k', markersize=10)
+                 color='w', marker='*', markeredgecolor='k', markersize=8)
         elif output_img=='tikz':
             ax1.plot(np.average(med.get_xdata()), np.average(list_KLs_log[i]),
-                 color='w', marker='h', markeredgecolor='k', markersize=10)
+                 color='w', marker='h', markeredgecolor='k', markersize=6)
     # X labels
-    ax1.set_xticklabels(list_methods_withoutTF,
-                    rotation=45, fontsize=8)  
+    if output_img=='png':
+        ax1.set_xticklabels(list_methods_withoutTF,
+                    rotation=45, fontsize=8) 
+    elif output_img=='tikz':
+        ax1.set_xticklabels(list_methods_withoutTF,
+                    rotation=75, fontsize=8)  #,fontdict={'horizontalalignment': 'center'}
     if save_or_show:
         if output_img=='png':
             plt.tight_layout()
@@ -984,6 +1002,7 @@ def readDataAndPlot(OnlyStructuredImages=False,
             tikzplotlib.save(path_fig)
             modify_underscore(path_fig)
             modify_labels(path_fig)
+            modify_fontsizeByInput(path_fig)
         
     else:
         plt.show()
