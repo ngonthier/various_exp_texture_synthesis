@@ -1483,16 +1483,16 @@ def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',sub
     
     first_line = '\mc{}'
     for i, label_raw in enumerate(local_list_label):
-        label = label_raw.replace('_',' ')
-        label = label.replace('+',r'+ \\')
+        #label = label_raw.replace('_',' ')
+        label = label_raw.replace('+',r'+ \\')
         first_line += r' & ' + r'\mc{\makecell[c]{' +label + r'}}' 
     first_line += r'\\ \cline{3-6}' +'\n'
     file.write(first_line)
     
     for i in range(len(params)):
         label_raw = local_list_label[i]
-        label = label_raw.replace('_',' ')
-        label = label.replace('+',r'+ \\')
+        #label = label_raw.replace('_',' ')
+        label = label_raw.replace('+',r'+ \\')
         if not(i==0):
             line_i = r'\mcr{\makecell*[c]{' +label + r'}}'
         else:
