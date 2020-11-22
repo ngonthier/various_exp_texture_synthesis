@@ -227,7 +227,8 @@ def generation_Texture():
 	# we want to save the intermediate image if we haven't run the image already
 	saveMS = True
 	losses_to_test = [['Gatys'],['Gatys','spectrumTFabs'],['autocorr']]
-	scalesStrat = ['Init','']
+	#losses_to_test = [['phaseAlea']]
+	scalesStrat = ['','Init']
 	padding = 'SAME'
 	K = 2
 	for loss in losses_to_test:
@@ -297,6 +298,7 @@ def generation_Texture():
 								copyfile(src, dst2)
 					else:
 						print(output_img_name_full,'already exists')
+
 
 	# Run on the HD image in 2048*2048
 	list_img = get_list_of_images(RefDir2048)
