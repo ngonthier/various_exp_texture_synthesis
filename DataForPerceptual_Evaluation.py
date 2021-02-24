@@ -74,6 +74,13 @@ listNameMethod_onlySynth_withoutTF = ['Gatys','Gram + MSInit','Gram + Spectrum +
     'Snelgrove','Deep Corr']
 listNameMethod_onlySynth_withoutTF_withCite = [r'Gatys \cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum + MSInit',\
     r'Snelgrove \cite{snelgrove_highresolution_2017}',r'Deep Corr \cite{sendik_deep_2017}']
+#listNameMethod_onlySynth_withoutTF_withCite_forPhd = [r'\cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum + MSInit',\
+#    r'\cite{snelgrove_highresolution_2017}',r'Deep Corr \\ \cite{sendik_deep_2017}']
+listNameMethod_onlySynth_withoutTF_withCite_forPhd = [r'\cite{gatys_texture_2015}',r'Gram + MRInit',r'Gram + Spectrum + MRInit',\
+    r'\cite{snelgrove_highresolution_2017}',r'Deep Corr \\ \cite{sendik_deep_2017}']
+#listNameMethod_onlySynth_withoutTF_withoutCite_forPhd = [r'\cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum + MSInit',\
+#    r'\cite{snelgrove_highresolution_2017}',r'Deep Corr \\ \cite{sendik_deep_2017}']
+#    r'\cite{snelgrove_highresolution_2017}',r'Deep Corr \\ \cite{sendik_deep_2017}']
 listNameMethod_onlySynth_withoutTF_withCiteForpgf = [r'Gatys \cite{gatys_texture_2015}',r'Gram + MSInit',r'Gram + Spectrum + MSInit',\
     r'Snelgrove \cite{snelgrove_highresolution_2017}',r'Deep Corr \cite{sendik_deep_2017}']
 
@@ -1245,7 +1252,7 @@ def run_statistical_study_old(estimation_method='mm',protocol='all_together'):
             pickle.dump(dict_couple_W_E,pkl)
  
 def create_save_bar_plot(heights,error,path='',ext_name='',subset='',title='',
-                         output_img='png'):
+                         output_img='png',forPhd=False):
     # Build the plot
     if output_img=='pgf':
         matplotlib.use('pgf')
@@ -1270,7 +1277,12 @@ def create_save_bar_plot(heights,error,path='',ext_name='',subset='',title='',
     if output_img=='png': 
         ax.set_xticklabels(listNameMethod_onlySynth_withoutTF, rotation=45,fontsize=8)
     elif output_img=='pgf' or output_img=='tikz':
-        ax.set_xticklabels(listNameMethod_onlySynth_withoutTF_withCite, rotation=45,fontsize=8,fontdict={'horizontalalignment': 'center'})
+        if not(forPhd):
+            ax.set_xticklabels(listNameMethod_onlySynth_withoutTF_withCite, 
+                           rotation=75,fontsize=8,fontdict={'horizontalalignment': 'center'})
+        else:
+            ax.set_xticklabels(listNameMethod_onlySynth_withoutTF_withCite_forPhd, 
+                           rotation=45,fontsize=8,fontdict={'horizontalalignment': 'center'})
     plt.ylim((0,1))
     ax.set_title(title)
     ax.yaxis.grid(True)
@@ -1453,12 +1465,16 @@ def create_significant_comp(params,std_matrix,path='',ext_name='',subset='',titl
     plt.close()
     
     
-def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',subset='',title='',zalpha=1.):
+def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',
+                                       subset='',title='',zalpha=1.,forPhd=False):
     """
     In this case we will output a tex file in the form of a tabular 
     need usepackage[table]{xcolor} in your latex
     """
-    local_list_label = listNameMethod_onlySynth_withoutTF_withCite 
+    if forPhd:
+        local_list_label = listNameMethod_onlySynth_withoutTF_withCite_forPhd
+    else:
+        local_list_label = listNameMethod_onlySynth_withoutTF_withCite 
     extension = 'tex'
     if not(zalpha==1.0):
         name_fig = 'BetaValue_plot_'+ext_name+'_'+subset+'_zalpha'+str(zalpha).replace('.','')+'.'+extension
@@ -1478,14 +1494,20 @@ def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',sub
     size_cell = 20
     #vertical_line = r'\def\arrvline{\hfil\kern\arraycolsep\vline\kern-\arraycolsep\hfilneg}'
     string_beg = r'\begin{tabular}{p{'+str(size_cell)+'mm}p{'+str(size_cell)+'mm}p{'+str(size_cell)+'mm}p{'+str(size_cell)+'mm}p{'+str(size_cell)+'mm}p{'+str(size_cell)+'mm}}' 
-    string_beg = r'\begin{tabular}{*{6}{p{1.75cm}|}}' 
+    if forPhd:
+        string_beg = r'\begin{tabular}{*{6}{p{0.5\textwidth}|}}' 
+    else:
+        string_beg = r'\begin{tabular}{*{6}{p{1.75cm}|}}' 
     file.write(string_beg)
     
     first_line = '\mc{}'
     for i, label_raw in enumerate(local_list_label):
         #label = label_raw.replace('_',' ')
         label = label_raw.replace('+',r'+ \\')
-        first_line += r' & ' + r'\mc{\makecell[c]{' +label + r'}}' 
+        if forPhd:
+            first_line += r' & ' + r'\mc{\makecell[{{p{0.5\textwidth}}}]{' +label + r'}}' 
+        else:
+            first_line += r' & ' + r'\mc{\makecell[c]{' +label + r'}}'  
     first_line += r'\\ \cline{3-6}' +'\n'
     file.write(first_line)
     
@@ -1494,9 +1516,15 @@ def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',sub
         #label = label_raw.replace('_',' ')
         label = label_raw.replace('+',r'+ \\')
         if not(i==0):
-            line_i = r'\mcr{\makecell*[c]{' +label + r'}}'
+            if forPhd:
+                line_i = r'\mcr{\makecell*[{{p{0.5\textwidth}}}]{' +label + r'}}'
+            else:
+                line_i = r'\mcr{\makecell*[c]{' +label + r'}}'
         else:
-            line_i = r'\mc{\makecell*[c]{' +label + r'}}'
+            if forPhd:
+                line_i = r'\mc{\makecell*[{{p{0.5\textwidth}}}]{' +label + r'}}'
+            else:
+                line_i = r'\mc{\makecell*[c]{' +label + r'}}'
         for j in range(len(params)):
             if not(i==j):
                 #print(i,j)
@@ -1513,7 +1541,10 @@ def create_significant_compOutputToTex(params,std_matrix,path='',ext_name='',sub
                         color = color_loss
                     else:
                         color = color_neutral
-                line_i += r' & ' + r'\makecell*[c]{'+ r'{' + color + ' ' + text_ij.replace(r'\\',r'} \\ {' + color) + r'}'+ r'}'
+                if forPhd:
+                    line_i += r' & ' + r'\makecell*[{{p{0.5\textwidth}}}]{'+ r'{' + color + ' ' + text_ij.replace(r'\\',r'} {' + color) + r'}'+ r'}' #.replace(r'\\',r'} \\ {' + color)
+                else:
+                    line_i += r' & ' + r'\makecell*[c]{'+ r'{' + color + ' ' + text_ij.replace(r'\\',r'} \\ {' + color) + r'}'+ r'}'
                 
             else:
                 if not(i==len(params)-1):
@@ -1593,7 +1624,7 @@ def get_std_pij_old(std_Bi_minus_Bj):
     
 def plot_evaluation(estimation_method='mm',std_estimation='hessian',
                     protocol_tab = ['all_together','Individual_image'],
-                    output_img='png'):
+                    output_img='png',output_im_path=None,forPhd=False):
     """
     This function will plot the differents images 
     @param : output_img : kind of output used to save the image png is the default
@@ -1606,8 +1637,9 @@ def plot_evaluation(estimation_method='mm',std_estimation='hessian',
     #diff_case=['local','both']
      
     #protocol_tab = ['Individual_image']  
-
-    output_im_path = os.path.join(ForPerceptualTestPsyToolkitSurvey,'BarPlot_score',std_estimation)
+    
+    if output_im_path is None:
+        output_im_path = os.path.join(ForPerceptualTestPsyToolkitSurvey,'BarPlot_score',std_estimation)
     pathlib.Path(output_im_path).mkdir(parents=True, exist_ok=True)
     for protocol in protocol_tab:
         print('=',protocol,'=')
@@ -1626,6 +1658,7 @@ def plot_evaluation(estimation_method='mm',std_estimation='hessian',
                 case_str = 'Both'
             
             ext_name = protocol + '_'+case+'_'+estimation_method+'_'+std_estimation
+            
             
             data_path_save =os.path.join(ForPerceptualTestPsyToolkitSurvey,'WBS_'+case+'_'+protocol+'_'+estimation_method+'_'+std_estimation+'.pkl')
             if not(os.path.exists(data_path_save)):
@@ -1646,33 +1679,67 @@ def plot_evaluation(estimation_method='mm',std_estimation='hessian',
 
                 print('All, Reg, Irreg')
                 [W_list,E_list,stdW_list] = dict_couple_W_E['All'] # All images together
-                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='All',title='',output_img=output_img)
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,
+                                     subset='All',title='',output_img=output_img,forPhd=forPhd)
 #                print('stdW_list',stdW_list)
 #                print('E_list',E_list)
 #                print('W_list',W_list)
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='All',title='',output_img=output_img)
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,
+                                     ext_name=ext_name+'_stdW',subset='All',title='',
+                                     output_img=output_img,forPhd=forPhd)
                 [W_list,E_list,stdW_list] = dict_couple_W_E['Reg'] # All images together
-                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='')
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Reg',title='',output_img=output_img)
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,
+                                     subset='Reg',title='',output_img=output_img,forPhd=forPhd)
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',
+                                     subset='Reg',title='',output_img=output_img,forPhd=forPhd)
                 [W_list,E_list,stdW_list] = dict_couple_W_E['All'] # All images together
-                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='')
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',subset='Irreg',title='',output_img=output_img)
+                create_save_bar_plot(W_list,E_list,path=output_im_path,ext_name=ext_name,
+                                     subset='Irreg',title='',output_img=output_img,forPhd=forPhd)
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name+'_stdW',
+                                     subset='Irreg',title='',output_img=output_img,forPhd=forPhd)
 
 
             if protocol=='all_together':
                 print('All, Reg, Irreg')
                 [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['All'] # All images together
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='All',title='',output_img=output_img)
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',title='',output_img=output_img)
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='All',zalpha=1.96,title='',output_img=output_img)
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,
+                                     subset='All',title='',output_img=output_img,forPhd=forPhd)
+                if output_img=='tikz':
+                    create_significant_compOutputToTex(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='All',title='',forPhd=forPhd)
+                    create_significant_compOutputToTex(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='All',zalpha=1.96,title='',forPhd=forPhd)
+                else:
+                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='All',title='',output_img=output_img)
+                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='All',zalpha=1.96,title='',output_img=output_img)
                 [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['Reg'] # All images together
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Reg',title='',output_img=output_img)
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',title='',output_img=output_img)
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Reg',zalpha=1.96,title='',output_img=output_img)
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,
+                                     subset='Reg',title='',output_img=output_img,forPhd=forPhd)
+                if output_img=='tikz':
+                    create_significant_compOutputToTex(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Reg',title='',forPhd=forPhd)
+                    create_significant_compOutputToTex(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Reg',zalpha=1.96,title='',forPhd=forPhd)
+                else:
+                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Reg',title='',output_img=output_img)
+                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Reg',zalpha=1.96,title='',output_img=output_img)
                 [W_list,stdW_list,params,std_matrix] = dict_couple_W_E['All'] # All images together
-                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,subset='Irreg',title='',output_img=output_img)
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',title='',output_img=output_img)
-                create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,subset='Irreg',zalpha=1.96,title='',output_img=output_img)
+                create_save_bar_plot(W_list,stdW_list,path=output_im_path,ext_name=ext_name,
+                                     subset='Irreg',title='',output_img=output_img,forPhd=forPhd)
+                if output_img=='tikz':
+                    create_significant_compOutputToTex(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Irreg',title='',forPhd=forPhd)
+                    create_significant_compOutputToTex(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Irreg',zalpha=1.96,title='',forPhd=forPhd)
+                else:
+                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Irreg',title='',output_img=output_img)
+                    create_significant_comp(params,std_matrix,path=output_im_path,ext_name=ext_name,
+                                        subset='Irreg',zalpha=1.96,title='',output_img=output_img)
             
     
 def plot_evaluation_old():
@@ -1736,7 +1803,13 @@ def plot_evaluation_old():
                 create_save_bar_plot(W_list,None,path=output_im_path,ext_name=ext_name,subset='Irreg',title='Irregular images'+' '+case_str+' '+protocol_str)
             
     
-
+def generate_plot_tab_for_PhD_manuscript():
+    output_im_path = os.path.join('C:\\','Users','gonthier','ownCloud','Mes_Latex','2021_PhD_Thesis','ImInTex')
+    plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian',
+                    protocol_tab = ['all_together','Individual_image'],
+                    output_img='tikz',
+                    output_im_path=output_im_path,
+                    forPhd=True)
 
 if __name__ == '__main__':
     #Resize_and_crop_center()
@@ -1766,5 +1839,6 @@ if __name__ == '__main__':
 #                          std_estimation='hessian')
 #    plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian',
 #                    protocol_tab = ['all_together'],output_img='tikz')
-    plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian',
-                    protocol_tab = ['all_together'],output_img='tikz')
+#    plot_evaluation(estimation_method='opt_pairwise',std_estimation='hessian',
+#                    protocol_tab = ['all_together'],output_img='tikz')
+    generate_plot_tab_for_PhD_manuscript()
